@@ -2,6 +2,8 @@
 
 This directory turns ROADMAP.md into a mechanically checkable contract. It does not contain a working BPTK runtime.
 
+The separate [`bench/npm/content.json`](../npm/content.json) file freezes the bounded npm tarball surface. That packaging check is repository tooling and does not implement or promote any roadmap item.
+
 ## Layout
 
 - `manifest.json` — canonical accepted item, dependency, source evidence, state, and denominator.

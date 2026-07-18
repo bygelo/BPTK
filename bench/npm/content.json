@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "package": "@bygelo/bptk",
+  "version": "0.1.0-alpha.0",
+  "file": [
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "bin/bptk.mjs",
+    "data/status.json",
+    "lib/cli.mjs",
+    "lib/doctor.mjs",
+    "lib/index.mjs",
+    "lib/status.mjs",
+    "package.json"
+  ]
+}

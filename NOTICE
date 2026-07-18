@@ -3,14 +3,18 @@ Copyright 2026 Maphy Technologies
 
 This product is licensed under the Apache License, Version 2.0.
 
-As of 2026-07-19, this repository incorporates no third-party software,
-game executable, game asset, firmware, ROM, or proprietary SDK. Projects
-named in the source audit are factual research references, not bundled
-components, and their owners do not endorse or sponsor BPTK.
+As of 2026-07-19, this repository and the dependency-free
+@bygelo/bptk package incorporate no third-party software, game executable,
+game asset, firmware, ROM, or proprietary SDK. The package uses only
+Node.js built-in modules; Node.js is an external runtime prerequisite and
+is not copied into the distribution. Projects named in the source audit
+are factual research references, not bundled components, and their owners
+do not endorse or sponsor BPTK.
 
 The repository workflow invokes pinned, MIT-licensed GitHub Actions as
-external CI tools. They are recorded in doc/third-party.md and are not
-copied into or redistributed with BPTK.
+external CI tools, including Node.js and Python setup actions. They are
+recorded in doc/third-party.md and are not copied into or redistributed
+with BPTK.
 
 Apache-2.0 covers only BPTK-authored material. A future third-party
 component remains subject to its own license, attribution, source-offer,

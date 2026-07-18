@@ -2,17 +2,30 @@
 
 Browser Porting Toolkit (BPTK) is a proposed Maphy Technologies toolkit for evaluating, adapting, testing, and packaging Windows games for the browser.
 
-This repository currently contains the research-backed roadmap and its validation harness. It does **not** contain a working game runtime, and no Windows game has been shown to run through BPTK yet.
+This repository contains the research-backed roadmap, its validation harness, and a dependency-free pre-alpha npm CLI for reading roadmap status and local environment facts. It does **not** contain a working game runtime, and no Windows game has been shown to run through BPTK yet.
 
 ## Quick start
+
+Install the public roadmap-tooling preview with Node.js 22 or later:
+
+```sh
+npm install --global @bygelo/bptk@0.1.0-alpha.0
+bptk status
+bptk doctor
+```
+
+`status` reads a bundled, revisioned roadmap snapshot. `doctor` reports Node and operating-system facts. Neither command imports, inspects, transforms, executes, or tests a game; both state that no game runtime exists.
+
+To validate the source repository, install its dependency-free lockfile and run the complete gate:
 
 ```sh
 git clone https://github.com/bygelo/BPTK.git
 cd BPTK
-python3 tool/validate.py
+npm ci --ignore-scripts
+npm run gate
 ```
 
-Python 3 is the only local requirement for the current planning gate.
+The source gate requires Node.js 22 or later and Python 3. The roadmap-only validator remains available as `python3 tool/validate.py`.
 
 ## Product thesis
 
@@ -54,27 +67,28 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Deferred candidate: **5**
 - Implemented item: **0**
 - Passing roadmap benchmark: **0 / 33 (0%)**
+- Published npm surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap status and environment diagnostics only
 
-Start with [ROADMAP.md](ROADMAP.md), then read the [architecture](doc/ARCHITECTURE.md), [source audit](doc/source-audit.md), [legal boundary](doc/legal-boundary.md), [third-party inventory](doc/third-party.md), [test contract](doc/TESTING.md), and [contribution guide](CONTRIBUTING.md).
+Start with [ROADMAP.md](https://github.com/bygelo/BPTK/blob/main/ROADMAP.md), then read the [architecture](https://github.com/bygelo/BPTK/blob/main/doc/ARCHITECTURE.md), [source audit](https://github.com/bygelo/BPTK/blob/main/doc/source-audit.md), [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md), [third-party inventory](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md), [test contract](https://github.com/bygelo/BPTK/blob/main/doc/TESTING.md), [release procedure](https://github.com/bygelo/BPTK/blob/main/doc/RELEASE.md), and [contribution guide](https://github.com/bygelo/BPTK/blob/main/CONTRIBUTING.md).
 
 ## Validation
 
-The planning package is machine-checkable with Python’s standard library:
+The repository package is machine-checkable with one command:
 
 ```sh
-python3 tool/validate.py
+npm run gate
 ```
 
-The validator checks roadmap count, dependency integrity, item-to-benchmark mapping, promotion state, local link, singular naming, and the current planning-only boundary.
+The gate checks roadmap count, dependency integrity, item-to-benchmark mapping, promotion state, local link, singular naming, the exact dependency-free npm package surface, the deterministic status snapshot, CLI behavior, and the intended tarball file list.
 
-The same command runs for every push and pull request through the repository's GitHub Actions roadmap gate.
+The same command runs on Node.js 22 and 24 for every push and pull request through the repository's GitHub Actions gate.
 
 ## Naming and affiliation
 
-Browser Porting Toolkit is a working name for a Maphy Technologies project. It is not affiliated with or endorsed by Apple, Microsoft, Valve, CodeWeavers, or any game publisher. This public planning repository is not public-product-name clearance and remains rename-ready. Naming and trade dress require review before a runtime or product launch; the project must not copy Apple source code, icon, screenshot, or interface treatment.
+Browser Porting Toolkit is a working name for a Maphy Technologies project. It is not affiliated with or endorsed by Apple, Microsoft, Valve, CodeWeavers, or any game publisher. This public planning repository and its scoped roadmap-tooling package are not public-product-name clearance and remain rename-ready. Naming and trade dress require review before a runtime or product launch; the project must not copy Apple source code, icon, screenshot, or interface treatment. The unscoped npm name `bptk` is not used by this project.
 
 ## License state
 
-BPTK-authored material in this repository is licensed under the [Apache License 2.0](LICENSE), with copyright and repository status recorded in [NOTICE](NOTICE). The current repository incorporates no third-party software or game content; factual prior-art references are not bundled dependencies.
+BPTK-authored material in this repository and the `@bygelo/bptk` tarball is licensed under the [Apache License 2.0](https://github.com/bygelo/BPTK/blob/main/LICENSE), with copyright and repository status recorded in [NOTICE](https://github.com/bygelo/BPTK/blob/main/NOTICE). The npm package has zero package dependency and uses only Node.js built-in modules; it incorporates no third-party software or game content. Factual prior-art references are not bundled dependencies.
 
-Apache-2.0 does not relicense a future dependency, user-supplied game, trademark, proprietary asset, or restricted SDK. The [third-party policy](doc/third-party.md) and [legal boundary](doc/legal-boundary.md) require component-level provenance and obligation review before upstream material enters the repository. BPTK-001 remains planned until the runtime reuse graph and public-name path receive their required review.
+Apache-2.0 does not relicense a future dependency, user-supplied game, trademark, proprietary asset, or restricted SDK. The [third-party policy](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md) and [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md) require component-level provenance and obligation review before upstream material enters the repository. BPTK-001 remains planned until the runtime reuse graph and public-name path receive their required review.

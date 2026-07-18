@@ -2,7 +2,9 @@
 
 ## Current inventory
 
-As of 2026-07-19, this repository contains no incorporated third-party software, executable, game asset, firmware, ROM, proprietary SDK, generated output from a restricted tool, or copied upstream documentation. Its Markdown, JSON, and Python content is BPTK-authored planning material licensed under Apache-2.0.
+As of 2026-07-19, this repository and the `@bygelo/bptk` tarball contain no incorporated third-party software, executable, game asset, firmware, ROM, proprietary SDK, generated output from a restricted tool, or copied upstream documentation. Their Markdown, JSON, Python, and JavaScript content is BPTK-authored material licensed under Apache-2.0.
+
+The npm package has zero package dependency and uses only built-in Node.js modules. Node.js 22 or later and the npm CLI are external environment tools: they are not vendored, copied into, or redistributed with the tarball. `package-lock.json` records the dependency-free source environment but is intentionally absent from the published file manifest.
 
 The projects recorded in the [source audit](source-audit.md) are factual research references and architectural precedent. A link, project name, license summary, or behavioral observation does not make that project a dependency and does not relicense its source under BPTK's license.
 
@@ -13,6 +15,7 @@ The GitHub Actions workflow invokes these external CI tools. They run on GitHub'
 | Tool | Immutable revision | License | Use and distribution disposition |
 |---|---|---|---|
 | [actions/checkout](https://github.com/actions/checkout) | [`9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0`](https://github.com/actions/checkout/commit/9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0) (`v7.0.0`) | MIT | CI-only checkout tool; not vendored or shipped |
+| [actions/setup-node](https://github.com/actions/setup-node) | [`820762786026740c76f36085b0efc47a31fe5020`](https://github.com/actions/setup-node/commit/820762786026740c76f36085b0efc47a31fe5020) (`v7.0.0`) | MIT | CI-only Node.js setup tool; not vendored or shipped |
 | [actions/setup-python](https://github.com/actions/setup-python) | [`ece7cb06caefa5fff74198d8649806c4678c61a1`](https://github.com/actions/setup-python/commit/ece7cb06caefa5fff74198d8649806c4678c61a1) (`v6.3.0`) | MIT | CI-only Python setup tool; not vendored or shipped |
 
 ## Incorporation rule

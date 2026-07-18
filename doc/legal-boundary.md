@@ -4,7 +4,7 @@
 
 This is an engineering control, not legal advice. It prevents technical possibility from being confused with permission to copy, modify, link, distribute, host, or circumvent. Qualified counsel must review the public name, combined-work architecture, upstream component graph, and any commercial title program before a runtime launch.
 
-BPTK-authored material in the current planning repository is licensed under Apache-2.0. `NOTICE` identifies the copyright holder and current third-party state, while [third-party.md](third-party.md) defines the incorporation ledger. Apache-2.0 applies only to BPTK-authored material; it does not relicense an upstream component or user-supplied game. Until BPTK-001 passes, upstream code must not be copied into this repository.
+BPTK-authored material in the current planning repository and the scoped `@bygelo/bptk` roadmap-tooling package is licensed under Apache-2.0. `NOTICE` identifies the copyright holder and current third-party state, while [third-party.md](third-party.md) defines the incorporation ledger. Apache-2.0 applies only to BPTK-authored material; it does not relicense an upstream component or user-supplied game. Until BPTK-001 passes, upstream code must not be copied into this repository.
 
 BPTK-001 remains planned because selecting an outbound license for the current repository does not approve a future runtime dependency graph, BottleShip relationship, copyleft boundary, or public-name clearance.
 
@@ -82,9 +82,9 @@ Uploading proprietary game content and remotely executing imported game code are
 
 ## Brand boundary
 
-“Browser Porting Toolkit” is a working name and intentionally descriptive, but it is close in structure to Apple’s product name. Public availability of this planning repository under the working name is permitted only while it retains the non-affiliation statement, uses no product logo or copied trade dress, makes no compatibility claim, and remains ready to rename.
+“Browser Porting Toolkit” is a working name and intentionally descriptive, but it is close in structure to Apple’s product name. Public availability of this planning repository and the scoped `@bygelo/bptk` pre-alpha roadmap-tooling package under the working name is permitted only while each retains the non-affiliation statement, uses no product logo or copied trade dress, makes no compatibility claim, and remains ready to rename.
 
-This narrow planning-repository permission is not public-product-name clearance. Before a runtime release, hosted service, package-registry release, product launch, marketing campaign, or trademark filing:
+This narrow planning-repository and scoped-tooling permission is not public-product-name clearance. It does not clear the unscoped npm name `bptk`, a runtime package, or a product distribution. Before a runtime release, hosted service, runtime package-registry release, product launch, marketing campaign, or trademark filing:
 
 - perform trademark and domain review;
 - select independent logo, typography, color, icon, screenshot, and interface composition;

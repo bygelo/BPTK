@@ -14,9 +14,10 @@ The differentiator is one workbench joining binary compatibility, source-assiste
 
 ## Current truth
 
-- Repository state before this pass: empty directory, no git repository, no license, no runtime, no test, no documentation.
-- Current state after this pass: roadmap and documentation package only.
+- Initial repository state: empty directory with no git repository, license, runtime, test, or documentation.
+- Current repository state: public Apache-2.0 roadmap package, validation harness, and dependency-free `@bygelo/bptk@0.1.0-alpha.0` status and environment-diagnostic CLI.
 - Product implementation: 0 item.
+- CLI boundary: `status` and `doctor` do not import, inspect, transform, execute, or test a game and do not promote a roadmap item.
 - Current benchmark coverage: **0 / 33 (0%)**.
 - Compatibility corpus coverage: not publishable until BPTK-002 freezes the runtime denominator.
 - Closest prior art: BottleShip for unmodified PE32 game; Emscripten for source-assisted game; OpenSA, WebXash, Qwasm2, and ScummVM for engine-family or asset-driven path.

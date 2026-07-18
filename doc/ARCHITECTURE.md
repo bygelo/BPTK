@@ -4,6 +4,12 @@
 
 This document describes the target architecture, not implemented software. Every component below remains planned until its roadmap benchmark is promoted to the active gate and passes.
 
+## Repository tooling boundary
+
+The published `@bygelo/bptk@0.1.0-alpha.0` package is control-plane metadata, not an implementation of this target architecture. Its `status` command reads a bundled, revisioned roadmap snapshot, and its `doctor` command reports objective Node.js and operating-system facts. It has no importer, PE loader, CPU core, Win32 shim, graphics translator, browser host, game-content reader, or compatibility runner.
+
+Publishing that bounded CLI does not promote any roadmap item: implementation and passing coverage remain 0 / 33. A future runtime must enter through the benchmark promotion rule rather than expanding the CLI by implication.
+
 ## Product boundary
 
 BPTK is a developer workbench and a browser runtime family. It is not one universal transpiler. Its first responsibility is to classify an import and select a viable lane:

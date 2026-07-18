@@ -4,6 +4,10 @@ All notable planning and implementation change will be recorded here.
 
 ## Unreleased
 
+No unreleased change.
+
+## 0.1.0-alpha.0 — 2026-07-19
+
 ### Added — 2026-07-18
 
 - Established BPTK as a proposed Maphy Technologies browser-porting workbench.
@@ -30,6 +34,12 @@ All notable planning and implementation change will be recorded here.
 - Updated BPTK-001 truthfully: repository licensing is recorded, while runtime-component and public-name approval remain open.
 - Added contribution licensing and provenance rules for public pull requests.
 - Added a least-privilege GitHub Actions workflow for the planning validator with immutable CI-tool pins and provenance.
+- Added the public, dependency-free `@bygelo/bptk` roadmap-tooling package with `status`, `doctor`, and library export.
+- Added five Node.js CLI test covering truthful default help, deterministic status JSON, bounded diagnostics, text disclaimers, and invalid input.
+- Added an exact 10-file npm tarball manifest that excludes source script, test, benchmark material, and `package-lock.json` from distribution.
+- Extended the repository gate across Node.js 22 and 24 while retaining the Python roadmap validator.
+- Recorded the scoped package-name permission separately from the still-open runtime and public-product-name review.
+- Published the pre-alpha on the `next` distribution tag; `latest` remains unset until a stable default is approved.
 
 ### Clarified
 
@@ -40,3 +50,4 @@ All notable planning and implementation change will be recorded here.
 
 - No runtime implementation, executable fixture, browser package, or compatibility result exists yet.
 - The future runtime component graph, upstream reuse strategy, and public product name remain P0 decisions; the current planning repository is Apache-2.0.
+- The first npm release is published through the local npm CLI with account 2FA; registry provenance attestation is deferred until an OIDC trusted-publishing workflow is reviewed.

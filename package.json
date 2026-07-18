@@ -1,0 +1,54 @@
+{
+  "name": "@bygelo/bptk",
+  "version": "0.1.0-alpha.0",
+  "description": "Pre-alpha roadmap status and environment diagnostics for the Browser Porting Toolkit.",
+  "type": "module",
+  "main": "./lib/index.mjs",
+  "exports": {
+    ".": "./lib/index.mjs",
+    "./status": "./data/status.json"
+  },
+  "bin": {
+    "bptk": "bin/bptk.mjs"
+  },
+  "files": [
+    "bin",
+    "data",
+    "lib",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
+  "scripts": {
+    "check:package": "node script/package.mjs",
+    "check:status": "node script/status.mjs --check",
+    "gate": "python3 tool/validate.py && npm test && npm run check:package",
+    "test": "npm run check:status && node --test",
+    "prepack": "npm test && npm run check:package"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "next"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bygelo/BPTK.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bygelo/BPTK/issues"
+  },
+  "homepage": "https://github.com/bygelo/BPTK#readme",
+  "keywords": [
+    "browser",
+    "game-porting",
+    "webassembly",
+    "webgpu",
+    "windows-games"
+  ],
+  "author": "Maphy Technologies",
+  "license": "Apache-2.0",
+  "sideEffects": false
+}

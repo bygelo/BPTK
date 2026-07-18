@@ -2,15 +2,23 @@
 
 ## Current truth
 
-BPTK has no runtime test because it has no runtime implementation. The active planning gate validates the roadmap package itself:
+BPTK has no game-runtime test because it has no game-runtime implementation. The active repository gate validates the roadmap package and the bounded npm diagnostic surface:
 
 ```sh
-python3 tool/validate.py
+npm run gate
 ```
 
 All 33 product benchmark specification is intentionally red and quarantined from the active gate. A red specification is a future acceptance contract, not evidence that a capability works.
 
-The local command is also the only command in `.github/workflows/roadmap.yml`; the workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs on every push and pull request.
+The gate runs three independent layer:
+
+1. `python3 tool/validate.py` checks the roadmap, legal boundary, package metadata, deterministic status snapshot, and exact allowlist.
+2. `npm test` runs five Node.js CLI test after checking the status snapshot against its committed roadmap source.
+3. `npm run check:package` asks npm for the dry-run tarball inventory and compares its identity and sorted path list exactly with `bench/npm/content.json`.
+
+The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
+
+The npm tests prove only CLI and package behavior: honest default help, deterministic status JSON, bounded environment diagnostics, no-runtime disclaimers, invalid-input failure, and the intended 10-file tarball. They do not open a browser, read a game, test WebAssembly or GPU compatibility, or prove a roadmap capability.
 
 ## Benchmark taxonomy
 
@@ -164,7 +172,7 @@ A failing compatibility benchmark must identify one boundary:
 
 - required planning file;
 - canonical Apache-2.0 license text, Maphy copyright notice, and current no-third-party inventory;
-- the public contribution policy and least-privilege GitHub Actions planning gate;
+- the public contribution policy and least-privilege GitHub Actions repository gate;
 - strict JSON parsing;
 - singular JSON key and directory naming;
 - all 46 candidate identity, origin, unique dedupe key, decision, and accepted, rejected, or deferred target mapping;
@@ -180,10 +188,11 @@ A failing compatibility benchmark must identify one boundary:
 - source-evidence reference;
 - local Markdown link target;
 - synchronized compatibility and evidence state field plus the client-only game-execution boundary;
-- absence of game binary and product runtime code during this planning-only pass; repository metadata under `.git` is excluded from content validation;
+- absence of game binary and product runtime code while permitting only the exact reviewed JavaScript status, diagnostic, package-check, and test path; repository metadata under `.git` and local `node_modules` are excluded from content validation;
+- dependency-free npm metadata, absence of install lifecycle script, Node.js engine floor, scoped public access, deterministic source snapshot, executable CLI mode, mandatory no-runtime disclaimer, and exact tarball file manifest;
 - absence of an unrestricted compatibility or completed-testing implication in README.md and ROADMAP.md.
 
-The planning-only scope check must be revised when implementation begins; doing so is part of BPTK-003, not a way to bypass the current gate.
+The allowlist must be revised when implementation begins; doing so is part of BPTK-003, not a way to bypass the current gate.
 
 ## Validator self-test evidence
 
@@ -201,5 +210,8 @@ The planning gate was proved red-to-green on 2026-07-18:
 10. the field was restored and the full validator again exited 0 with the same 33/0/0 result.
 11. the Maphy Technologies copyright holder in `NOTICE` was temporarily changed; the validator exited 1 with the missing licensing-statement error;
 12. the notice was restored and the full validator again exited 0 with the same 33/0/0 result.
+13. the version in `bench/npm/content.json` was temporarily changed from `0.1.0-alpha.0` to `0.1.0-alpha.1`;
+14. the validator exited 1 with `bench/npm/content.json package identity differs from package.json`;
+15. the package manifest was restored and the complete `npm run gate` passed with 33/0/0 roadmap truth, five passing CLI test, and the exact 10-file npm content report.
 
-Every mutation was fully reverted. These checks prove that benchmark ownership, threshold ownership, source synchronization, denominator mapping, and repository-license assertions are live; they do not prove any future runtime benchmark.
+Every mutation was fully reverted. These checks prove that benchmark ownership, threshold ownership, source synchronization, denominator mapping, repository-license assertions, and npm package identity are live; they do not prove any future runtime benchmark.

@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,10 @@ MANIFEST_PATH = ROOT / "bench/roadmap/manifest.json"
 CANDIDATE_PATH = ROOT / "bench/roadmap/candidate.json"
 CATALOG_PATH = ROOT / "bench/roadmap/fixture/catalog.json"
 SPEC_PATH = ROOT / "bench/roadmap/spec"
+PACKAGE_PATH = ROOT / "package.json"
+PACKAGE_LOCK_PATH = ROOT / "package-lock.json"
+PACKAGE_CONTENT_PATH = ROOT / "bench/npm/content.json"
+STATUS_PATH = ROOT / "data/status.json"
 
 REQUIRED_PATH = [
     ROOT / "README.md",
@@ -26,10 +31,24 @@ REQUIRED_PATH = [
     ROOT / "CONTRIBUTING.md",
     ROOT / "LICENSE",
     ROOT / "NOTICE",
+    ROOT / ".gitignore",
     ROOT / ".github/workflows/roadmap.yml",
+    ROOT / "package.json",
+    ROOT / "package-lock.json",
+    ROOT / "bin/bptk.mjs",
+    ROOT / "data/status.json",
+    ROOT / "lib/cli.mjs",
+    ROOT / "lib/doctor.mjs",
+    ROOT / "lib/index.mjs",
+    ROOT / "lib/status.mjs",
+    ROOT / "script/package.mjs",
+    ROOT / "script/status.mjs",
+    ROOT / "test/cli.test.mjs",
+    PACKAGE_CONTENT_PATH,
     ROOT / "doc/ARCHITECTURE.md",
     ROOT / "doc/TESTING.md",
     ROOT / "doc/legal-boundary.md",
+    ROOT / "doc/RELEASE.md",
     ROOT / "doc/roadmap-rejected.md",
     ROOT / "doc/source-audit.md",
     ROOT / "doc/third-party.md",
@@ -129,10 +148,22 @@ BINARY_SUFFIX = {
     ".wasm",
 }
 
-ALLOWED_SUFFIX = {".md", ".json", ".py"}
+ALLOWED_SUFFIX = {".md", ".json", ".mjs", ".py"}
 ALLOWED_NAME = {"LICENSE", "NOTICE"}
-ALLOWED_SPECIAL_PATH = {Path(".github/workflows/roadmap.yml")}
+ALLOWED_SPECIAL_PATH = {Path(".gitignore"), Path(".github/workflows/roadmap.yml")}
+ALLOWED_MJS_PATH = {
+    Path("bin/bptk.mjs"),
+    Path("lib/cli.mjs"),
+    Path("lib/doctor.mjs"),
+    Path("lib/index.mjs"),
+    Path("lib/status.mjs"),
+    Path("script/package.mjs"),
+    Path("script/status.mjs"),
+    Path("test/cli.test.mjs"),
+}
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+PACKAGE_NAME = "@bygelo/bptk"
+PACKAGE_VERSION = "0.1.0-alpha.0"
 
 
 def load_json(path: Path, error: list[str]) -> dict[str, Any]:
@@ -165,7 +196,7 @@ def validate_path(error: list[str]) -> None:
 
     for path in ROOT.rglob("*"):
         relative = path.relative_to(ROOT)
-        if ".git" in relative.parts:
+        if ".git" in relative.parts or "node_modules" in relative.parts:
             continue
         if path.is_dir() and path.name in BANNED_DIRECTORY:
             error.append(f"plural directory name is disallowed: {relative}")
@@ -175,6 +206,8 @@ def validate_path(error: list[str]) -> None:
             error.append(f"game or executable binary is disallowed in planning scope: {relative}")
         if relative not in ALLOWED_SPECIAL_PATH and path.name not in ALLOWED_NAME and path.suffix.lower() not in ALLOWED_SUFFIX:
             error.append(f"product or unrecognized file is disallowed in planning scope: {relative}")
+        if path.suffix == ".mjs" and relative not in ALLOWED_MJS_PATH:
+            error.append(f"JavaScript file is outside the approved npm tooling surface: {relative}")
         if path.suffix == ".py" and path.resolve() != Path(__file__).resolve():
             error.append(f"only the planning validator may be Python in this pass: {relative}")
 
@@ -218,6 +251,150 @@ def validate_claim(error: list[str]) -> None:
                 error.append(f"unsupported completion or compatibility implication in {file_name}: {claim}")
 
 
+def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
+    package = load_json(PACKAGE_PATH, error) if PACKAGE_PATH.is_file() else {}
+    package_lock = load_json(PACKAGE_LOCK_PATH, error) if PACKAGE_LOCK_PATH.is_file() else {}
+    package_content = load_json(PACKAGE_CONTENT_PATH, error) if PACKAGE_CONTENT_PATH.is_file() else {}
+    status = load_json(STATUS_PATH, error) if STATUS_PATH.is_file() else {}
+
+    expected_field: dict[str, Any] = {
+        "name": PACKAGE_NAME,
+        "version": PACKAGE_VERSION,
+        "type": "module",
+        "main": "./lib/index.mjs",
+        "license": "Apache-2.0",
+        "sideEffects": False,
+        "engines": {"node": ">=22"},
+        "publishConfig": {"access": "public", "tag": "next"},
+        "bin": {"bptk": "bin/bptk.mjs"},
+        "exports": {".": "./lib/index.mjs", "./status": "./data/status.json"},
+        "files": ["bin", "data", "lib", "LICENSE", "NOTICE", "README.md"],
+    }
+    for field, expected in expected_field.items():
+        if package.get(field) != expected:
+            error.append(f"package.json {field} is {package.get(field)!r}, expected {expected!r}")
+
+    expected_script = {
+        "check:package": "node script/package.mjs",
+        "check:status": "node script/status.mjs --check",
+        "gate": "python3 tool/validate.py && npm test && npm run check:package",
+        "test": "npm run check:status && node --test",
+        "prepack": "npm test && npm run check:package",
+    }
+    if package.get("scripts") != expected_script:
+        error.append("package.json scripts differ from the reviewed release gate")
+
+    dependency_field = {
+        "dependencies",
+        "devDependencies",
+        "optionalDependencies",
+        "peerDependencies",
+        "bundledDependencies",
+        "bundleDependencies",
+    }
+    present_dependency_field = sorted(dependency_field.intersection(package))
+    if present_dependency_field:
+        error.append(f"pre-alpha npm tooling must remain dependency-free: {present_dependency_field}")
+
+    install_script = {"preinstall", "install", "postinstall", "prepare"}
+    present_install_script = sorted(install_script.intersection(package.get("scripts", {})))
+    if present_install_script:
+        error.append(f"install lifecycle script is disallowed: {present_install_script}")
+
+    expected_file = [
+        "LICENSE",
+        "NOTICE",
+        "README.md",
+        "bin/bptk.mjs",
+        "data/status.json",
+        "lib/cli.mjs",
+        "lib/doctor.mjs",
+        "lib/index.mjs",
+        "lib/status.mjs",
+        "package.json",
+    ]
+    if package_content.get("schema_version") != 1:
+        error.append("bench/npm/content.json schema_version must be 1")
+    if package_content.get("package") != PACKAGE_NAME or package_content.get("version") != PACKAGE_VERSION:
+        error.append("bench/npm/content.json package identity differs from package.json")
+    if package_content.get("file") != expected_file:
+        error.append("bench/npm/content.json must contain the exact reviewed tarball file manifest")
+
+    if package_lock.get("name") != PACKAGE_NAME or package_lock.get("version") != PACKAGE_VERSION:
+        error.append("package-lock.json identity differs from package.json")
+    if package_lock.get("lockfileVersion") != 3:
+        error.append("package-lock.json must use lockfileVersion 3")
+    lock_package = package_lock.get("packages")
+    if not isinstance(lock_package, dict) or set(lock_package) != {""}:
+        error.append("package-lock.json must contain only the dependency-free root package")
+    elif lock_package[""].get("name") != PACKAGE_NAME or lock_package[""].get("version") != PACKAGE_VERSION:
+        error.append("package-lock.json root package identity differs from package.json")
+
+    if status.get("schema_version") != 1 or status.get("snapshot") is not True:
+        error.append("data/status.json must be an immutable schema_version 1 snapshot")
+    if status.get("package") != PACKAGE_NAME or status.get("version") != PACKAGE_VERSION:
+        error.append("data/status.json package identity differs from package.json")
+    if status.get("count") != manifest.get("count"):
+        error.append("data/status.json count differs from the roadmap manifest")
+
+    source = status.get("source")
+    if not isinstance(source, dict):
+        error.append("data/status.json source must be an object")
+        source = {}
+    manifest_hash = hashlib.sha256(MANIFEST_PATH.read_bytes()).hexdigest() if MANIFEST_PATH.is_file() else ""
+    if source.get("path") != "bench/roadmap/manifest.json" or source.get("sha256") != manifest_hash:
+        error.append("data/status.json source path or hash differs from the roadmap manifest")
+
+    git_value: dict[str, str] = {}
+    for key, format_value in (("revision", "%H"), ("committed_at", "%aI")):
+        process = subprocess.run(
+            ["git", "log", "-1", f"--format={format_value}", "--", "bench/roadmap/manifest.json"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if process.returncode != 0 or not process.stdout.strip():
+            error.append(f"unable to resolve roadmap manifest git {key}")
+        else:
+            git_value[key] = process.stdout.strip()
+    if source.get("revision") != git_value.get("revision") or source.get("committed_at") != git_value.get("committed_at"):
+        error.append("data/status.json git source differs from the manifest path history")
+    if git_value.get("committed_at") and status.get("generated_at") != git_value["committed_at"][:10]:
+        error.append("data/status.json generated_at differs from the manifest commit date")
+
+    if "package-lock.json" in package_content.get("file", []):
+        error.append("package-lock.json must not be included in the published tarball")
+    if (ROOT / "bin/bptk.mjs").is_file() and not ((ROOT / "bin/bptk.mjs").stat().st_mode & 0o111):
+        error.append("bin/bptk.mjs must retain executable mode")
+
+    package_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (ROOT / "lib/cli.mjs", ROOT / "lib/doctor.mjs", ROOT / "lib/status.mjs")
+        if path.is_file()
+    )
+    for token in (
+        "No game runtime exists",
+        "Browser/runtime compatibility is NOT tested",
+        "This snapshot is not compatibility evidence",
+    ):
+        if token not in package_text:
+            error.append(f"npm tooling missing mandatory scope statement: {token}")
+
+    release_path = ROOT / "doc/RELEASE.md"
+    if release_path.is_file():
+        release_text = release_path.read_text(encoding="utf-8")
+        for token in (
+            "one final tarball",
+            "do not retry",
+            "Publication is irreversible version state",
+            "does not carry an npm provenance attestation",
+            "Never record an npm token",
+        ):
+            if token not in release_text:
+                error.append(f"release procedure missing fail-closed statement: {token}")
+
+
 def validate_license(error: list[str]) -> None:
     license_path = ROOT / "LICENSE"
     notice_path = ROOT / "NOTICE"
@@ -228,17 +405,18 @@ def validate_license(error: list[str]) -> None:
             error.append("LICENSE must match the canonical Apache-2.0 text")
     if notice_path.is_file():
         notice_text = notice_path.read_text(encoding="utf-8")
-        for token in ("Copyright 2026 Maphy Technologies", "Apache License, Version 2.0", "incorporates no third-party software", "external CI tools"):
+        for token in ("Copyright 2026 Maphy Technologies", "Apache License, Version 2.0", "incorporate no third-party software", "external CI tools"):
             if token not in notice_text:
                 error.append(f"NOTICE missing required licensing statement: {token}")
     if inventory_path.is_file():
         inventory_text = inventory_path.read_text(encoding="utf-8")
         inventory_lower = inventory_text.lower()
         for token in (
-            "contains no incorporated third-party software",
+            "contain no incorporated third-party software",
             "does not relicense",
             "user-supplied",
             "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+            "820762786026740c76f36085b0efc47a31fe5020",
             "ece7cb06caefa5fff74198d8649806c4678c61a1",
             "ci-only",
         ):
@@ -264,11 +442,14 @@ def validate_license(error: list[str]) -> None:
         workflow_text = workflow_path.read_text(encoding="utf-8")
         for token in (
             "contents: read",
-            "python3 tool/validate.py",
             "pull_request:",
             "push:",
             "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+            "fetch-depth: 0",
+            "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
             "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+            "npm ci --ignore-scripts",
+            "npm run gate",
         ):
             if token not in workflow_text:
                 error.append(f"roadmap workflow missing safety or gate statement: {token}")
@@ -332,6 +513,7 @@ def main() -> int:
     manifest = load_json(MANIFEST_PATH, error) if MANIFEST_PATH.is_file() else {}
     candidate_manifest = load_json(CANDIDATE_PATH, error) if CANDIDATE_PATH.is_file() else {}
     catalog = load_json(CATALOG_PATH, error) if CATALOG_PATH.is_file() else {}
+    validate_package(manifest, error)
     walk_key(manifest, "manifest", error)
     walk_key(candidate_manifest, "candidate", error)
     walk_key(catalog, "catalog", error)

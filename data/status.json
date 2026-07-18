@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "package": "@bygelo/bptk",
+  "version": "0.1.0-alpha.0",
+  "snapshot": true,
+  "generated_at": "2026-07-19",
+  "source": {
+    "path": "bench/roadmap/manifest.json",
+    "revision": "c5491e382667a15cb60cb2665bc0b44eee1c8925",
+    "committed_at": "2026-07-19T00:50:01+08:00",
+    "sha256": "58f823b27202a1a892bcbb58e5aaf0bbb232bd16071c750beb19db293dcb9aa8"
+  },
+  "count": {
+    "raw": 46,
+    "accepted": 33,
+    "rejected": 8,
+    "deferred": 5,
+    "implemented": 0,
+    "passing": 0
+  }
+}
