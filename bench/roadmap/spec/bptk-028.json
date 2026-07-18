@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-028",
+  "item_id": "BPTK-028",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No compatibility catalog, deterministic replay, or privacy-safe crash artifact exists.",
+  "prerequisite": ["BPTK-002", "BPTK-003", "BPTK-007", "BPTK-024"],
+  "promotion_trigger": "Promote when FIX-021 records, replays, compares, redacts, expires, and queries a deterministic session across two clean environments.",
+  "expected_failing_assertion": "A compatibility observation cannot be reproduced from a versioned BPTK artifact.",
+  "owner_item": "BPTK-028",
+  "active_gate_evidence": "Current compatibility coverage is fixed at zero and no title claim is stored.",
+  "fixture": ["FIX-021"],
+  "procedure": ["Record success, blocked, crash, and community-observation cases with environment and content hash.", "Replay and compare while verifying redaction, consent, expiry, provenance, and status transition."],
+  "pass_criterion": ["A second environment reproduces the deterministic outcome or records an explained environment difference.", "No proprietary content or personal data enters the shareable artifact."]
+}

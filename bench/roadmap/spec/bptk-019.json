@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-019",
+  "item_id": "BPTK-019",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Direct3D 9 fixed-function implementation exists.",
+  "prerequisite": ["BPTK-018"],
+  "promotion_trigger": "Promote when FIX-012 passes fixed-function, resource, state-block, target, reset, and presentation assertions.",
+  "expected_failing_assertion": "The Direct3D 9 fixed-function scene cannot produce its golden frame and lifecycle trace.",
+  "owner_item": "BPTK-019",
+  "active_gate_evidence": "d3d9-webgl and BottleShip remain cited prior art, not BPTK result.",
+  "fixture": ["FIX-012"],
+  "procedure": ["Replay the D3D9 fixed-function scene and device lifecycle.", "Compare frame, API result, state block, resource lifetime, reset, and capability diagnostic."],
+  "pass_criterion": ["The image and trace match the approved tolerance.", "Reset and unsupported-capability behavior is deterministic and explicit."]
+}

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-013",
+  "item_id": "BPTK-013",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No DirectDraw implementation or deterministic presentation path exists.",
+  "prerequisite": ["BPTK-010", "BPTK-011"],
+  "promotion_trigger": "Promote when FIX-006 passes surface, lock, pitch, blit, flip, palette, color-key, and frame presentation assertions.",
+  "expected_failing_assertion": "The representative 2D frame cannot be created and presented.",
+  "owner_item": "BPTK-013",
+  "active_gate_evidence": "BottleShip and wemu are documented as precedent only.",
+  "fixture": ["FIX-006"],
+  "procedure": ["Execute the surface and presentation sequence with fixed timing.", "Compare pixel hash, pitch, palette, return value, and presentation count."],
+  "pass_criterion": ["The golden frame and API trace match.", "Surface loss or unsupported format returns the declared result without corrupting state."]
+}

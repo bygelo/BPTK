@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-026",
+  "item_id": "BPTK-026",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No mediated browser network bridge or protocol adapter exists.",
+  "prerequisite": ["BPTK-004", "BPTK-010", "BPTK-021", "BPTK-024"],
+  "promotion_trigger": "Promote when FIX-019 communicates through the declared transport with consent, endpoint allowlist, bounded latency, reconnect, denial, and offline behavior.",
+  "expected_failing_assertion": "The native network fixture cannot communicate through a browser-permitted transport.",
+  "owner_item": "BPTK-026",
+  "active_gate_evidence": "The Emscripten networking audit explicitly records that raw TCP and UDP are unavailable.",
+  "fixture": ["FIX-019"],
+  "procedure": ["Run local echo, denied endpoint, reconnect, packet loss, latency, proxy, and offline cases.", "Capture consent, endpoint, transport, byte, order, latency, retry, and error artifact."],
+  "pass_criterion": ["The allowed protocol scenario completes inside its declared semantic and latency tolerance.", "Denied, unavailable, and offline cases disclose the exact network boundary without fallback upload."]
+}

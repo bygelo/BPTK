@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-005",
+  "item_id": "BPTK-005",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No binary runtime option has been built or measured by BPTK.",
+  "prerequisite": ["BPTK-001", "BPTK-002", "BPTK-003", "BPTK-004"],
+  "promotion_trigger": "Promote when each viable option runs the same approved PE32 fixture and the decision records correctness, performance, license, maintenance, and upstream relationship.",
+  "expected_failing_assertion": "BPTK cannot execute the comparison PE32 fixture through a selected binary architecture.",
+  "owner_item": "BPTK-005",
+  "active_gate_evidence": "The source audit pins the candidate while the planning validator prevents an unsupported implementation claim.",
+  "fixture": ["FIX-001", "FIX-002", "FIX-003"],
+  "procedure": ["Run the same fixture and browser profile through each license-compatible option.", "Score artifact correctness, frame time, startup, memory, integration size, and maintenance risk."],
+  "pass_criterion": ["At least one option reaches the deterministic fixture result within every numeric BPTK-002 threshold at the frozen corpus version.", "The decision rejects each alternative with measured evidence rather than preference."]
+}

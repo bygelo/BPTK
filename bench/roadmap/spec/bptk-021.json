@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-021",
+  "item_id": "BPTK-021",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No versioned source-assisted SDK or reproducible project adapter exists.",
+  "prerequisite": ["BPTK-006", "BPTK-017"],
+  "promotion_trigger": "Promote when a clean user can apply the documented adapter to FIX-014 and reproduce build, package, run, and diagnostic artifact.",
+  "expected_failing_assertion": "The source fixture still depends on undocumented one-off porting work.",
+  "owner_item": "BPTK-021",
+  "active_gate_evidence": "The Emscripten source audit defines capability and limitation while BPTK SDK remains unimplemented.",
+  "fixture": ["FIX-014"],
+  "procedure": ["Apply the SDK from a clean checkout using only the public instruction.", "Build and run the fixture while collecting main-loop, graphics, audio, input, file, and diagnostic artifact."],
+  "pass_criterion": ["A second environment reproduces the package without hidden patch.", "Each native dependency maps to a documented browser adapter or explicit blocker."]
+}

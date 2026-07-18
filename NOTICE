@@ -1,0 +1,17 @@
+Browser Porting Toolkit (BPTK)
+Copyright 2026 Maphy Technologies
+
+This product is licensed under the Apache License, Version 2.0.
+
+As of 2026-07-19, this repository incorporates no third-party software,
+game executable, game asset, firmware, ROM, or proprietary SDK. Projects
+named in the source audit are factual research references, not bundled
+components, and their owners do not endorse or sponsor BPTK.
+
+The repository workflow invokes pinned, MIT-licensed GitHub Actions as
+external CI tools. They are recorded in doc/third-party.md and are not
+copied into or redistributed with BPTK.
+
+Apache-2.0 covers only BPTK-authored material. A future third-party
+component remains subject to its own license, attribution, source-offer,
+patent, and redistribution obligations.

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-018",
+  "item_id": "BPTK-018",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Direct3D 7 or 8 fixed-function translator exists.",
+  "prerequisite": ["BPTK-013", "BPTK-017"],
+  "promotion_trigger": "Promote when FIX-011 passes image, state, draw, cache, and unsupported-capability assertions on primary and fallback profile.",
+  "expected_failing_assertion": "The Direct3D 7 and 8 scene cannot produce its golden frame.",
+  "owner_item": "BPTK-018",
+  "active_gate_evidence": "The source audit records translator precedent without asserting BPTK rendering support.",
+  "fixture": ["FIX-011"],
+  "procedure": ["Replay the fixed-function state and draw trace on each required GPU profile.", "Compare image, generated shader, resource lifetime, cache key, and diagnostic."],
+  "pass_criterion": ["The image and trace are inside the declared tolerance.", "Every unimplemented state is identified before an incorrect frame is labeled supported."]
+}

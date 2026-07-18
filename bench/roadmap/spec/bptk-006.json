@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-006",
+  "item_id": "BPTK-006",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No source-assisted game fixture, build adapter, or browser package exists.",
+  "prerequisite": ["BPTK-001", "BPTK-002", "BPTK-003", "BPTK-004"],
+  "promotion_trigger": "Promote when FIX-014 builds from a clean checkout and produces a deterministic playable browser package.",
+  "expected_failing_assertion": "The representative SDL and OpenGL source fixture cannot be built and run through BPTK.",
+  "owner_item": "BPTK-006",
+  "active_gate_evidence": "The source audit documents Emscripten capability without claiming a BPTK port.",
+  "fixture": ["FIX-014"],
+  "procedure": ["Build the fixture from source with a pinned toolchain and no undocumented local step.", "Run the declared scenario and capture frame, input, audio, file, and package artifact."],
+  "pass_criterion": ["A clean build produces the same package manifest.", "The declared browser profile completes the scenario within every precommitted BPTK-002 correctness and performance threshold."]
+}

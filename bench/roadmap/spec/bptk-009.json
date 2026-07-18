@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-009",
+  "item_id": "BPTK-009",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No selected or implemented i386 execution core exists in BPTK.",
+  "prerequisite": ["BPTK-005", "BPTK-008"],
+  "promotion_trigger": "Promote when FIX-002 passes the pinned instruction, flag, FPU, exception, self-modification, and memory suite.",
+  "expected_failing_assertion": "The i386 microprogram cannot execute to its golden machine state.",
+  "owner_item": "BPTK-009",
+  "active_gate_evidence": "The v86, wemu, Boxedwine, and BottleShip capability is recorded only as upstream evidence.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Run each microprogram with deterministic memory and instruction budget.", "Compare registers, flags, exception, FPU, memory, and trace hash."],
+  "pass_criterion": ["All required instruction cases match the reference state.", "Unsupported instruction produces a stable diagnostic rather than divergence."]
+}

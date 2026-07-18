@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-030",
+  "item_id": "BPTK-030",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No implemented package exists to test across the declared browser and device matrix.",
+  "prerequisite": ["BPTK-017", "BPTK-024", "BPTK-025", "BPTK-027"],
+  "promotion_trigger": "Promote when FIX-023 passes every required browser profile or produces the predeclared blocked or degraded result with artifact.",
+  "expected_failing_assertion": "BPTK has no package or support floor that can be verified across browser profile.",
+  "owner_item": "BPTK-030",
+  "active_gate_evidence": "MDN marks WebGPU limited availability, and README publishes no browser support claim.",
+  "fixture": ["FIX-023"],
+  "procedure": ["Run the same package on the pinned Chrome, Edge, Firefox, Safari, and selected mobile profile.", "Capture browser, OS, architecture, GPU, feature, limit, header, input, storage, memory, artifact, and degradation result."],
+  "pass_criterion": ["Every required profile matches its declared supported, degraded, or blocked outcome.", "No environment is labeled supported without a retained artifact."]
+}

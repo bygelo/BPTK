@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-015",
+  "item_id": "BPTK-015",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No virtual drive, registry, or OPFS overlay exists.",
+  "prerequisite": ["BPTK-004", "BPTK-010"],
+  "promotion_trigger": "Promote when FIX-008 passes path, case, read-only base, copy-on-write, registry, quota, transaction, reload, and rollback assertions.",
+  "expected_failing_assertion": "The storage fixture cannot persist and recover the golden state safely.",
+  "owner_item": "BPTK-015",
+  "active_gate_evidence": "The architecture states local-first storage as a target, not a current feature.",
+  "fixture": ["FIX-008"],
+  "procedure": ["Apply the deterministic file and registry mutation under normal and quota-failure conditions.", "Reload the origin and compare base, overlay, registry, and rollback artifact."],
+  "pass_criterion": ["The saved state survives reload without modifying the base.", "Traversal, alias, quota, and interrupted transaction cases fail closed."]
+}

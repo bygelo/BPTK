@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-033",
+  "item_id": "BPTK-033",
+  "kind": "evidence",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The x86-64 and D3D10/11 prerequisite research is incomplete, so D3D12 feasibility cannot be stated.",
+  "prerequisite": ["BPTK-030", "BPTK-031", "BPTK-032"],
+  "promotion_trigger": "Promote when FIX-026 and an approved report compare D3D12 and Vulkan requirement to current WebGPU descriptor, shader, synchronization, memory, CPU, and browser capability.",
+  "expected_failing_assertion": "No credible browser mapping for the modern API fixture has been demonstrated.",
+  "owner_item": "BPTK-033",
+  "active_gate_evidence": "The roadmap labels Direct3D 12 and Vulkan-era support as P4 research only.",
+  "fixture": ["FIX-026"],
+  "procedure": ["Build a requirement and feature-gap matrix from current primary sources and prerequisite result.", "Prototype the highest-risk descriptor, synchronization, shader, or memory path on each required browser profile."],
+  "pass_criterion": ["The report contains reproducible evidence rather than roadmap aspiration.", "It recommends bounded promotion, continued research, or rejection without expanding a support claim."]
+}

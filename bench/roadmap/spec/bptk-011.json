@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-011",
+  "item_id": "BPTK-011",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No USER32, canvas-window, or browser-input bridge exists.",
+  "prerequisite": ["BPTK-010"],
+  "promotion_trigger": "Promote when FIX-004 reproduces the golden window, message, input, focus, cursor, and timer sequence.",
+  "expected_failing_assertion": "The fixture cannot create a logical window or receive the declared browser event sequence.",
+  "owner_item": "BPTK-011",
+  "active_gate_evidence": "The architecture labels the window and input model as target state only.",
+  "fixture": ["FIX-004"],
+  "procedure": ["Drive a deterministic browser event script after explicit user-gesture setup.", "Compare message order, coordinate, key state, focus, cursor, timer, and teardown artifact."],
+  "pass_criterion": ["The complete event trace matches the declared ordering and tolerance.", "Reserved browser action and lost focus recover through documented behavior."]
+}

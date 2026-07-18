@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-022",
+  "item_id": "BPTK-022",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No content-addressed asset package, streaming loader, or cache policy exists.",
+  "prerequisite": ["BPTK-015", "BPTK-016", "BPTK-017"],
+  "promotion_trigger": "Promote when FIX-015 starts inside the size and time budget, verifies every chunk, resumes, works offline after cache, and recovers from quota or corruption.",
+  "expected_failing_assertion": "The large-asset fixture cannot be packaged and started through a bounded browser path.",
+  "owner_item": "BPTK-022",
+  "active_gate_evidence": "The fixture catalog contains no large binary and the validator enforces the planning-only scope.",
+  "fixture": ["FIX-015"],
+  "procedure": ["Package and serve the generated asset under normal, interrupted, corrupted, offline, and quota-limited conditions.", "Capture startup, byte, request, cache, integrity, rollback, and memory artifact."],
+  "pass_criterion": ["Normal and resumed startup meet the declared budget with verified content.", "Corruption and quota failure never expose partial content as complete."]
+}

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-002",
+  "item_id": "BPTK-002",
+  "kind": "evidence",
+  "threshold_owner": "self",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The runtime compatibility corpus has not been selected or licensed.",
+  "prerequisite": ["BPTK-001"],
+  "promotion_trigger": "Promote when a versioned corpus manifest includes stratification, provenance, redistribution state, environment, frozen denominator, and immutable numeric threshold for every applicable correctness and performance dimension.",
+  "expected_failing_assertion": "No approved runtime corpus denominator exists.",
+  "owner_item": "BPTK-002",
+  "active_gate_evidence": "The planning validator limits published coverage to roadmap benchmark coverage.",
+  "fixture": ["bench/roadmap/fixture/catalog.json"],
+  "procedure": ["Derive the profile from source evidence and intended first user.", "Before any runtime implementation is scored, record numeric image or trace tolerance, startup time, frame time, audio underrun, memory ceiling, run count, allowed variance, and hardware or browser profile wherever applicable.", "Review representation, rights, threshold, and version-change rule before freezing the denominator."],
+  "pass_criterion": ["Every fixture or metadata-only title profile has provenance and a stratum.", "Every applicable scenario has precommitted numeric correctness, performance, variance, and sample threshold that cannot change without a new corpus version.", "The denominator and change rule are explicit and machine-readable."]
+}

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-003",
+  "item_id": "BPTK-003",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "Only the planning validator exists; no product benchmark runner or CI promotion gate exists.",
+  "prerequisite": ["BPTK-001", "BPTK-002"],
+  "promotion_trigger": "Promote when the runner executes FIX-000 locally and in CI, retains an artifact, and rejects an invalid promotion mutation.",
+  "expected_failing_assertion": "The product benchmark command and retained sentinel artifact do not exist.",
+  "owner_item": "BPTK-003",
+  "active_gate_evidence": "python3 tool/validate.py checks planning metadata until the product runner replaces this protection.",
+  "fixture": ["FIX-000"],
+  "procedure": ["Run the sentinel twice in clean environments.", "Mutate one promotion field and prove the gate fails before restoring it."],
+  "pass_criterion": ["Both clean runs produce the same artifact hash.", "The invalid promotion is rejected and the restored manifest passes."]
+}

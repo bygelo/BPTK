@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-010",
+  "item_id": "BPTK-010",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Win32 core HLE exists in BPTK.",
+  "prerequisite": ["BPTK-009"],
+  "promotion_trigger": "Promote when FIX-003 starts, synchronizes, allocates, times, calls COM, and exits with the golden API trace.",
+  "expected_failing_assertion": "The Win32 core fixture stops at its first unresolved or incorrect API behavior.",
+  "owner_item": "BPTK-010",
+  "active_gate_evidence": "The roadmap names the API boundary without marking any function implemented.",
+  "fixture": ["FIX-003"],
+  "procedure": ["Run the API exerciser against the selected CPU and loader.", "Compare return value, last-error, callback order, handle lifetime, time, and trace."],
+  "pass_criterion": ["The complete P1 API sequence reaches normal exit.", "Every implemented call matches the golden behavior and every gap is explicit."]
+}

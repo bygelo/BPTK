@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-007",
+  "item_id": "BPTK-007",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No safe importer or machine-readable compatibility report is implemented.",
+  "prerequisite": ["BPTK-002", "BPTK-003", "BPTK-004", "BPTK-005", "BPTK-006"],
+  "promotion_trigger": "Promote when every FIX-001 case yields the expected lane or blocked reason without execution, upload, path escape, or unbounded allocation.",
+  "expected_failing_assertion": "BPTK has no command or UI that safely classifies the import corpus.",
+  "owner_item": "BPTK-007",
+  "active_gate_evidence": "The current README states that broad import and compatibility reporting remain planned.",
+  "fixture": ["FIX-001"],
+  "procedure": ["Inspect every valid, ambiguous, truncated, and malicious case under resource limits.", "Compare the report schema, lane, blocker, evidence, and privacy event to the golden."],
+  "pass_criterion": ["All cases terminate safely with the expected result.", "No imported code executes and no content leaves the local origin."]
+}

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-012",
+  "item_id": "BPTK-012",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No GDI compatibility layer or image-golden fixture exists.",
+  "prerequisite": ["BPTK-011"],
+  "promotion_trigger": "Promote when FIX-005 produces the expected raster and API trace on the declared browser profile.",
+  "expected_failing_assertion": "The GDI scene cannot render its golden output.",
+  "owner_item": "BPTK-012",
+  "active_gate_evidence": "The wemu and Wine capability remains source evidence, not BPTK implementation evidence.",
+  "fixture": ["FIX-005"],
+  "procedure": ["Render bitmap, text, palette, clip, brush, pen, font, and invalidation cases.", "Compare pixel output and call trace under the declared font and color profile."],
+  "pass_criterion": ["Every image region is inside the approved tolerance.", "Unsupported raster behavior returns a precise capability error."]
+}

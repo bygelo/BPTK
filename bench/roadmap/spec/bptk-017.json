@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-017",
+  "item_id": "BPTK-017",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No GPU capability probe or declared WebGPU and WebGL2 support profile exists.",
+  "prerequisite": ["BPTK-003", "BPTK-004"],
+  "promotion_trigger": "Promote when FIX-010 classifies each declared browser profile and validates its format, limit, shader, fallback, secure-context, and degradation behavior.",
+  "expected_failing_assertion": "BPTK cannot determine whether a browser provides a supported rendering path.",
+  "owner_item": "BPTK-017",
+  "active_gate_evidence": "MDN limited-availability evidence prevents a blanket WebGPU support claim.",
+  "fixture": ["FIX-010"],
+  "procedure": ["Run the capability probe on each required browser and software fallback profile.", "Compare adapter, feature, limit, format, secure context, fallback, and reason artifact."],
+  "pass_criterion": ["Every profile is classified deterministically.", "Missing capability produces an explicit fallback or blocked state without silent degradation."]
+}

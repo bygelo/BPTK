@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-014",
+  "item_id": "BPTK-014",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No waveOut or DirectSound bridge exists in BPTK.",
+  "prerequisite": ["BPTK-010"],
+  "promotion_trigger": "Promote when FIX-007 produces the expected audio hash, callback trace, loop, volume, pan, and synchronization result after gesture activation.",
+  "expected_failing_assertion": "The PCM fixture produces no verified WebAudio output.",
+  "owner_item": "BPTK-014",
+  "active_gate_evidence": "The roadmap does not count upstream audio support as BPTK coverage.",
+  "fixture": ["FIX-007"],
+  "procedure": ["Activate audio through the declared gesture and run each buffer case.", "Capture offline mix, callback order, underrun, latency, lifecycle, and trace."],
+  "pass_criterion": ["The mixed sample is inside the approved numerical tolerance.", "Callback order, loop, pause, resume, and teardown match the contract."]
+}

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-004",
+  "item_id": "BPTK-004",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The architecture contains security principles but no reviewed threat model or abuse-case test plan.",
+  "prerequisite": ["BPTK-001"],
+  "promotion_trigger": "Promote when a security reviewer accepts the data-flow, trust boundary, abuse case, control, residual risk, and re-review trigger.",
+  "expected_failing_assertion": "No approved threat model demonstrates safe handling of hostile imported content.",
+  "owner_item": "BPTK-004",
+  "active_gate_evidence": "The planning-only validator forbids game binary and runtime importer code in this pass.",
+  "fixture": ["FIX-001", "doc/ARCHITECTURE.md"],
+  "procedure": ["Model local read, parsing, Wasm execution, storage, permission, network, and artifact flow.", "Map every abuse case to a testable control or explicit rejection."],
+  "pass_criterion": ["Archive, path, allocation, execution, permission, network, storage, and privacy boundary are covered.", "Residual risk and release stop condition have owners."]
+}

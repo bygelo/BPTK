@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-008",
+  "item_id": "BPTK-008",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No PE32 loader exists in BPTK.",
+  "prerequisite": ["BPTK-005", "BPTK-007"],
+  "promotion_trigger": "Promote when FIX-001 valid image reaches its expected entry state and malformed image is rejected safely.",
+  "expected_failing_assertion": "The PE32 fixture cannot be mapped, relocated, resolved, and entered.",
+  "owner_item": "BPTK-008",
+  "active_gate_evidence": "The planning validator confirms that no runtime product code is present.",
+  "fixture": ["FIX-001"],
+  "procedure": ["Load generated valid and invalid PE32 image under bounded memory.", "Compare section, relocation, import, TLS, stack, heap, and entry artifact."],
+  "pass_criterion": ["The valid image matches the golden memory map and entry state.", "Every invalid image returns its specific error without escape or partial state."]
+}

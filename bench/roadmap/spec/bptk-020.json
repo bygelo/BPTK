@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-020",
+  "item_id": "BPTK-020",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No D3D9 shader-bytecode translator, validator, or golden corpus exists.",
+  "prerequisite": ["BPTK-019"],
+  "promotion_trigger": "Promote when FIX-013 translates and renders every required shader model 1 through 3 program with stable error map and cache key.",
+  "expected_failing_assertion": "The first D3D9 shader program cannot be translated into valid browser shader code.",
+  "owner_item": "BPTK-020",
+  "active_gate_evidence": "The roadmap distinguishes D3D9 tokenized shader bytecode from later DXBC work.",
+  "fixture": ["FIX-013"],
+  "procedure": ["Translate valid, boundary, undefined, and invalid shader programs.", "Validate generated code and compare reflection, diagnostics, cache, and rendered golden."],
+  "pass_criterion": ["Every supported program validates and renders inside tolerance.", "Every unsupported or invalid program maps to the source instruction and fails closed."]
+}
