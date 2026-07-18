@@ -6,13 +6,15 @@ This procedure publishes the bounded npm roadmap-tooling package. It does not au
 
 - Package: `@bygelo/bptk`
 - Access: public
-- Distribution tag: `next`; `latest` remains unset until a stable default is approved
+- Distribution tag for pre-release publication: `next`
 - License: Apache-2.0
 - Runtime dependency: zero
 - Install lifecycle script: none
 - Published content: the exact path in `bench/npm/content.json`
 
 The unscoped name `bptk` is outside this project. A runtime, game importer, compatibility claim, new dependency, or expanded file surface requires a new legal, security, benchmark, and package review.
+
+The initial registry publication assigned both `next` and `latest` to `0.1.0-alpha.0`, despite the explicit `--tag next` command. An authenticated attempt to remove `latest` returned `400 Bad Request`, so the tag was left intact instead of repeating a failing registry mutation. Installation documentation pins the exact pre-release version. Future pre-release publication must continue using `next` and must not move `latest`; the first approved stable release replaces the current `latest` pointer.
 
 ## Release gate
 

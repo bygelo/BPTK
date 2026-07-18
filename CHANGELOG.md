@@ -39,7 +39,7 @@ No unreleased change.
 - Added an exact 10-file npm tarball manifest that excludes source script, test, benchmark material, and `package-lock.json` from distribution.
 - Extended the repository gate across Node.js 22 and 24 while retaining the Python roadmap validator.
 - Recorded the scoped package-name permission separately from the still-open runtime and public-product-name review.
-- Published the pre-alpha on the `next` distribution tag; `latest` remains unset until a stable default is approved.
+- Published the pre-alpha on `next`; npm also assigned `latest` during the first package publication, and an authenticated removal returned `400 Bad Request`. Both currently resolve to the exact alpha while installation documentation remains version-pinned.
 
 ### Clarified
 
