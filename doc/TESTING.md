@@ -8,7 +8,7 @@ BPTK has no game-runtime test because it has no game-runtime implementation. The
 npm run gate
 ```
 
-All 33 product benchmark specification remains red. BPTK-003 and BPTK-007 are active and implemented-but-red; the other 31 are excluded. A red specification is not evidence that a capability passes.
+All 33 product benchmark specification remains red. BPTK-003, BPTK-007, and BPTK-017 are active and implemented-but-red; the other 30 are excluded. A red specification is not evidence that a capability passes.
 
 The gate runs three independent layer:
 
@@ -18,7 +18,7 @@ The gate runs three independent layer:
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. The exact 21-file tarball is checked separately. These checks do not open a browser, execute a game, or prove compatibility.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. The exact 22-file tarball is checked separately. BPTK-017 is Tier 3, so its written acceptance requires a live product walk rather than a new runnable test. These checks do not execute a game or prove compatibility.
 
 ## Benchmark taxonomy
 

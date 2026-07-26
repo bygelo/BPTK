@@ -9,7 +9,7 @@
     "accepted": 33,
     "rejected": 8,
     "deferred": 5,
-    "implemented": 2,
+    "implemented": 3,
     "passing": 0
   },
   "item": [
@@ -232,7 +232,7 @@
       "failure_meaning": "Rendering code cannot distinguish a supported GPU path from a missing or partially compatible browser feature.",
       "risk": "WebGPU availability and limit vary across browser, operating system, driver, and hardware.",
       "source_evidence": ["SRC-002", "SRC-007", "SRC-014", "SRC-015", "SRC-016", "SRC-020"],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-018",

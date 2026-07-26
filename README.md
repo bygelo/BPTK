@@ -12,6 +12,7 @@ Install the public roadmap-tooling preview with Node.js 22 or later:
 npm install --global @bygelo/bptk@0.1.0-alpha.0
 bptk status
 bptk doctor
+bptk doctor --graphics
 bptk legal ./project
 bptk corpus status
 bptk security ./game
@@ -22,7 +23,7 @@ bptk port --source ./project
 bptk run ./package
 ```
 
-`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it. `benchmark` runs an ephemeral tooling self-check. `foundation compare` measures locally available routes. `port --source` reports source toolchain and adapter blockers without emitting a scaffold. `run` maps a PE32 image and reports unresolved runtime boundary without executing its entry point.
+`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts; `doctor --graphics` launches the installed Chrome against an ephemeral data document and reports observed browser capabilities. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it. `benchmark` runs an ephemeral tooling self-check. `foundation compare` measures locally available routes. `port --source` reports source toolchain and adapter blockers without emitting a scaffold. `run` maps a PE32 image and reports unresolved runtime boundary without executing its entry point.
 
 To validate the source repository, install its dependency-free lockfile and run the complete gate:
 
@@ -73,9 +74,9 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Accepted item with benchmark specification: **33**
 - Rejected candidate: **8**
 - Deferred candidate: **5**
-- Implemented item: **2**
+- Implemented item: **3**
 - Passing roadmap benchmark: **0 / 33 (0%)**
-- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis, live self-check, toolchain comparison, and PE32 mapping; a new registry release has not been made from this branch
+- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis, live self-check, toolchain comparison, PE32 mapping, and ephemeral Chrome capability probing; a new registry release has not been made from this branch
 
 Start with [ROADMAP.md](https://github.com/bygelo/BPTK/blob/main/ROADMAP.md), then read the [architecture](https://github.com/bygelo/BPTK/blob/main/doc/ARCHITECTURE.md), [source audit](https://github.com/bygelo/BPTK/blob/main/doc/source-audit.md), [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md), [third-party inventory](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md), [test contract](https://github.com/bygelo/BPTK/blob/main/doc/TESTING.md), [release procedure](https://github.com/bygelo/BPTK/blob/main/doc/RELEASE.md), and [contribution guide](https://github.com/bygelo/BPTK/blob/main/CONTRIBUTING.md).
 

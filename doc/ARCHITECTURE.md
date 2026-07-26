@@ -6,9 +6,9 @@ This document describes both the implemented local-analysis boundary and the tar
 
 ## Repository tooling boundary
 
-The current package source exposes `status`, `doctor`, `legal`, `corpus status`, `security`, `inspect`, `benchmark`, `foundation compare`, `port --source`, and `run`. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper but no CPU core, Win32 shim, graphics translator, browser host, or compatibility runner.
+The current package source exposes `status`, `doctor`, `doctor --graphics`, `legal`, `corpus status`, `security`, `inspect`, `benchmark`, `foundation compare`, `port --source`, and `run`. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper and live browser capability probe but no CPU core, Win32 shim, graphics translator, browser host, or compatibility runner.
 
-BPTK-003 and BPTK-007 are implemented but red because their operational prerequisite remain red. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
+BPTK-003, BPTK-007, and BPTK-017 are implemented but red because their operational prerequisite or complete profile remain red. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
 
 ## Implemented local-analysis boundary
 
@@ -23,6 +23,8 @@ BPTK-003 and BPTK-007 are implemented but red because their operational prerequi
 `lib/foundation.mjs` and `lib/port.mjs` combine real input classification with local executable discovery. They report that Emscripten and the SDL/OpenGL adapter are absent on this host and never call a scaffold a runnable package.
 
 `lib/pe.mjs` maps a bounded PE32/i386 image, validates section/file/image range, applies supported HIGHLOW relocation when a different base is requested, identifies import and TLS directories, and reports stack, heap, and entry-point metadata. `lib/run.mjs` exposes this through a raw executable or a directory containing `bptk.json`. The entry point is never executed; import resolution, TLS callback execution, i386, and Win32 remain blockers.
+
+`lib/graphics.mjs` discovers a local Chrome or Chromium executable and launches it headlessly against an in-memory data document. The document creates a real canvas context and observes WebGPU, WebGL2, WebGL, AudioContext, cross-origin isolation, SharedArrayBuffer, and renderer state. The result is removed with the browser process and not retained. One observed Chrome profile cannot establish cross-browser compatibility.
 
 ## Product boundary
 

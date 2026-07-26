@@ -14,18 +14,21 @@ All notable planning and implementation change will be recorded here.
 - Added `foundation compare` with measured input and local-toolchain signals.
 - Added `port --source` diagnosis that reports missing Emscripten and browser-adapter work without treating a scaffold as a port.
 - Added `run` PE32 mapping for bounded header, section, relocation, import-directory, TLS-directory, stack, heap, and entry-point inspection without guest execution.
+- Added `doctor --graphics`, which launches the installed Chrome against an ephemeral data document and observes WebGPU, WebGL2, WebGL, AudioContext, isolation, SharedArrayBuffer, and renderer state.
 
 ### Changed
 
 - Promoted BPTK-007 to implemented-but-red while its approval, corpus, foundation, and source-pipeline prerequisite remain red.
 - Replaced the self-referential git revision in `data/status.json` with a deterministic manifest content revision so a product checkpoint remains valid before and after commit.
 - Promoted BPTK-003 to implemented-but-red and expanded the exact dependency-free package inventory from 10 to 21 files.
+- Promoted BPTK-017 to implemented-but-red and expanded the exact dependency-free package inventory to 22 files.
 
 ### Known gap
 
 - BPTK-001, BPTK-002, and BPTK-004 still require genuine named review; command output does not constitute approval.
 - No input is executable through BPTK, and no game-runtime or browser-package behavior passes yet.
 - Full SDL/OpenGL source output, i386 CPU behavior, Win32 import resolution, TLS callback execution, and game-loop execution remain weeks-scale.
+- The current Chrome profile exposes WebGL2 but lacks cross-origin isolation; Firefox and the remaining declared browser profile have not been observed.
 
 ## 0.1.0-alpha.0 — 2026-07-19
 

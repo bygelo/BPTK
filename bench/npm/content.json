@@ -13,6 +13,7 @@
     "lib/corpus.mjs",
     "lib/doctor.mjs",
     "lib/foundation.mjs",
+    "lib/graphics.mjs",
     "lib/input.mjs",
     "lib/index.mjs",
     "lib/inspect.mjs",
