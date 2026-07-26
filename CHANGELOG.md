@@ -18,6 +18,11 @@ All notable planning and implementation change will be recorded here.
 - Added atomic content-addressed asset packaging with one-megabyte chunk deduplication and no bundled game runtime.
 - Added HTML and React host source that preserves one package identity without moving a game loop into React.
 - Added local report modes where `off` writes nothing and `consent` writes one privacy-minimized package/environment report.
+- Added package-integrity performance timing without presenting asset I/O as game-runtime performance.
+- Added live isolation-based thread selection, zero-attempt network policy, and local control-profile validation.
+- Added safe engine-adapter diagnosis that copies no asset without rights and adapter approval.
+- Added browser-profile diagnosis that observes installed Chrome while refusing compatibility claims without a game runtime.
+- Added temporary-package Tier 1 checks proving network off and prompt modes make zero attempts.
 
 ### Changed
 
@@ -26,6 +31,7 @@ All notable planning and implementation change will be recorded here.
 - Promoted BPTK-003 to implemented-but-red and expanded the exact dependency-free package inventory from 10 to 21 files.
 - Promoted BPTK-017 to implemented-but-red and expanded the exact dependency-free package inventory to 22 files.
 - Expanded the exact dependency-free package inventory to 24 files; packaging and report surfaces remain red until their runtime prerequisite exist.
+- Expanded the exact dependency-free package inventory to 27 files; platform diagnostics remain planned and red until their runtime prerequisite exist.
 
 ### Known gap
 
@@ -33,6 +39,7 @@ All notable planning and implementation change will be recorded here.
 - No input is executable through BPTK, and no game-runtime or browser-package behavior passes yet.
 - Full SDL/OpenGL source output, i386 CPU behavior, Win32 import resolution, TLS callback execution, and game-loop execution remain weeks-scale.
 - The current Chrome profile exposes WebGL2 but lacks cross-origin isolation; Firefox and the remaining declared browser profile have not been observed.
+- The live matrix walk observed Chrome 150 as WebGL2-only and unisolated, found Safari installed but unautomated, and found Firefox absent; no browser support state is claimed.
 
 ## 0.1.0-alpha.0 — 2026-07-19
 

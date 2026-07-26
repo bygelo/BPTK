@@ -18,16 +18,22 @@ bptk corpus status
 bptk security ./game
 bptk inspect ./game
 bptk benchmark
+bptk benchmark ./project.bptk-package --profile performance
 bptk foundation compare ./game
 bptk port --source ./project
+bptk port --engine opensa ./project/game.dat
 bptk run ./package
+bptk run ./project.bptk-package --network off
+bptk run ./project.bptk-package --control default
 bptk package ./project --asset-mode stream
 bptk package ./project.bptk-package --host html
 bptk package ./project.bptk-package --host react
+bptk package ./project.bptk-package --thread auto
+bptk compatibility ./project.bptk-package --browser chrome
 bptk report ./project.bptk-package --record off
 ```
 
-`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts; `doctor --graphics` launches the installed Chrome against an ephemeral data document and reports observed browser capabilities. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it. `benchmark` runs an ephemeral tooling self-check. `foundation compare` measures locally available routes. `port --source` reports source toolchain and adapter blockers without emitting a scaffold. `run` maps a PE32 image or reports an asset-only package without executing it. `package --asset-mode stream` writes content-addressed chunks through an atomic staging directory. `package --host` emits HTML or React source bound to the same package identity. `report --record off` writes nothing; `consent` writes one minimized local report.
+`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts; `doctor --graphics` launches the installed Chrome against an ephemeral data document and reports observed browser capabilities. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it. `benchmark` runs an ephemeral tooling self-check; the performance profile verifies package chunk integrity on cold and warm reads but cannot measure a game. `foundation compare` measures locally available routes. `port --source` and `port --engine` report toolchain, adapter, and rights blockers without emitting a port. `run` maps a PE32 image or reports an asset-only package without executing it; its network and control options validate policy only. `package --asset-mode stream` writes content-addressed chunks through an atomic staging directory. `package --host` emits HTML or React source bound to the same package identity. `package --thread` uses a live capability observation to select or block a configuration, not a worker runtime. `compatibility --browser` observes Chrome or reports another profile's local availability without making a support claim. `report --record off` writes nothing; `consent` writes one minimized local report.
 
 To validate the source repository, install its dependency-free lockfile and run the complete gate:
 
@@ -80,7 +86,7 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Deferred candidate: **5**
 - Implemented item: **3**
 - Passing roadmap benchmark: **0 / 33 (0%)**
-- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis, live self-check, toolchain comparison, PE32 mapping, ephemeral Chrome capability probing, asset packaging, host emission, and local reporting; a new registry release has not been made from this branch
+- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis, live self-check, toolchain comparison, PE32 mapping, ephemeral Chrome capability probing, asset packaging, host emission, local policy diagnosis, and local reporting; a new registry release has not been made from this branch
 
 Start with [ROADMAP.md](https://github.com/bygelo/BPTK/blob/main/ROADMAP.md), then read the [architecture](https://github.com/bygelo/BPTK/blob/main/doc/ARCHITECTURE.md), [source audit](https://github.com/bygelo/BPTK/blob/main/doc/source-audit.md), [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md), [third-party inventory](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md), [test contract](https://github.com/bygelo/BPTK/blob/main/doc/TESTING.md), [release procedure](https://github.com/bygelo/BPTK/blob/main/doc/RELEASE.md), and [contribution guide](https://github.com/bygelo/BPTK/blob/main/CONTRIBUTING.md).
 

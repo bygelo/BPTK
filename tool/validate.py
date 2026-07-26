@@ -156,6 +156,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/cli.mjs"),
     Path("lib/corpus.mjs"),
     Path("lib/doctor.mjs"),
+    Path("lib/engine.mjs"),
     Path("lib/foundation.mjs"),
     Path("lib/graphics.mjs"),
     Path("lib/input.mjs"),
@@ -163,6 +164,8 @@ ALLOWED_MJS_PATH = {
     Path("lib/inspect.mjs"),
     Path("lib/legal.mjs"),
     Path("lib/package.mjs"),
+    Path("lib/performance.mjs"),
+    Path("lib/platform.mjs"),
     Path("lib/pe.mjs"),
     Path("lib/port.mjs"),
     Path("lib/report.mjs"),
@@ -176,6 +179,7 @@ ALLOWED_MJS_PATH = {
     Path("test/benchmark.test.mjs"),
     Path("test/inspect.test.mjs"),
     Path("test/package.test.mjs"),
+    Path("test/policy.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -327,6 +331,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/cli.mjs",
         "lib/corpus.mjs",
         "lib/doctor.mjs",
+        "lib/engine.mjs",
         "lib/foundation.mjs",
         "lib/graphics.mjs",
         "lib/input.mjs",
@@ -334,6 +339,8 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/inspect.mjs",
         "lib/legal.mjs",
         "lib/package.mjs",
+        "lib/performance.mjs",
+        "lib/platform.mjs",
         "lib/pe.mjs",
         "lib/port.mjs",
         "lib/report.mjs",

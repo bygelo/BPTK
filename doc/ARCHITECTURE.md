@@ -6,7 +6,7 @@ This document describes both the implemented local-analysis boundary and the tar
 
 ## Repository tooling boundary
 
-The current package source additionally exposes atomic asset packaging, HTML and React host-source emission, and privacy-minimized local reporting. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper and live browser capability probe but no CPU core, Win32 shim, graphics translator, executable browser host, or compatibility runner.
+The current package source additionally exposes atomic asset packaging, HTML and React host-source emission, privacy-minimized local reporting, and platform-policy diagnosis. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper and live browser capability probe but no CPU core, Win32 shim, graphics translator, executable browser host, or compatibility runner.
 
 BPTK-003, BPTK-007, and BPTK-017 are implemented but red because their operational prerequisite or complete profile remain red. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
 
@@ -29,6 +29,10 @@ BPTK-003, BPTK-007, and BPTK-017 are implemented but red because their operation
 `lib/package.mjs` reads a bounded project, splits each file into content-addressed chunk, writes a manifest in a sibling staging directory, and renames that directory atomically. Its HTML host owns the canvas and lifecycle boundary; the React adapter mounts an iframe around that host and never owns a game loop. Both carry the same package identity, but the package is asset-only until a runtime exists.
 
 `lib/report.mjs` reads package identity and emits a privacy-minimized environment report. Recording is off by default. Consent writes locally inside the package, excludes game content and personal data, and does not imply that a runtime session was reproduced.
+
+`lib/performance.mjs` verifies every content-addressed package chunk twice and reports ephemeral cold and warm read timing. It does not substitute asset I/O for startup, frame, audio, CPU, or game-runtime memory evidence.
+
+`lib/platform.mjs` observes browser isolation before writing thread selection, validates zero-attempt network policy and logical control profile, and diagnoses browser-profile availability. These are configuration and policy surfaces only: no worker, network, input, or game-runtime bridge exists. `lib/engine.mjs` safely classifies an adapter asset and copies nothing while rights and adapter approval are absent.
 
 ## Product boundary
 
