@@ -16,6 +16,7 @@
     "lib/foundation.mjs",
     "lib/graphics.mjs",
     "lib/input.mjs",
+    "lib/import.mjs",
     "lib/index.mjs",
     "lib/inspect.mjs",
     "lib/legal.mjs",
@@ -25,9 +26,11 @@
     "lib/pe.mjs",
     "lib/port.mjs",
     "lib/report.mjs",
+    "lib/research.mjs",
     "lib/run.mjs",
     "lib/security.mjs",
     "lib/status.mjs",
+    "lib/storage.mjs",
     "lib/toolchain.mjs",
     "package.json"
   ]

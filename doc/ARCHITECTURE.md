@@ -34,6 +34,10 @@ BPTK-003, BPTK-007, and BPTK-017 are implemented but red because their operation
 
 `lib/platform.mjs` observes browser isolation before writing thread selection, validates zero-attempt network policy and logical control profile, and diagnoses browser-profile availability. These are configuration and policy surfaces only: no worker, network, input, or game-runtime bridge exists. `lib/engine.mjs` safely classifies an adapter asset and copies nothing while rights and adapter approval are absent.
 
+`lib/storage.mjs` validates one package save profile and reports a read-only base without creating an overlay. `lib/import.mjs` combines safe inspection with asset-package launch diagnosis while staging and executing nothing. Both expose the literal integration boundary, not persistence or a first playable.
+
+`lib/research.mjs` scans only the bounded input prefix for architecture or graphics-API signal and combines it with the ephemeral Chrome probe. It returns a defer decision for x86-64, D3D11, and modern targets because no execution or translation prototype exists; browser memory64 or WebGPU capability alone is never a support claim.
+
 ## Product boundary
 
 BPTK is a developer workbench and a browser runtime family. It is not one universal transpiler. Its first responsibility is to classify an import and select a viable lane:

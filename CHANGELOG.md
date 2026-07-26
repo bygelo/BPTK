@@ -23,6 +23,10 @@ All notable planning and implementation change will be recorded here.
 - Added safe engine-adapter diagnosis that copies no asset without rights and adapter approval.
 - Added browser-profile diagnosis that observes installed Chrome while refusing compatibility claims without a game runtime.
 - Added temporary-package Tier 1 checks proving network off and prompt modes make zero attempts.
+- Added read-only save-boundary diagnosis with strict profile validation and no fabricated persistence.
+- Added safe import-and-run diagnosis that neither stages nor executes an asset package.
+- Added bounded x86-64, D3D11, and modern research surfaces that combine input signal with live browser capability and return an explicit defer decision.
+- Added temporary-package Tier 1 checks for save path refusal and import non-execution.
 
 ### Changed
 
@@ -32,6 +36,7 @@ All notable planning and implementation change will be recorded here.
 - Promoted BPTK-017 to implemented-but-red and expanded the exact dependency-free package inventory to 22 files.
 - Expanded the exact dependency-free package inventory to 24 files; packaging and report surfaces remain red until their runtime prerequisite exist.
 - Expanded the exact dependency-free package inventory to 27 files; platform diagnostics remain planned and red until their runtime prerequisite exist.
+- Expanded the exact dependency-free package inventory to 30 files; save, integration, and research behavior remain red until their execution or prototype prerequisite exist.
 
 ### Known gap
 
