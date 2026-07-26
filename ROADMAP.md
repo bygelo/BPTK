@@ -16,8 +16,9 @@ The differentiator is one workbench joining binary compatibility, source-assiste
 
 - Initial repository state: empty directory with no git repository, license, runtime, test, or documentation.
 - Current repository state: public Apache-2.0 roadmap package, validation harness, and dependency-free `@bygelo/bptk@0.1.0-alpha.0` status and environment-diagnostic CLI.
-- Product implementation: 0 item.
+- Product implementation: 1 tooling item (BPTK-003); no game-runtime item.
 - CLI boundary: `status` and `doctor` do not import, inspect, transform, execute, or test a game and do not promote a roadmap item.
+- Foundation and early runtime evidence: review-ready BPTK-001 and BPTK-004 draft, pending machine-readable approval record, proposed machine-readable security limit, draft BPTK-002 corpus v1 with one retained local observation artifact containing four observed profile and 14 machine-readable freeze blocker, and active deterministic BPTK-003 sentinel runner with retained implementation evidence now exist. Additional excluded implementation-only evidence includes the content-addressed BPTK-authored FIX-001 fixture, a BPTK-005 metadata preflight, materialized FIX-014 source plus a native host reference, an exact-fixture BPTK-007 classifier, a non-corpus BPTK-008 preferred-base mapper, a non-corpus BPTK-009 nine-case i386 semantic reference, a non-corpus BPTK-010 seven-case Win32 semantic reference, a non-corpus BPTK-011 six-case USER32 semantic reference, a non-corpus BPTK-012 eight-case GDI raster semantic reference, a non-corpus BPTK-013 nine-case DirectDraw surface semantic reference, a non-corpus BPTK-014 six-case audio semantic reference, a non-corpus BPTK-015 ten-case overlay-storage semantic reference, a non-corpus BPTK-016 eleven-case package-staging semantic reference, a non-corpus BPTK-017 nine-case GPU-capability semantic reference, and a non-corpus BPTK-018 twelve-case fixed-function-IR semantic reference. BPTK-003 alone is implemented but red; there is still no named approval, local-user importer, selected CPU core, game-runtime execution, Win32/USER32/GDI/DirectDraw/D3D/audio/storage HLE, browser-input, presentation, audio, storage, importer, live GPU-probe, or GPU-translation bridge, integrated first playable, Emscripten/browser package result, passing roadmap benchmark, or game compatibility result.
 - Current benchmark coverage: **0 / 33 (0%)**.
 - Compatibility corpus coverage: not publishable until BPTK-002 freezes the runtime denominator.
 - Closest prior art: BottleShip for unmodified PE32 game; Emscripten for source-assisted game; OpenSA, WebXash, Qwasm2, and ScummVM for engine-family or asset-driven path.
@@ -63,16 +64,22 @@ The raw candidate denominator was frozen after deduplication on 2026-07-18.
 | Accepted into this roadmap | 33 |
 | Rejected | 8 |
 | Deferred | 5 |
-| Implemented | 0 |
+| Implemented | 1 |
 | Passing | 0 |
 
 The complete identity, origin, dedupe key, decision, and target mapping is frozen in [the candidate ledger](bench/roadmap/candidate.json); [the rejection and defer ledger](doc/roadmap-rejected.md) explains the non-accepted decisions. A future change may alter the denominator only by adding a newly discovered raw candidate and classifying it in the same change.
 
 ## Benchmark contract
 
-Every accepted item has one prewritten specification under [bench/roadmap/spec](bench/roadmap/README.md). Runtime behavior has a future acceptance specification that becomes executable only when its runner and fixture land. Legal, research, architecture, and governance outcome use an evidence check with explicit review criterion. All are red and gate-excluded today; [the test contract](doc/TESTING.md) defines mechanical promotion.
+Each accepted item now uses one quadruple: **Behavior**, **Surface**, **Benchmark**, and **Tier**. Behavior names what a user gets. Surface is the literal invocation the product must expose; an invocation shown here is a planned contract, not a claim that it exists today. Benchmark names the evidence that protects the behavior. Tier sets how often and how strongly that evidence gates change:
 
-The machine-readable source of truth is [bench/roadmap/manifest.json](bench/roadmap/manifest.json).
+- **Tier 1** — release-blocking regression coverage for a named failure that could silently corrupt, escape, disclose, or invalidate a supported user result;
+- **Tier 2** — reserved for a future intermediate gate when a concrete project need justifies it;
+- **Tier 3** — the default for planning evidence, bounded research, review, and behavior not yet exposed as a supported product contract.
+
+The specifications under [bench/roadmap/spec](bench/roadmap/README.md) remain useful evidence scaffolding, but `bench/` is not the deliverable. A benchmark promotes only the user behavior named in its roadmap row. An item may enter the default gate as `implemented` once its scoped implementation, fixture, contract, retained result, and red regression are present; prerequisite and corpus conditions still block `passing`. All 33 remain red today, BPTK-003 is active, and the other 32 are gate-excluded; [the test contract](doc/TESTING.md) defines mechanical promotion.
+
+[bench/roadmap/manifest.json](bench/roadmap/manifest.json) remains the machine-readable source for identity, prerequisite, and promotion state. This roadmap owns the user behavior, literal surface, and benchmark tier.
 
 ## Critical path
 
@@ -99,15 +106,15 @@ P0 is a funding and architecture gate. If neither binary option meets the frozen
 
 P0 ends when the legal, evidence, security, binary, source, and import premise is proven on one denominator.
 
-| ID | Outcome | Dependency | Benchmark and present failure | Source | Primary risk | Proposed owner |
-|---|---|---|---|---|---|---|
-| BPTK-001 | Approve Apache-2.0 outbound posture, upstream reuse, provenance, and public-name path | — | [BENCH-001](bench/roadmap/spec/bptk-001.json): runtime graph and name review remain open | SRC-001–006/008/009/012–015 | Late license conflict forces redesign | Product + legal |
-| BPTK-002 | Freeze representative synthetic, redistributable, and metadata-only compatibility corpus | 001 | [BENCH-002](bench/roadmap/spec/bptk-002.json): runtime denominator absent | SRC-002/003/004/006/010/011 | Biased corpus rewards one-off compatibility | Compatibility |
-| BPTK-003 | Implement deterministic benchmark runner, artifact retention, and promotion gate | 001, 002 | [BENCH-003](bench/roadmap/spec/bptk-003.json): no product runner | SRC-002/003/011/013 | Flaky evidence makes status meaningless | Tooling |
-| BPTK-004 | Approve hostile-import threat model and abuse-case plan | 001 | [BENCH-004](bench/roadmap/spec/bptk-004.json): no reviewed threat model | SRC-002/003/009/019/020/023–026 | Local file and origin compromise | Security |
-| BPTK-005 | Compare BottleShip adaptation, permissive composition, and new binary runtime | 001–004 | [BENCH-005](bench/roadmap/spec/bptk-005.json): no option measured by BPTK | SRC-002–005/012/013 | Rebuilding prior art consumes the project | Runtime |
-| BPTK-006 | Compile, package, and run the source-assisted SDL/OpenGL spike | 001–004 | [BENCH-006](bench/roadmap/spec/bptk-006.json): no BPTK source package | SRC-006/007/010/016–018 | Toolchain demo hides porting cost | Source port |
-| BPTK-007 | Safely classify import into binary, source, engine, or blocked report | 002–006 | [BENCH-007](bench/roadmap/spec/bptk-007.json): no importer or report | SRC-002/003/008–011 | Parser attack or misleading route | Workbench |
+| Behavior | Surface | Benchmark | Tier |
+|---|---|---|---|
+| **BPTK-001 — Know whether a project can be published and which upstream component may be reused** | `bptk legal <project>` | [BENCH-001](bench/roadmap/spec/bptk-001.json): returns an approved, revisioned license, provenance, naming, and reuse decision; approval remains open | Tier 3 |
+| **BPTK-002 — See compatibility claims against a stable, representative denominator** | `bptk corpus status` | [BENCH-002](bench/roadmap/spec/bptk-002.json): freezes lawful fixture, environment profile, and threshold before any percentage is published; corpus review remains open | Tier 3 |
+| **BPTK-003 — Trust that roadmap status changes only when retained evidence passes** | `bptk benchmark` | [BENCH-003](bench/roadmap/spec/bptk-003.json): derives status from deterministic retained result; passing remains blocked by legal and corpus prerequisite | **Tier 1** — regression risk: a false-green result promotes unsupported behavior |
+| **BPTK-004 — Know how an imported game is isolated before opening it** | `bptk security <input>` | [BENCH-004](bench/roadmap/spec/bptk-004.json): reviews archive, parser, memory, permission, network, storage, privacy, and hostile-code control; named review remains open | Tier 3 |
+| **BPTK-005 — Get a measured recommendation for the binary-runtime foundation** | `bptk foundation compare <input>` | [BENCH-005](bench/roadmap/spec/bptk-005.json): compares adaptation, composition, and new-runtime option on one frozen fixture; no option is selected | Tier 3 |
+| **BPTK-006 — Turn a supported SDL/OpenGL source project into a runnable browser package** | `bptk port --source <project>` | [BENCH-006](bench/roadmap/spec/bptk-006.json): builds from clean source and runs the declared browser profile; no Wasm browser package exists | Tier 3 |
+| **BPTK-007 — Drop in a local project and get a safe route or precise blocked reason** | `bptk inspect <input>` | [BENCH-007](bench/roadmap/spec/bptk-007.json): classifies folder, archive, installer, PE, source, and engine asset without execution or upload; local-user input is not implemented | **Tier 1** — regression risk: inspection executes input, escapes a path boundary, or selects the wrong lane |
 
 ### P0 exit gate
 
@@ -121,17 +128,17 @@ P0 ends when the legal, evidence, security, binary, source, and import premise i
 
 P1 builds the minimum binary path for classic 2D and software-rendered interface. It does not claim broad title support.
 
-| ID | Outcome | Dependency | Benchmark and present failure | Source | Primary risk | Proposed owner |
-|---|---|---|---|---|---|---|
-| BPTK-008 | Map PE32 section, relocation, import, TLS, stack, heap, and entry point | 005, 007 | [BENCH-008](bench/roadmap/spec/bptk-008.json): no loader | SRC-002/003/004 | Malformed image corrupts memory | Runtime |
-| BPTK-009 | Execute the frozen i386 instruction and exception baseline | 005, 008 | [BENCH-009](bench/roadmap/spec/bptk-009.json): no CPU core selected | SRC-002–005 | Rare instruction and FPU divergence | Runtime |
-| BPTK-010 | Implement measured Kernel32, NTDLL, CRT, synchronization, time, and COM behavior | 009 | [BENCH-010](bench/roadmap/spec/bptk-010.json): startup stops on core API | SRC-002/003/012/013 | Behavioral edge case exceeds API checklist | Compatibility |
-| BPTK-011 | Map USER32 window, message, focus, timer, keyboard, pointer, and cursor to browser behavior | 010 | [BENCH-011](bench/roadmap/spec/bptk-011.json): no logical window or input bridge | SRC-002/003/009 | Gesture and event ordering mismatch | Browser runtime |
-| BPTK-012 | Render the GDI corpus with image and trace evidence | 011 | [BENCH-012](bench/roadmap/spec/bptk-012.json): no GDI output | SRC-003/012 | Font and raster variance | Graphics |
-| BPTK-013 | Implement DirectDraw surface, lock, blit, flip, palette, and presentation | 010, 011 | [BENCH-013](bench/roadmap/spec/bptk-013.json): no 2D frame | SRC-002/003 | Legacy pitch and palette semantics | Graphics |
-| BPTK-014 | Bridge waveOut and DirectSound to WebAudio or AudioWorklet | 010 | [BENCH-014](bench/roadmap/spec/bptk-014.json): no verified audio | SRC-002–004/019/021 | Autoplay, timing, and underrun | Audio |
-| BPTK-015 | Persist a read-only virtual drive plus file, registry, and OPFS overlay | 004, 010 | [BENCH-015](bench/roadmap/spec/bptk-015.json): no safe save state | SRC-002/009/010/022/023 | Path mismatch, quota, and corruption | Storage |
-| BPTK-016 | Import local package and prove one integrated 2D interactive and reload scenario | 004, 007–015 | [BENCH-016](bench/roadmap/spec/bptk-016.json): no package staging or integrated first playable | SRC-002/003/010/022/023 | Archive failure or cross-component mismatch | Integration |
+| Behavior | Surface | Benchmark | Tier |
+|---|---|---|---|
+| **BPTK-008 — Open an eligible PE32 game into a bounded, correctly resolved memory image** | `bptk run <package>` | [BENCH-008](bench/roadmap/spec/bptk-008.json): validates section, relocation, import, TLS, stack, heap, and entry point; only a partial non-corpus mapper exists | Tier 3 |
+| **BPTK-009 — Run supported i386 game code with stable register, FPU, memory, and exception behavior** | `bptk run <package>` | [BENCH-009](bench/roadmap/spec/bptk-009.json): matches the frozen instruction and exception oracle; no CPU core exists | **Tier 1** — regression risk: silent CPU divergence changes game state or crashes later in an unrelated subsystem |
+| **BPTK-010 — Start and keep a supported Win32 game loop running in the browser** | `bptk run <package>` | [BENCH-010](bench/roadmap/spec/bptk-010.json): verifies required Kernel32, NTDLL, CRT, synchronization, time, process, memory, and COM behavior; no Win32 HLE exists | Tier 3 |
+| **BPTK-011 — Control a game through browser focus, keyboard, pointer, cursor, timer, and window lifecycle** | `bptk run <package>` | [BENCH-011](bench/roadmap/spec/bptk-011.json): replays deterministic USER32 message and input order; no browser bridge exists | Tier 3 |
+| **BPTK-012 — See launchers, menus, text, and software-rendered output correctly** | `bptk run <package>` | [BENCH-012](bench/roadmap/spec/bptk-012.json): compares GDI image and trace evidence within declared tolerance; no GDI output exists | Tier 3 |
+| **BPTK-013 — See a supported DirectDraw game render and present a correct 2D frame** | `bptk run <package>` | [BENCH-013](bench/roadmap/spec/bptk-013.json): verifies surface, lock, blit, flip, palette, color-key, pitch, and presentation semantics; no browser frame exists | Tier 3 |
+| **BPTK-014 — Hear supported waveOut and DirectSound audio in sync with play** | `bptk run <package>` | [BENCH-014](bench/roadmap/spec/bptk-014.json): checks PCM, buffer, loop, volume, pan, callback, pause, and underrun behavior; no Web Audio bridge exists | Tier 3 |
+| **BPTK-015 — Save settings and progress across reload without changing the original game files** | `bptk run <package> --save <profile>` | [BENCH-015](bench/roadmap/spec/bptk-015.json): proves read-only base, copy-on-write overlay, path normalization, quota rollback, registry, and reload persistence; no OPFS bridge exists | **Tier 1** — regression risk: a save is lost, aliased to another path, corrupted, or written outside its sandbox |
+| **BPTK-016 — Import a supported package and reach one interactive, persistent 2D session** | `bptk import <input> --run` | [BENCH-016](bench/roadmap/spec/bptk-016.json): runs loading, CPU, Win32, input, graphics, audio, storage, save, and reload together; no integrated first playable exists | **Tier 1** — regression risk: individually passing components stop working as one launchable session |
 
 ### P1 exit gate
 
@@ -144,16 +151,16 @@ P1 builds the minimum binary path for classic 2D and software-rendered interface
 
 P2 produces the first package that demonstrates the product’s Windows-to-browser value across both binary and source lane.
 
-| ID | Outcome | Dependency | Benchmark and present failure | Source | Primary risk | Proposed owner |
-|---|---|---|---|---|---|---|
-| BPTK-017 | Probe and declare WebGPU primary, WebGL2 fallback, limit, and degradation profile | 003, 004 | [BENCH-017](bench/roadmap/spec/bptk-017.json): no supported GPU classification | SRC-002/007/014–016/020 | Browser and driver capability variance | Graphics |
-| BPTK-018 | Translate D3D7/8 fixed-function state to the selected GPU profile | 013, 017 | [BENCH-018](bench/roadmap/spec/bptk-018.json): no early-3D frame | SRC-002/007/014 | State combination and legacy default | Graphics |
-| BPTK-019 | Translate D3D9 fixed-function, resource, state block, target, and reset | 018 | [BENCH-019](bench/roadmap/spec/bptk-019.json): no D3D9 fixed-function frame | SRC-002/007/014 | Caps, format, and lost-device behavior | Graphics |
-| BPTK-020 | Translate D3D9 shader model 1–3 bytecode with validation and cache | 019 | [BENCH-020](bench/roadmap/spec/bptk-020.json): no valid browser shader | SRC-001/002/014/015/020 | Precision and backend-specific miscompile | Shader |
-| BPTK-021 | Publish a reproducible Emscripten source adapter SDK | 006, 017 | [BENCH-021](bench/roadmap/spec/bptk-021.json): source spike remains one-off | SRC-006/007/010/016 | Build diversity defeats the template | Source port |
-| BPTK-022 | Package, stream, verify, cache, resume, and store large asset | 015–017 | [BENCH-022](bench/roadmap/spec/bptk-022.json): no bounded large-asset startup | SRC-002/006/010/022 | Quota, eviction, integrity, and startup | Asset pipeline |
-| BPTK-023 | Meet frozen startup, CPU, frame, audio, memory, and code-cache budget | 009, 010, 018 | [BENCH-023](bench/roadmap/spec/bptk-023.json): no BPTK runtime to profile | SRC-002–005/013/014 | Optimization trades correctness for speed | Performance |
-| BPTK-024 | Prove binary and source output share one static package, HTML host, and thin React lifecycle adapter | 016, 017, 021 | [BENCH-024](bench/roadmap/spec/bptk-024.json): no shared deployable package contract | SRC-001/002/006/009/010/020/023/024 | CSP, path, worker, header, and remount | Packaging |
+| Behavior | Surface | Benchmark | Tier |
+|---|---|---|---|
+| **BPTK-017 — Know whether this browser can run the package, use a safe fallback, or must block** | `bptk doctor --graphics` | [BENCH-017](bench/roadmap/spec/bptk-017.json): probes WebGPU, WebGL2, limit, extension, degradation, and reason-bound blocking; no live probe exists | Tier 3 |
+| **BPTK-018 — Play supported D3D7/8 fixed-function content on the selected browser GPU path** | `bptk run <package>` | [BENCH-018](bench/roadmap/spec/bptk-018.json): compares legacy state, transform, resource, cache, and presentation behavior; no GPU translator exists | Tier 3 |
+| **BPTK-019 — Play supported D3D9 fixed-function content through device loss and reset** | `bptk run <package>` | [BENCH-019](bench/roadmap/spec/bptk-019.json): verifies resource, state block, target, scene, loss, reset, restoration, and teardown; no D3D9 device path exists | Tier 3 |
+| **BPTK-020 — Render supported D3D9 shader-model 1–3 content correctly and deterministically** | `bptk run <package>` | [BENCH-020](bench/roadmap/spec/bptk-020.json): validates bytecode, IR, reflection, cache, precision, control flow, resource, and frame result; no translator or compiler exists | **Tier 1** — regression risk: a backend-specific shader miscompile silently renders the wrong game state |
+| **BPTK-021 — Port a supported native source project reproducibly with a documented adapter SDK** | `bptk port --source <project>` | [BENCH-021](bench/roadmap/spec/bptk-021.json): reproduces toolchain, adapter, diagnostic, package, and browser result in a clean second environment; no SDK exists | Tier 3 |
+| **BPTK-022 — Start a large game reliably with verified, resumable, offline-capable asset delivery** | `bptk package <project> --asset-mode stream` | [BENCH-022](bench/roadmap/spec/bptk-022.json): checks content address, chunk, resume, corruption, atomic commit, cache, quota, eviction, startup, memory, and offline behavior; no asset pipeline exists | Tier 3 |
+| **BPTK-023 — See whether a package meets its declared startup, frame, audio, CPU, and memory budget** | `bptk benchmark <package> --profile performance` | [BENCH-023](bench/roadmap/spec/bptk-023.json): measures frozen cold, warm, CPU, frame, audio, memory, cache, correctness, and variance threshold; no runtime measurement exists | Tier 3 |
+| **BPTK-024 — Embed the same package in plain HTML or React without changing runtime behavior** | `bptk package <project> --host <html\|react>` | [BENCH-024](bench/roadmap/spec/bptk-024.json): verifies one package identity, lifecycle, path, CSP, header, remount, teardown, and game-loop ownership across both host; no emitted package exists | **Tier 1** — regression risk: a host remount duplicates the game loop, leaks a worker, or changes package behavior |
 
 ### P2 exit gate
 
@@ -167,14 +174,14 @@ P2 produces the first package that demonstrates the product’s Windows-to-brows
 
 P3 turns the first package into an externally testable platform without weakening compatibility truth.
 
-| ID | Outcome | Dependency | Benchmark and present failure | Source | Primary risk | Proposed owner |
-|---|---|---|---|---|---|---|
-| BPTK-025 | Ship separate threaded and single-thread profile with COOP/COEP selection | 021, 024 | [BENCH-025](bench/roadmap/spec/bptk-025.json): no shared-memory package | SRC-002/006/018/019/024 | Hosting header and worker constraint | Browser runtime |
-| BPTK-026 | Mediate network through allowed browser transport or explicit proxy | 004, 010, 021, 024 | [BENCH-026](bench/roadmap/spec/bptk-026.json): no browser-permitted transport | SRC-006/010/017 | Protocol semantics, privacy, and relay cost | Network |
-| BPTK-027 | Complete controller, fullscreen, touch, remap, focus, accessibility, and safe exit | 011, 024 | [BENCH-027](bench/roadmap/spec/bptk-027.json): incomplete control path | SRC-001/009/010/025–028 | Gesture and reserved shortcut conflict | Experience |
-| BPTK-028 | Store revisioned environment, replay, crash, and compatibility artifact | 002, 003, 007, 024 | [BENCH-028](bench/roadmap/spec/bptk-028.json): observation cannot be reproduced | SRC-002/003/011/013 | Privacy and stale status | Compatibility |
-| BPTK-029 | Publish an engine-family adapter contract and one rights-approved fixture adapter | 001, 003, 007, 021, 024 | [BENCH-029](bench/roadmap/spec/bptk-029.json): engine port remains one-off | SRC-008–011 | Asset-right confusion and core fragmentation | Adapter |
-| BPTK-030 | Pass declared Chrome, Edge, Firefox, Safari, and selected mobile profile | 017, 024, 025, 027 | [BENCH-030](bench/roadmap/spec/bptk-030.json): no browser support floor | SRC-003/009/016/018–028 | Web standard and driver variance | Quality |
+| Behavior | Surface | Benchmark | Tier |
+|---|---|---|---|
+| **BPTK-025 — Run the correct threaded or single-thread package for the current host** | `bptk package <project> --thread <auto\|on\|off>` | [BENCH-025](bench/roadmap/spec/bptk-025.json): verifies build selection, isolation header, fallback, worker, memory, synchronization, proxy, timing, and explicit block; no threaded package exists | Tier 3 |
+| **BPTK-026 — Connect a game only through a consented, allowlisted browser transport or disclosed proxy** | `bptk run <package> --network <off\|prompt>` | [BENCH-026](bench/roadmap/spec/bptk-026.json): exercises consent, allowlist, transport, denial, reconnect, loss, latency, proxy disclosure, offline, and no-upload rule; no network bridge exists | **Tier 1** — regression risk: a package connects or uploads without consent or outside its endpoint allowlist |
+| **BPTK-027 — Play with keyboard, pointer, controller, fullscreen, touch, remap, accessible controls, and safe exit** | `bptk run <package> --control <profile>` | [BENCH-027](bench/roadmap/spec/bptk-027.json): verifies permission, logical action, focus recovery, remap persistence, accessible workbench, and recoverable exit; no browser control surface exists | Tier 3 |
+| **BPTK-028 — Reproduce a compatibility result without sharing the game or personal data** | `bptk report <package> --record <off\|consent>` | [BENCH-028](bench/roadmap/spec/bptk-028.json): binds revision, minimized environment, replay, crash, screenshot, provenance, expiry, and second-environment reproduction; no revisioned catalog exists | **Tier 1** — regression risk: a report leaks proprietary content or personal data, or replays against stale revisions |
+| **BPTK-029 — Use a supported engine-family adapter with user-owned asset kept separate** | `bptk port --engine <engine> <asset>` | [BENCH-029](bench/roadmap/spec/bptk-029.json): verifies adapter contract, engine identity, native-module diagnosis, rights attestation, save, mod, input, network, package, and generic-core boundary; no approved adapter exists | Tier 3 |
+| **BPTK-030 — Know whether the same package is supported, degraded, or blocked in each declared browser** | `bptk compatibility <package> --browser <profile>` | [BENCH-030](bench/roadmap/spec/bptk-030.json): runs one package identity across Chrome, Edge, Firefox, Safari, and selected mobile profile against predeclared threshold; no runnable matrix exists | Tier 3 |
 
 ### P3 exit gate
 
@@ -188,11 +195,11 @@ P3 turns the first package into an externally testable platform without weakenin
 
 P4 is evidence generation. Each item must result in a bounded implementation proposal, continued defer, or rejection.
 
-| ID | Outcome | Dependency | Benchmark and present failure | Source | Primary risk | Proposed owner |
-|---|---|---|---|---|---|---|
-| BPTK-031 | Decide x86-64 execution, address-space, memory64, JIT, and migration path | 023, 030 | [BENCH-031](bench/roadmap/spec/bptk-031.json): no measured 64-bit architecture | SRC-002/004/005/013/019 | Browser memory and CPU model invalidates PE32 design | Runtime research |
-| BPTK-032 | Prototype and map DXGI, D3D10/11, DXBC, resource, shader, and sync gap | 020, 023, 030 | [BENCH-032](bench/roadmap/spec/bptk-032.json): no credible D3D10/11 WebGPU path | SRC-001/013/014/020 | Vulkan assumption does not map to WebGPU | Graphics research |
-| BPTK-033 | Compare D3D12 and Vulkan-era requirement with current WebGPU and x86-64 result | 030–032 | [BENCH-033](bench/roadmap/spec/bptk-033.json): no modern-API mapping demonstrated | SRC-001/013–015/020 | Gap remains architectural and uneconomic | Architecture research |
+| Behavior | Surface | Benchmark | Tier |
+|---|---|---|---|
+| **BPTK-031 — Learn whether an x86-64 game has a credible browser execution path** | `bptk inspect <input> --target x86_64` | [BENCH-031](bench/roadmap/spec/bptk-031.json): measures address space, memory64, CPU, JIT, migration, and highest-risk prototype; no 64-bit architecture is measured | Tier 3 |
+| **BPTK-032 — Learn whether a D3D10/11 game has a credible WebGPU translation path** | `bptk inspect <input> --target d3d11` | [BENCH-032](bench/roadmap/spec/bptk-032.json): prototypes the highest-risk DXGI, DXBC, resource, shader, and synchronization gap; no credible path exists | Tier 3 |
+| **BPTK-033 — Get an evidence-backed stop, defer, or next-step decision for a modern game** | `bptk inspect <input> --target modern` | [BENCH-033](bench/roadmap/spec/bptk-033.json): compares D3D12 and Vulkan-era requirement with current WebGPU and x86-64 result; no modern-API mapping exists | Tier 3 |
 
 ### P4 exit gate
 
