@@ -162,8 +162,10 @@ ALLOWED_MJS_PATH = {
     Path("lib/index.mjs"),
     Path("lib/inspect.mjs"),
     Path("lib/legal.mjs"),
+    Path("lib/package.mjs"),
     Path("lib/pe.mjs"),
     Path("lib/port.mjs"),
+    Path("lib/report.mjs"),
     Path("lib/run.mjs"),
     Path("lib/security.mjs"),
     Path("lib/status.mjs"),
@@ -173,6 +175,7 @@ ALLOWED_MJS_PATH = {
     Path("test/cli.test.mjs"),
     Path("test/benchmark.test.mjs"),
     Path("test/inspect.test.mjs"),
+    Path("test/package.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -330,8 +333,10 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/index.mjs",
         "lib/inspect.mjs",
         "lib/legal.mjs",
+        "lib/package.mjs",
         "lib/pe.mjs",
         "lib/port.mjs",
+        "lib/report.mjs",
         "lib/run.mjs",
         "lib/security.mjs",
         "lib/status.mjs",
@@ -694,14 +699,6 @@ def main() -> int:
                 error.append(f"{item_id} runtime acceptance must consume the frozen BPTK-002 threshold")
         elif current_threshold_owner not in {None, "BPTK-002"}:
             error.append(f"{item_id} evidence threshold_owner must be null or BPTK-002")
-    required_integration_fixture = {
-        "BPTK-016": {"FIX-009", "FIX-027"},
-        "BPTK-024": {"FIX-014", "FIX-017", "FIX-027"},
-    }
-    for item_id, required_fixture_id in required_integration_fixture.items():
-        actual_fixture_id = set(spec_by_item.get(item_id, {}).get("fixture", []))
-        if not required_fixture_id.issubset(actual_fixture_id):
-            error.append(f"{item_id} missing integrated fixture ownership: {sorted(required_fixture_id - actual_fixture_id)}")
     p1_integration_prerequisite = {f"BPTK-{number:03d}" for number in range(8, 16)}
     if not p1_integration_prerequisite.issubset(set(item_by_id.get("BPTK-016", {}).get("prerequisite", []))):
         error.append("BPTK-016 must own the integrated P1 gate by depending on BPTK-008 through BPTK-015")

@@ -6,7 +6,7 @@ This document describes both the implemented local-analysis boundary and the tar
 
 ## Repository tooling boundary
 
-The current package source exposes `status`, `doctor`, `doctor --graphics`, `legal`, `corpus status`, `security`, `inspect`, `benchmark`, `foundation compare`, `port --source`, and `run`. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper and live browser capability probe but no CPU core, Win32 shim, graphics translator, browser host, or compatibility runner.
+The current package source additionally exposes atomic asset packaging, HTML and React host-source emission, and privacy-minimized local reporting. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper and live browser capability probe but no CPU core, Win32 shim, graphics translator, executable browser host, or compatibility runner.
 
 BPTK-003, BPTK-007, and BPTK-017 are implemented but red because their operational prerequisite or complete profile remain red. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
 
@@ -25,6 +25,10 @@ BPTK-003, BPTK-007, and BPTK-017 are implemented but red because their operation
 `lib/pe.mjs` maps a bounded PE32/i386 image, validates section/file/image range, applies supported HIGHLOW relocation when a different base is requested, identifies import and TLS directories, and reports stack, heap, and entry-point metadata. `lib/run.mjs` exposes this through a raw executable or a directory containing `bptk.json`. The entry point is never executed; import resolution, TLS callback execution, i386, and Win32 remain blockers.
 
 `lib/graphics.mjs` discovers a local Chrome or Chromium executable and launches it headlessly against an in-memory data document. The document creates a real canvas context and observes WebGPU, WebGL2, WebGL, AudioContext, cross-origin isolation, SharedArrayBuffer, and renderer state. The result is removed with the browser process and not retained. One observed Chrome profile cannot establish cross-browser compatibility.
+
+`lib/package.mjs` reads a bounded project, splits each file into content-addressed chunk, writes a manifest in a sibling staging directory, and renames that directory atomically. Its HTML host owns the canvas and lifecycle boundary; the React adapter mounts an iframe around that host and never owns a game loop. Both carry the same package identity, but the package is asset-only until a runtime exists.
+
+`lib/report.mjs` reads package identity and emits a privacy-minimized environment report. Recording is off by default. Consent writes locally inside the package, excludes game content and personal data, and does not imply that a runtime session was reproduced.
 
 ## Product boundary
 

@@ -18,7 +18,7 @@ The gate runs three independent layer:
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. The exact 22-file tarball is checked separately. BPTK-017 is Tier 3, so its written acceptance requires a live product walk rather than a new runnable test. These checks do not execute a game or prove compatibility.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. The exact 24-file tarball is checked separately. BPTK-017 and BPTK-022 are Tier 3, so their written acceptance requires a live product walk rather than a new runnable test. These checks do not execute a game or prove compatibility.
 
 ## Benchmark taxonomy
 

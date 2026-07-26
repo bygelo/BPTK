@@ -5,13 +5,13 @@
   "threshold_owner": "BPTK-002",
   "state": "red",
   "gate": "excluded",
-  "exclusion_reason": "No compatibility catalog, deterministic replay, or privacy-safe crash artifact exists.",
+  "exclusion_reason": "Local off and consent report behavior is implemented for package metadata, but no runtime session, replay, crash evidence, expiry, or second-environment reproduction exists.",
   "prerequisite": ["BPTK-002", "BPTK-003", "BPTK-007", "BPTK-024"],
   "promotion_trigger": "Promote when FIX-021 records, replays, compares, redacts, expires, and queries a deterministic session across two clean environments.",
   "expected_failing_assertion": "A compatibility observation cannot be reproduced from a versioned BPTK artifact.",
   "owner_item": "BPTK-028",
-  "active_gate_evidence": "Current compatibility coverage is fixed at zero and no title claim is stored.",
-  "fixture": ["FIX-021"],
-  "procedure": ["Record success, blocked, crash, and community-observation cases with environment and content hash.", "Replay and compare while verifying redaction, consent, expiry, provenance, and status transition."],
+  "active_gate_evidence": "node --test test/package.test.mjs generates a temporary package, proves off writes nothing, and proves consent writes one minimized local report without game or personal data.",
+  "fixture": [],
+  "procedure": ["Generate a temporary package and run record off and consent modes without retaining test output.", "After a runtime exists, record success, blocked, crash, and community-observation cases with environment and content hash.", "Replay and compare while verifying redaction, consent, expiry, provenance, and status transition."],
   "pass_criterion": ["A second environment reproduces the deterministic outcome or records an explained environment difference.", "No proprietary content or personal data enters the shareable artifact."]
 }

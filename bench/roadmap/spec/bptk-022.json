@@ -5,13 +5,13 @@
   "threshold_owner": "BPTK-002",
   "state": "red",
   "gate": "excluded",
-  "exclusion_reason": "No content-addressed asset package, streaming loader, or cache policy exists.",
+  "exclusion_reason": "Content-addressed chunks and atomic package output exist, but no browser streaming loader, resume observation, cache, quota, corruption recovery, or game startup exists.",
   "prerequisite": ["BPTK-015", "BPTK-016", "BPTK-017"],
   "promotion_trigger": "Promote when FIX-015 starts inside the size and time budget, verifies every chunk, resumes, works offline after cache, and recovers from quota or corruption.",
-  "expected_failing_assertion": "The large-asset fixture cannot be packaged and started through a bounded browser path.",
+  "expected_failing_assertion": "Packaged assets cannot be started, resumed, cached, or recovered through a bounded browser runtime path.",
   "owner_item": "BPTK-022",
-  "active_gate_evidence": "The fixture catalog contains no large binary and the validator enforces the planning-only scope.",
+  "active_gate_evidence": "bptk package <project> --asset-mode stream emits atomic content-addressed asset output, while ROADMAP and the written acceptance keep all browser-runtime behavior red.",
   "fixture": ["FIX-015"],
-  "procedure": ["Package and serve the generated asset under normal, interrupted, corrupted, offline, and quota-limited conditions.", "Capture startup, byte, request, cache, integrity, rollback, and memory artifact."],
+  "procedure": ["Package and serve live user-owned asset under normal, interrupted, corrupted, offline, and quota-limited conditions.", "Observe startup, byte, request, cache, integrity, rollback, and memory behavior without committing a retained artifact."],
   "pass_criterion": ["Normal and resumed startup meet the declared budget with verified content.", "Corruption and quota failure never expose partial content as complete."]
 }

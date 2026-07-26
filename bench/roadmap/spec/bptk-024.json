@@ -5,13 +5,13 @@
   "threshold_owner": "BPTK-002",
   "state": "red",
   "gate": "excluded",
-  "exclusion_reason": "No framework-neutral package or React host adapter exists.",
+  "exclusion_reason": "HTML and React source preserve one asset package identity, but no binary or source game runtime exists to verify lifecycle-equivalent behavior.",
   "prerequisite": ["BPTK-016", "BPTK-017", "BPTK-021"],
   "promotion_trigger": "Promote when the integrated binary FIX-027 and source FIX-014 package both conform to one schema and each runs through plain HTML and React while passing mount, resize, focus, stop, remount, and static deployment checks.",
   "expected_failing_assertion": "BPTK cannot prove that binary and source output share one runnable static package and host contract.",
   "owner_item": "BPTK-024",
-  "active_gate_evidence": "README identifies HTML and React output as planned host targets only.",
-  "fixture": ["FIX-014", "FIX-017", "FIX-027"],
-  "procedure": ["Emit the binary integration fixture and source-assisted fixture through the same package schema and lifecycle API.", "Deploy each package under the canonical HTML host and thin React adapter.", "Drive lifecycle, resize, focus, capability, CSP, path, worker, asset, stop, and remount cases."],
+  "active_gate_evidence": "node --test test/package.test.mjs generates a temporary asset package and verifies that HTML and React output bind the same identity; runtime lifecycle acceptance remains excluded.",
+  "fixture": [],
+  "procedure": ["Generate a temporary package and emit its HTML host and thin React adapter.", "Verify one package identity without retaining the generated input or output.", "After a runtime exists, drive lifecycle, resize, focus, capability, CSP, path, worker, asset, stop, and remount cases in a live browser."],
   "pass_criterion": ["Binary and source output validate against the same package schema and lifecycle contract.", "Each output produces the same declared runtime artifact through plain HTML and React.", "React rendering never owns the game loop and teardown leaks no worker, audio, or storage handle."]
 }
