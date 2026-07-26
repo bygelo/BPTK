@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # Copyright 2026 Maphy Technologies
 # SPDX-License-Identifier: Apache-2.0
-"""Validate the BPTK roadmap-only package with the Python standard library."""
+"""Validate the BPTK product and roadmap package with the Python standard library."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -154,12 +153,18 @@ ALLOWED_SPECIAL_PATH = {Path(".gitignore"), Path(".github/workflows/roadmap.yml"
 ALLOWED_MJS_PATH = {
     Path("bin/bptk.mjs"),
     Path("lib/cli.mjs"),
+    Path("lib/corpus.mjs"),
     Path("lib/doctor.mjs"),
+    Path("lib/input.mjs"),
     Path("lib/index.mjs"),
+    Path("lib/inspect.mjs"),
+    Path("lib/legal.mjs"),
+    Path("lib/security.mjs"),
     Path("lib/status.mjs"),
     Path("script/package.mjs"),
     Path("script/status.mjs"),
     Path("test/cli.test.mjs"),
+    Path("test/inspect.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -308,8 +313,13 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "bin/bptk.mjs",
         "data/status.json",
         "lib/cli.mjs",
+        "lib/corpus.mjs",
         "lib/doctor.mjs",
+        "lib/input.mjs",
         "lib/index.mjs",
+        "lib/inspect.mjs",
+        "lib/legal.mjs",
+        "lib/security.mjs",
         "lib/status.mjs",
         "package.json",
     ]
@@ -345,23 +355,10 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
     if source.get("path") != "bench/roadmap/manifest.json" or source.get("sha256") != manifest_hash:
         error.append("data/status.json source path or hash differs from the roadmap manifest")
 
-    git_value: dict[str, str] = {}
-    for key, format_value in (("revision", "%H"), ("committed_at", "%aI")):
-        process = subprocess.run(
-            ["git", "log", "-1", f"--format={format_value}", "--", "bench/roadmap/manifest.json"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if process.returncode != 0 or not process.stdout.strip():
-            error.append(f"unable to resolve roadmap manifest git {key}")
-        else:
-            git_value[key] = process.stdout.strip()
-    if source.get("revision") != git_value.get("revision") or source.get("committed_at") != git_value.get("committed_at"):
-        error.append("data/status.json git source differs from the manifest path history")
-    if git_value.get("committed_at") and status.get("generated_at") != git_value["committed_at"][:10]:
-        error.append("data/status.json generated_at differs from the manifest commit date")
+    if source.get("revision") != f"sha256:{manifest_hash}" or source.get("committed_at") is not None:
+        error.append("data/status.json revision must use the current manifest content hash")
+    if status.get("generated_at") != manifest.get("checked_at"):
+        error.append("data/status.json generated_at differs from manifest checked_at")
 
     if "package-lock.json" in package_content.get("file", []):
         error.append("package-lock.json must not be included in the published tarball")
@@ -656,10 +653,16 @@ def main() -> int:
             for field in ("exclusion_reason", "promotion_trigger", "expected_failing_assertion", "active_gate_evidence"):
                 if not isinstance(spec.get(field), str) or not spec[field].strip():
                     error.append(f"planned {item_id} needs non-empty {field}")
-        if entry.get("promotion_state") in {"implemented", "passing"} and spec.get("gate") != "active":
-            error.append(f"implemented {item_id} must be active")
-        if entry.get("promotion_state") == "passing" and spec.get("state") != "green":
-            error.append(f"passing {item_id} must be green")
+        if entry.get("promotion_state") == "implemented" and (spec.get("state") != "red" or spec.get("gate") != "active"):
+            error.append(f"implemented {item_id} must be red and active")
+        if entry.get("promotion_state") == "passing" and (spec.get("state") != "green" or spec.get("gate") != "active"):
+            error.append(f"passing {item_id} must be green and active")
+        if spec.get("state") not in {"red", "green"} or spec.get("gate") not in {"excluded", "active"}:
+            error.append(f"{item_id} has invalid benchmark state or gate")
+        if entry.get("promotion_state") == "passing":
+            for prerequisite_id in entry.get("prerequisite", []):
+                if item_by_id.get(prerequisite_id, {}).get("promotion_state") != "passing":
+                    error.append(f"passing {item_id} requires passing prerequisite {prerequisite_id}")
 
     threshold_spec = spec_by_item.get("BPTK-002", {})
     threshold_text = json.dumps(threshold_spec, sort_keys=True).lower()
@@ -794,6 +797,11 @@ def main() -> int:
         path = ROOT / file_name
         if path.is_file() and coverage_text not in path.read_text(encoding="utf-8"):
             error.append(f"{file_name} must contain current coverage {coverage_text}")
+    readme_text = (ROOT / "README.md").read_text(encoding="utf-8") if (ROOT / "README.md").is_file() else ""
+    if f"Implemented item: **{implemented_count}**" not in readme_text:
+        error.append(f"README.md must contain current implemented count {implemented_count}")
+    if not re.search(rf"^\| Implemented \| {implemented_count} \|$", roadmap_text, flags=re.MULTILINE):
+        error.append(f"ROADMAP.md must contain current implemented count {implemented_count}")
 
     if len(spec_by_item) != count.get("accepted"):
         error.append("spec count must equal accepted count")
@@ -806,10 +814,14 @@ def main() -> int:
             print(f"- {message}")
         return 1
 
+    active_count = sum(spec.get("gate") == "active" for spec in spec_by_item.values())
+    excluded_count = sum(spec.get("gate") == "excluded" for spec in spec_by_item.values())
+    red_count = sum(spec.get("state") == "red" for spec in spec_by_item.values())
     print(
         "PASS roadmap package: "
         f"{accepted_count} accepted / {implemented_count} implemented / "
-        f"{passing_count} passing; {len(spec_by_item)} red benchmark specification quarantined."
+        f"{passing_count} passing; {red_count} red benchmark specification, "
+        f"{active_count} active / {excluded_count} excluded."
     )
     return 0
 

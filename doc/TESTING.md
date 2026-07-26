@@ -2,23 +2,23 @@
 
 ## Current truth
 
-BPTK has no game-runtime test because it has no game-runtime implementation. The active repository gate validates the roadmap package and the bounded npm diagnostic surface:
+BPTK has no game-runtime test because it has no game-runtime implementation. The active repository gate validates the roadmap package, bounded local-analysis surface, and the Tier 1 safe inspector:
 
 ```sh
 npm run gate
 ```
 
-All 33 product benchmark specification is intentionally red and quarantined from the active gate. A red specification is a future acceptance contract, not evidence that a capability works.
+All 33 product benchmark specification remains red. BPTK-007 is active and implemented-but-red; the other 32 are excluded. A red specification is not evidence that a capability passes.
 
 The gate runs three independent layer:
 
 1. `python3 tool/validate.py` checks the roadmap, legal boundary, package metadata, deterministic status snapshot, and exact allowlist.
-2. `npm test` runs five Node.js CLI test after checking the status snapshot against its committed roadmap source.
+2. `npm test` runs eight Node.js test after checking the status snapshot against its content-addressed roadmap source.
 3. `npm run check:package` asks npm for the dry-run tarball inventory and compares its identity and sorted path list exactly with `bench/npm/content.json`.
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-The npm tests prove only CLI and package behavior: honest default help, deterministic status JSON, bounded environment diagnostics, no-runtime disclaimers, invalid-input failure, and the intended 10-file tarball. They do not open a browser, read a game, test WebAssembly or GPU compatibility, or prove a roadmap capability.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. The exact 15-file tarball is checked separately. These checks do not open a browser, execute a game, or prove compatibility.
 
 ## Benchmark taxonomy
 
@@ -26,19 +26,19 @@ Every accepted roadmap item has exactly one JSON specification under `bench/road
 
 Every runtime specification declares `threshold_owner: "BPTK-002"`. BPTK-002 owns the versioned corpus and the immutable numeric correctness, startup, frame, audio, memory, variance, and sample threshold. Runtime implementation may materialize those predeclared values only from the approved corpus version; it cannot set or relax them after observing its output. BPTK-002 declares `threshold_owner: "self"`; an evidence specification uses `null` unless it consumes the same corpus threshold.
 
-### Runtime benchmark
+### Tier 1 runnable acceptance
 
-Use when a capability must execute code or transform an artifact. A runtime benchmark specifies:
+Only an item already assigned Tier 1 may add a release-blocking runnable check. Input is generated in an operating-system temporary directory or supplied live by the user. No baseline artifact, retained-evidence JSON, or golden fixture is committed.
 
-- synthetic or redistributable fixture;
-- deterministic setup and action;
+- temporary generated or live user input;
+- deterministic, bounded setup and action;
 - observable output, hash, image, audio, trace, timing, or package;
 - supported environment and tolerance;
 - exact failure meaning.
 
-### Evidence check
+### Tier 3 written acceptance
 
-Use when the item is a legal, research, architecture, governance, or integration decision that cannot honestly be represented as a runtime assertion. An evidence check specifies:
+Tier 3 uses a written falsifiable acceptance line only. An ordinary unit test may protect shared engineering code but cannot promote a Tier 3 roadmap item or count as its acceptance evidence. A written acceptance specifies:
 
 - required decision or audit artifact;
 - primary source and pinned revision;
@@ -66,28 +66,28 @@ The validator rejects missing, duplicate, orphaned, prematurely active, or passi
 
 ## Promotion rule
 
-A benchmark moves into the active gate only in the same change that adds its implementation and fixture:
+A Tier 1 benchmark moves into the active gate only in the same product-bearing change that adds its implementation and runnable check:
 
 1. implement the roadmap deliverable;
-2. add only redistributable or synthetic fixture;
-3. run the benchmark and capture the expected red result before the fix where practical;
-4. run it again after the fix and capture green evidence;
+2. generate bounded temporary input or use a live observation without committing a fixture;
+3. run the check and verify the independent algorithmic or browser observation;
+4. keep the result ephemeral rather than retaining a baseline or evidence JSON;
 5. change the manifest `promotion_state` from `planned` to `implemented`;
-6. change the specification `state` to `green` and `gate` to `active`;
+6. change the specification `gate` to `active`; it stays red until the full acceptance and prerequisite pass;
 7. increment `implemented` and `passing` count only when the active command passes;
 8. update ROADMAP.md, README.md, CHANGELOG.md, and this document in the same change.
 
 An implemented item with a failing benchmark remains implemented but not passing. A passing count cannot exceed implemented count.
 
-## Fixture policy
+## Input policy
 
-The planning fixture catalog is at `bench/roadmap/fixture/catalog.json`. Future executable fixture must be:
+The planning fixture catalog remains historical specification data and is not a product deliverable. Runnable Tier 1 input must be:
 
-- authored for BPTK, public domain, or explicitly redistributable;
+- generated in a temporary directory, supplied locally by the user, public domain, or explicitly redistributable;
 - minimal enough to isolate one behavior;
-- pinned by content hash and generator revision;
+- removed after the check unless it is the user's own input;
 - free of commercial game code, asset, firmware, ROM, key, token, or credential;
-- deterministic or supplied with an explicit tolerance;
+- evaluated by an independent invariant or explicit live observation rather than a committed golden output;
 - runnable without an external service unless the benchmark is specifically a network integration check.
 
 Commercial title is metadata-only and user-supplied. A title observation can guide work but cannot become an automated fixture unless its rights permit it.

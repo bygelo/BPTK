@@ -1,5 +1,7 @@
 # Legal and distribution boundary
 
+The `bptk legal <project>` command scans declared license and provenance signal locally. Its `review_required` result is informational and cannot approve a component, public name, distribution, or reuse strategy. BPTK-001 remains red until a named reviewer records the required decision.
+
 ## Status and purpose
 
 This is an engineering control, not legal advice. It prevents technical possibility from being confused with permission to copy, modify, link, distribute, host, or circumvent. Qualified counsel must review the public name, combined-work architecture, upstream component graph, and any commercial title program before a runtime launch.

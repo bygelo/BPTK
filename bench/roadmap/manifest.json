@@ -2,14 +2,14 @@
   "schema_version": 1,
   "project": "Browser Porting Toolkit",
   "organization": "Maphy Technologies",
-  "checked_at": "2026-07-18",
-  "planning_state": "roadmap-only",
+  "checked_at": "2026-07-26",
+  "planning_state": "product-analysis",
   "count": {
     "raw": 46,
     "accepted": 33,
     "rejected": 8,
     "deferred": 5,
-    "implemented": 0,
+    "implemented": 1,
     "passing": 0
   },
   "item": [
@@ -102,7 +102,7 @@
       "failure_meaning": "BPTK cannot uphold its minimum promise of accepting broad input and explaining what is required.",
       "risk": "Format ambiguity and hostile archive can cause unsafe parsing or misleading lane selection.",
       "source_evidence": ["SRC-002", "SRC-003", "SRC-008", "SRC-009", "SRC-010", "SRC-011"],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-008",

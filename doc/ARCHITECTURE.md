@@ -2,13 +2,21 @@
 
 ## Status
 
-This document describes the target architecture, not implemented software. Every component below remains planned until its roadmap benchmark is promoted to the active gate and passes.
+This document describes both the implemented local-analysis boundary and the target runtime architecture. Local analysis is not game execution or browser compatibility.
 
 ## Repository tooling boundary
 
-The published `@bygelo/bptk@0.1.0-alpha.0` package is control-plane metadata, not an implementation of this target architecture. Its `status` command reads a bundled, revisioned roadmap snapshot, and its `doctor` command reports objective Node.js and operating-system facts. It has no importer, PE loader, CPU core, Win32 shim, graphics translator, browser host, game-content reader, or compatibility runner.
+The current package source exposes `status`, `doctor`, `legal`, `corpus status`, `security`, and `inspect`. The analysis command uses Node.js built-ins only and never executes or uploads imported content. It has no PE loader, CPU core, Win32 shim, graphics translator, browser host, or compatibility runner.
 
-Publishing that bounded CLI does not promote any roadmap item: implementation and passing coverage remain 0 / 33. A future runtime must enter through the benchmark promotion rule rather than expanding the CLI by implication.
+BPTK-007 is implemented but red because its operational prerequisite remain red and its complete accepted-input matrix has not passed. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
+
+## Implemented local-analysis boundary
+
+`lib/input.mjs` resolves a local file or directory, rejects symbolic-link roots, refuses path escape, bounds entry count, depth, and per-file size, and does not follow nested symbolic links. The reader returns metadata plus a bounded file prefix; it never launches content or opens a network connection.
+
+`lib/inspect.mjs` recognizes PE and DOS signatures, ZIP and OLE container signatures, source projects with native build metadata, and common engine-asset suffix. Its terminal result is `classified`, with a lane and explicit blocker. Classification is not compatibility.
+
+`lib/legal.mjs`, `lib/corpus.mjs`, and `lib/security.mjs` expose missing review, denominator, threshold, and threat-control state. Each fails closed: no absent reviewer is inferred and no local scan is called approval.
 
 ## Product boundary
 
@@ -32,10 +40,10 @@ The report is a valid terminal output. Unsupported input must fail closed with a
 
 ## Shared workbench
 
-All lane share a planned control plane:
+All lane share a control plane. Only bounded import inspection is implemented today:
 
-- **Importer**: reads local folder, archive, selected installer, executable, source tree, and engine asset without executing imported code.
-- **Inspector**: identifies PE architecture, import table, graphics API, middleware hint, asset format, source build system, required browser capability, and known blocker.
+- **Importer**: currently reads bounded local metadata and file prefixes for folder, archive, installer container, executable, source tree, and engine asset without executing imported code.
+- **Inspector**: currently identifies PE architecture, container or source form, candidate lane, and known blocker. Import-table, graphics-API, and middleware analysis remain planned.
 - **Planner**: selects binary, source, engine, or unsupported state and produces ordered remediation.
 - **Benchmark runner**: executes synthetic and redistributable fixture and records deterministic artifact.
 - **Packager**: emits a static browser package plus plain HTML and optional React adapter.

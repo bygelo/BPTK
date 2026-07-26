@@ -9,8 +9,13 @@
     "bin/bptk.mjs",
     "data/status.json",
     "lib/cli.mjs",
+    "lib/corpus.mjs",
     "lib/doctor.mjs",
+    "lib/input.mjs",
     "lib/index.mjs",
+    "lib/inspect.mjs",
+    "lib/legal.mjs",
+    "lib/security.mjs",
     "lib/status.mjs",
     "package.json"
   ]

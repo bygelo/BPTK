@@ -4,7 +4,23 @@ All notable planning and implementation change will be recorded here.
 
 ## Unreleased
 
-No unreleased change.
+### Added
+
+- Added `legal`, `corpus status`, `security`, and `inspect` as bounded local-analysis commands.
+- Added safe path traversal with entry, depth, and file-size limits; symbolic-link roots are rejected and nested symbolic links are never followed.
+- Added PE32, source-project, archive, installer-container, engine-asset, folder, and unknown-file classification without execution or upload.
+- Added temporary-input Tier 1 checks for PE32 classification, source classification, and symbolic-link refusal without committed fixtures or retained results.
+
+### Changed
+
+- Promoted BPTK-007 to implemented-but-red while its approval, corpus, foundation, and source-pipeline prerequisite remain red.
+- Replaced the self-referential git revision in `data/status.json` with a deterministic manifest content revision so a product checkpoint remains valid before and after commit.
+- Expanded the exact dependency-free package inventory from 10 to 15 files.
+
+### Known gap
+
+- BPTK-001, BPTK-002, and BPTK-004 still require genuine named review; command output does not constitute approval.
+- No input is executable through BPTK, and no game-runtime or browser-package behavior passes yet.
 
 ## 0.1.0-alpha.0 — 2026-07-19
 

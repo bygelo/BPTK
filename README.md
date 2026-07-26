@@ -2,7 +2,7 @@
 
 Browser Porting Toolkit (BPTK) is a proposed Maphy Technologies toolkit for evaluating, adapting, testing, and packaging Windows games for the browser.
 
-This repository contains the research-backed roadmap, its validation harness, and a dependency-free pre-alpha npm CLI for reading roadmap status and local environment facts. It does **not** contain a working game runtime, and no Windows game has been shown to run through BPTK yet.
+This repository contains the research-backed roadmap and a dependency-free pre-alpha npm CLI for local license, corpus, security, and input analysis. It does **not** contain a working game runtime, and no Windows game has been shown to run through BPTK yet.
 
 ## Quick start
 
@@ -12,9 +12,13 @@ Install the public roadmap-tooling preview with Node.js 22 or later:
 npm install --global @bygelo/bptk@0.1.0-alpha.0
 bptk status
 bptk doctor
+bptk legal ./project
+bptk corpus status
+bptk security ./game
+bptk inspect ./game
 ```
 
-`status` reads a bundled, revisioned roadmap snapshot. `doctor` reports Node and operating-system facts. Neither command imports, inspects, transforms, executes, or tests a game; both state that no game runtime exists.
+`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it. None of these commands runs or transforms a game.
 
 To validate the source repository, install its dependency-free lockfile and run the complete gate:
 
@@ -25,7 +29,7 @@ npm ci --ignore-scripts
 npm run gate
 ```
 
-The source gate requires Node.js 22 or later and Python 3. The roadmap-only validator remains available as `python3 tool/validate.py`.
+The source gate requires Node.js 22 or later and Python 3. The product-and-roadmap validator remains available as `python3 tool/validate.py`.
 
 ## Product thesis
 
@@ -65,9 +69,9 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Accepted item with benchmark specification: **33**
 - Rejected candidate: **8**
 - Deferred candidate: **5**
-- Implemented item: **0**
+- Implemented item: **1**
 - Passing roadmap benchmark: **0 / 33 (0%)**
-- Published npm surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap status and environment diagnostics only
+- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics plus bounded local analysis; a new registry release has not been made from this branch
 
 Start with [ROADMAP.md](https://github.com/bygelo/BPTK/blob/main/ROADMAP.md), then read the [architecture](https://github.com/bygelo/BPTK/blob/main/doc/ARCHITECTURE.md), [source audit](https://github.com/bygelo/BPTK/blob/main/doc/source-audit.md), [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md), [third-party inventory](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md), [test contract](https://github.com/bygelo/BPTK/blob/main/doc/TESTING.md), [release procedure](https://github.com/bygelo/BPTK/blob/main/doc/RELEASE.md), and [contribution guide](https://github.com/bygelo/BPTK/blob/main/CONTRIBUTING.md).
 
@@ -79,7 +83,7 @@ The repository package is machine-checkable with one command:
 npm run gate
 ```
 
-The gate checks roadmap count, dependency integrity, item-to-benchmark mapping, promotion state, local link, singular naming, the exact dependency-free npm package surface, the deterministic status snapshot, CLI behavior, and the intended tarball file list.
+The gate checks roadmap count, dependency integrity, item-to-benchmark mapping, promotion state, local link, singular naming, the exact dependency-free npm package surface, the content-addressed status snapshot, CLI behavior, safe-inspection checks, and the intended tarball file list.
 
 The same command runs on Node.js 22 and 24 for every push and pull request through the repository's GitHub Actions gate.
 
@@ -89,6 +93,6 @@ Browser Porting Toolkit is a working name for a Maphy Technologies project. It i
 
 ## License state
 
-BPTK-authored material in this repository and the `@bygelo/bptk` tarball is licensed under the [Apache License 2.0](https://github.com/bygelo/BPTK/blob/main/LICENSE), with copyright and repository status recorded in [NOTICE](https://github.com/bygelo/BPTK/blob/main/NOTICE). The npm package has zero package dependency and uses only Node.js built-in modules; it incorporates no third-party software or game content. Factual prior-art references are not bundled dependencies.
+BPTK-authored material in this repository and the `@bygelo/bptk` tarball is licensed under the [Apache License 2.0](https://github.com/bygelo/BPTK/blob/main/LICENSE), with copyright and repository status recorded in [NOTICE](https://github.com/bygelo/BPTK/blob/main/NOTICE). The package remains dependency-free and uses only Node.js built-in modules; it incorporates no third-party software or game content. Local analysis reads bounded metadata and prefixes only. Factual prior-art references are not bundled dependencies.
 
 Apache-2.0 does not relicense a future dependency, user-supplied game, trademark, proprietary asset, or restricted SDK. The [third-party policy](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md) and [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md) require component-level provenance and obligation review before upstream material enters the repository. BPTK-001 remains planned until the runtime reuse graph and public-name path receive their required review.

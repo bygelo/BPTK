@@ -1,7 +1,7 @@
 {
   "name": "@bygelo/bptk",
   "version": "0.1.0-alpha.0",
-  "description": "Pre-alpha roadmap status and environment diagnostics for the Browser Porting Toolkit.",
+  "description": "Pre-alpha local analysis and roadmap diagnostics for the Browser Porting Toolkit.",
   "type": "module",
   "main": "./lib/index.mjs",
   "exports": {
