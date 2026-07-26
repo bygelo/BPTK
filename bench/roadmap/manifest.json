@@ -9,7 +9,7 @@
     "accepted": 33,
     "rejected": 8,
     "deferred": 5,
-    "implemented": 1,
+    "implemented": 2,
     "passing": 0
   },
   "item": [
@@ -45,12 +45,12 @@
       "tier": "P0",
       "kind": "runtime",
       "prerequisite": ["BPTK-001", "BPTK-002"],
-      "deliverable": "A deterministic local and CI runner that executes active fixture, retains artifact, enforces quarantine metadata, and derives coverage count.",
+      "deliverable": "A deterministic local and CI runner that executes live or temporary generated checks, retains no evidence artifact, enforces promotion metadata, and derives coverage count.",
       "benchmark_id": "BENCH-003",
       "failure_meaning": "Roadmap status can change without executable evidence or denominator reconciliation.",
       "risk": "Flaky browser artifact or mutable fixture would make promotion meaningless.",
       "source_evidence": ["SRC-002", "SRC-003", "SRC-011", "SRC-013"],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-004",

@@ -8,15 +8,21 @@
     "README.md",
     "bin/bptk.mjs",
     "data/status.json",
+    "lib/benchmark.mjs",
     "lib/cli.mjs",
     "lib/corpus.mjs",
     "lib/doctor.mjs",
+    "lib/foundation.mjs",
     "lib/input.mjs",
     "lib/index.mjs",
     "lib/inspect.mjs",
     "lib/legal.mjs",
+    "lib/pe.mjs",
+    "lib/port.mjs",
+    "lib/run.mjs",
     "lib/security.mjs",
     "lib/status.mjs",
+    "lib/toolchain.mjs",
     "package.json"
   ]
 }

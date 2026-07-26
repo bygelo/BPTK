@@ -8,17 +8,17 @@ BPTK has no game-runtime test because it has no game-runtime implementation. The
 npm run gate
 ```
 
-All 33 product benchmark specification remains red. BPTK-007 is active and implemented-but-red; the other 32 are excluded. A red specification is not evidence that a capability passes.
+All 33 product benchmark specification remains red. BPTK-003 and BPTK-007 are active and implemented-but-red; the other 31 are excluded. A red specification is not evidence that a capability passes.
 
 The gate runs three independent layer:
 
 1. `python3 tool/validate.py` checks the roadmap, legal boundary, package metadata, deterministic status snapshot, and exact allowlist.
-2. `npm test` runs eight Node.js test after checking the status snapshot against its content-addressed roadmap source.
+2. `npm test` runs nine Node.js test after checking the status snapshot against its content-addressed roadmap source.
 3. `npm run check:package` asks npm for the dry-run tarball inventory and compares its identity and sorted path list exactly with `bench/npm/content.json`.
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. The exact 15-file tarball is checked separately. These checks do not open a browser, execute a game, or prove compatibility.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. The exact 21-file tarball is checked separately. These checks do not open a browser, execute a game, or prove compatibility.
 
 ## Benchmark taxonomy
 

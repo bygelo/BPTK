@@ -6,9 +6,9 @@ This document describes both the implemented local-analysis boundary and the tar
 
 ## Repository tooling boundary
 
-The current package source exposes `status`, `doctor`, `legal`, `corpus status`, `security`, and `inspect`. The analysis command uses Node.js built-ins only and never executes or uploads imported content. It has no PE loader, CPU core, Win32 shim, graphics translator, browser host, or compatibility runner.
+The current package source exposes `status`, `doctor`, `legal`, `corpus status`, `security`, `inspect`, `benchmark`, `foundation compare`, `port --source`, and `run`. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper but no CPU core, Win32 shim, graphics translator, browser host, or compatibility runner.
 
-BPTK-007 is implemented but red because its operational prerequisite remain red and its complete accepted-input matrix has not passed. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
+BPTK-003 and BPTK-007 are implemented but red because their operational prerequisite remain red. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
 
 ## Implemented local-analysis boundary
 
@@ -17,6 +17,12 @@ BPTK-007 is implemented but red because its operational prerequisite remain red 
 `lib/inspect.mjs` recognizes PE and DOS signatures, ZIP and OLE container signatures, source projects with native build metadata, and common engine-asset suffix. Its terminal result is `classified`, with a lane and explicit blocker. Classification is not compatibility.
 
 `lib/legal.mjs`, `lib/corpus.mjs`, and `lib/security.mjs` expose missing review, denominator, threshold, and threat-control state. Each fails closed: no absent reviewer is inferred and no local scan is called approval.
+
+`lib/benchmark.mjs` generates its input in memory, repeats a deterministic digest operation, and checks content-addressed status/count invariants. Its live result is not retained and cannot promote while BPTK-001 and BPTK-002 are red.
+
+`lib/foundation.mjs` and `lib/port.mjs` combine real input classification with local executable discovery. They report that Emscripten and the SDL/OpenGL adapter are absent on this host and never call a scaffold a runnable package.
+
+`lib/pe.mjs` maps a bounded PE32/i386 image, validates section/file/image range, applies supported HIGHLOW relocation when a different base is requested, identifies import and TLS directories, and reports stack, heap, and entry-point metadata. `lib/run.mjs` exposes this through a raw executable or a directory containing `bptk.json`. The entry point is never executed; import resolution, TLS callback execution, i386, and Win32 remain blockers.
 
 ## Product boundary
 

@@ -10,17 +10,22 @@ All notable planning and implementation change will be recorded here.
 - Added safe path traversal with entry, depth, and file-size limits; symbolic-link roots are rejected and nested symbolic links are never followed.
 - Added PE32, source-project, archive, installer-container, engine-asset, folder, and unknown-file classification without execution or upload.
 - Added temporary-input Tier 1 checks for PE32 classification, source classification, and symbolic-link refusal without committed fixtures or retained results.
+- Added `benchmark` with deterministic in-memory checks and no retained result artifact.
+- Added `foundation compare` with measured input and local-toolchain signals.
+- Added `port --source` diagnosis that reports missing Emscripten and browser-adapter work without treating a scaffold as a port.
+- Added `run` PE32 mapping for bounded header, section, relocation, import-directory, TLS-directory, stack, heap, and entry-point inspection without guest execution.
 
 ### Changed
 
 - Promoted BPTK-007 to implemented-but-red while its approval, corpus, foundation, and source-pipeline prerequisite remain red.
 - Replaced the self-referential git revision in `data/status.json` with a deterministic manifest content revision so a product checkpoint remains valid before and after commit.
-- Expanded the exact dependency-free package inventory from 10 to 15 files.
+- Promoted BPTK-003 to implemented-but-red and expanded the exact dependency-free package inventory from 10 to 21 files.
 
 ### Known gap
 
 - BPTK-001, BPTK-002, and BPTK-004 still require genuine named review; command output does not constitute approval.
 - No input is executable through BPTK, and no game-runtime or browser-package behavior passes yet.
+- Full SDL/OpenGL source output, i386 CPU behavior, Win32 import resolution, TLS callback execution, and game-loop execution remain weeks-scale.
 
 ## 0.1.0-alpha.0 — 2026-07-19
 
