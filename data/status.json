@@ -3,19 +3,19 @@
   "package": "@bygelo/bptk",
   "version": "0.1.0-alpha.0",
   "snapshot": true,
-  "generated_at": "2026-07-26",
+  "generated_at": "2026-07-28",
   "source": {
     "path": "bench/roadmap/manifest.json",
-    "revision": "sha256:60f33c5576ceddedd8b9c23c841b231eea0b84b5a3b93bd09d25418b02372470",
+    "revision": "sha256:90b5dbaed5ecf9da472ea21f362a103faf9531ef43687fba07006e25d8173279",
     "committed_at": null,
-    "sha256": "60f33c5576ceddedd8b9c23c841b231eea0b84b5a3b93bd09d25418b02372470"
+    "sha256": "90b5dbaed5ecf9da472ea21f362a103faf9531ef43687fba07006e25d8173279"
   },
   "count": {
     "raw": 46,
     "accepted": 33,
     "rejected": 8,
     "deferred": 5,
-    "implemented": 3,
+    "implemented": 4,
     "passing": 0
   }
 }

@@ -2,7 +2,7 @@
 
 Browser Porting Toolkit (BPTK) is a proposed Maphy Technologies toolkit for evaluating, adapting, testing, and packaging Windows games for the browser.
 
-This repository contains the research-backed roadmap and a dependency-free pre-alpha npm CLI for local license, corpus, security, and input analysis. It does **not** contain a working game runtime, and no Windows game has been shown to run through BPTK yet.
+This repository contains the research-backed roadmap and a dependency-free pre-alpha npm CLI for local license, corpus, security, input analysis, and bounded static PE32 mapping. It does **not** contain a guest-execution game runtime, and no Windows game has been shown to run through BPTK yet.
 
 ## Quick start
 
@@ -38,7 +38,26 @@ bptk import ./project.bptk-package --run
 bptk report ./project.bptk-package --record off
 ```
 
-`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts; `doctor --graphics` launches the installed Chrome against an ephemeral data document and reports observed browser capabilities. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it; its research targets combine bounded input signals with live ephemeral browser capability and return a defer decision while prototypes are absent. `benchmark` runs an ephemeral tooling self-check; the performance profile verifies package chunk integrity on cold and warm reads but cannot measure a game. `foundation compare` measures locally available routes. `port --source` and `port --engine` report toolchain, adapter, and rights blockers without emitting a port. `run` maps a PE32 image or reports an asset-only package without executing it; its save, network, and control options validate boundaries only. `import --run` classifies and diagnoses a package without staging or executing it. `package --asset-mode stream` writes content-addressed chunks through an atomic staging directory. `package --host` emits HTML or React source bound to the same package identity. `package --thread` uses a live capability observation to select or block a configuration, not a worker runtime. `compatibility --browser` observes Chrome or reports another profile's local availability without making a support claim. `report --record off` writes nothing; `consent` writes one minimized local report.
+`status` reads a bundled, content-addressed roadmap snapshot. `doctor` reports Node and operating-system facts; `doctor --graphics` launches the installed Chrome against an ephemeral data document and reports observed browser capabilities. `legal` scans declared license and provenance signals without granting approval. `corpus status` reports whether a local denominator is present and reviewed. `security` performs a bounded, read-only threat scan. `inspect` classifies supported local input without executing or uploading it; its research targets combine bounded input signals with live ephemeral browser capability and return a defer decision while prototypes are absent. `benchmark` runs an ephemeral tooling self-check; the performance profile verifies package chunk integrity on cold and warm reads but cannot measure a game. `foundation compare` measures locally available routes. `port --source` and `port --engine` report toolchain, adapter, and rights blockers without emitting a port. `run` maps PE32 section, HIGHLOW relocation, ordinary named or ordinal import, TLS metadata, memory reserve, and executable entry-point state without executing imported code; its save, network, and control options validate boundaries only. `import --run` classifies and diagnoses a package without staging or executing it. `package --asset-mode stream` writes content-addressed chunks through an atomic staging directory. `package --host` emits HTML or React source bound to the same package identity. `package --thread` uses a live capability observation to select or block a configuration, not a worker runtime. `compatibility --browser` observes Chrome or reports another profile's local availability without making a support claim. `report --record off` writes nothing; `consent` writes one minimized local report.
+
+A PE32 package is a local directory with the executable and a strict `bptk.json`. The optional singular `import` array declares exact static bindings for the package; an omitted or unmatched binding remains a named blocker. Binding never executes the imported function or guest entry point.
+
+```json
+{
+  "schema_version": 1,
+  "executable": "game.exe",
+  "load_base": 5242880,
+  "import": [
+    {
+      "library": "demo.dll",
+      "symbol": "NamedCall",
+      "address": 4293918720
+    }
+  ]
+}
+```
+
+Run `bptk run ./package --json` to inspect the mapped image, deterministic image hash, resolution blocker, runtime blocker, and `is_executed: false`.
 
 To validate the source repository, install its dependency-free lockfile and run the complete gate:
 
@@ -89,9 +108,9 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Accepted item with benchmark specification: **33**
 - Rejected candidate: **8**
 - Deferred candidate: **5**
-- Implemented item: **3**
+- Implemented item: **4**
 - Passing roadmap benchmark: **0 / 33 (0%)**
-- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis and research, live self-check, toolchain comparison, PE32 mapping, ephemeral Chrome capability probing, asset packaging, host emission, local policy diagnosis, safe import diagnosis, and local reporting; a new registry release has not been made from this branch
+- Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis and research, live self-check, toolchain comparison, PE32 static mapping and declared import resolution, ephemeral Chrome capability probing, asset packaging, host emission, local policy diagnosis, safe import diagnosis, and local reporting; a new registry release has not been made from this branch
 
 Start with [ROADMAP.md](https://github.com/bygelo/BPTK/blob/main/ROADMAP.md), then read the [architecture](https://github.com/bygelo/BPTK/blob/main/doc/ARCHITECTURE.md), [source audit](https://github.com/bygelo/BPTK/blob/main/doc/source-audit.md), [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md), [third-party inventory](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md), [test contract](https://github.com/bygelo/BPTK/blob/main/doc/TESTING.md), [release procedure](https://github.com/bygelo/BPTK/blob/main/doc/RELEASE.md), and [contribution guide](https://github.com/bygelo/BPTK/blob/main/CONTRIBUTING.md).
 

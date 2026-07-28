@@ -4,14 +4,14 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No PE32 loader exists in BPTK.",
+  "gate": "active",
+  "exclusion_reason": "The bounded static PE32 mapper is implemented, but BPTK-005 and BPTK-007 remain red and the approved BPTK-002 corpus input is unavailable.",
   "prerequisite": ["BPTK-005", "BPTK-007"],
-  "promotion_trigger": "Promote when FIX-001 valid image reaches its expected entry state and malformed image is rejected safely.",
-  "expected_failing_assertion": "The PE32 fixture cannot be mapped, relocated, resolved, and entered.",
+  "promotion_trigger": "Pass when approved live or temporarily generated FIX-001 input maps at the preferred and relocated base with invariant-derived section, import, TLS, memory, and entry metadata after BPTK-005 and BPTK-007 pass.",
+  "expected_failing_assertion": "BPTK-005, BPTK-007, and the approved corpus input remain red or unavailable, so the implemented mapper cannot promote to passing.",
   "owner_item": "BPTK-008",
-  "active_gate_evidence": "The planning validator confirms that no runtime product code is present.",
+  "active_gate_evidence": "bptk run <temporary-package> --json maps bounded PE32 input through the product CLI; the live A-J product walk checks preferred and relocated base, named and ordinal import binding, unresolved import reporting, TLS metadata without execution, memory boundary, malformed range rejection, and deterministic repetition.",
   "fixture": ["FIX-001"],
-  "procedure": ["Load generated valid and invalid PE32 image under bounded memory.", "Compare section, relocation, import, TLS, stack, heap, and entry artifact."],
-  "pass_criterion": ["The valid image matches the golden memory map and entry state.", "Every invalid image returns its specific error without escape or partial state."]
+  "procedure": ["Generate valid and malformed PE32 input in an operating-system temporary directory and remove it after the product walk.", "Run bptk run against raw executable and package-directory surfaces at preferred and relocated base.", "Check section, HIGHLOW relocation, named and ordinal import binding, unresolved import reason, TLS callback metadata, stack, heap, executable entry point, deterministic image hash, and is_executed false against independently calculated invariants."],
+  "pass_criterion": ["Every valid case returns the invariant-derived static image and the repeated run returns the same image hash and report.", "Every malformed descriptor, thunk, name, header, and section case returns its specific bounded error without partial state.", "No imported instruction or TLS callback executes."]
 }

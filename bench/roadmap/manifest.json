@@ -2,14 +2,14 @@
   "schema_version": 1,
   "project": "Browser Porting Toolkit",
   "organization": "Maphy Technologies",
-  "checked_at": "2026-07-26",
+  "checked_at": "2026-07-28",
   "planning_state": "product-analysis",
   "count": {
     "raw": 46,
     "accepted": 33,
     "rejected": 8,
     "deferred": 5,
-    "implemented": 3,
+    "implemented": 4,
     "passing": 0
   },
   "item": [
@@ -115,7 +115,7 @@
       "failure_meaning": "An eligible 32-bit executable cannot reach a deterministic entry point with a correct memory image.",
       "risk": "Malformed PE structure can produce memory corruption, unbounded allocation, or silent import mismatch.",
       "source_evidence": ["SRC-002", "SRC-003", "SRC-004"],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-009",

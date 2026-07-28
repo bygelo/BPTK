@@ -14,6 +14,7 @@ All notable planning and implementation change will be recorded here.
 - Added `foundation compare` with measured input and local-toolchain signals.
 - Added `port --source` diagnosis that reports missing Emscripten and browser-adapter work without treating a scaffold as a port.
 - Added `run` PE32 mapping for bounded header, section, relocation, import-directory, TLS-directory, stack, heap, and entry-point inspection without guest execution.
+- Added deterministic PE32 static-image resolution for declared named and ordinal import, bounded TLS callback metadata, executable entry-point validation, and precise malformed-range rejection through `bptk run`.
 - Added `doctor --graphics`, which launches the installed Chrome against an ephemeral data document and observes WebGPU, WebGL2, WebGL, AudioContext, isolation, SharedArrayBuffer, and renderer state.
 - Added atomic content-addressed asset packaging with one-megabyte chunk deduplication and no bundled game runtime.
 - Added HTML and React host source that preserves one package identity without moving a game loop into React.
@@ -37,12 +38,13 @@ All notable planning and implementation change will be recorded here.
 - Expanded the exact dependency-free package inventory to 24 files; packaging and report surfaces remain red until their runtime prerequisite exist.
 - Expanded the exact dependency-free package inventory to 27 files; platform diagnostics remain planned and red until their runtime prerequisite exist.
 - Expanded the exact dependency-free package inventory to 30 files; save, integration, and research behavior remain red until their execution or prototype prerequisite exist.
+- Promoted BPTK-008 to implemented-but-red after its disposable A-J product walk passed; foundation, importer, and approved corpus evidence remain red.
 
 ### Known gap
 
 - BPTK-001, BPTK-002, and BPTK-004 still require genuine named review; command output does not constitute approval.
 - No input is executable through BPTK, and no game-runtime or browser-package behavior passes yet.
-- Full SDL/OpenGL source output, i386 CPU behavior, Win32 import resolution, TLS callback execution, and game-loop execution remain weeks-scale.
+- Full SDL/OpenGL source output, i386 CPU behavior, Win32 API behavior behind declared import binding, TLS callback execution, and game-loop execution remain weeks-scale.
 - The current Chrome profile exposes WebGL2 but lacks cross-origin isolation; Firefox and the remaining declared browser profile have not been observed.
 - The live matrix walk observed Chrome 150 as WebGL2-only and unisolated, found Safari installed but unautomated, and found Firefox absent; no browser support state is claimed.
 

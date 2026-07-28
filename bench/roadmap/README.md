@@ -1,6 +1,6 @@
 # Roadmap benchmark package
 
-This directory turns ROADMAP.md into a mechanically checkable contract. It does not contain a working BPTK runtime.
+This directory turns ROADMAP.md into a mechanically checkable contract. It does not contain the BPTK product; the implemented static PE32 mapper and other user surfaces live under `lib/` and `bin/`.
 
 The separate [`bench/npm/content.json`](../npm/content.json) file freezes the bounded npm tarball surface. That packaging check is repository tooling and does not implement or promote any roadmap item.
 
@@ -16,13 +16,13 @@ All collection key remain singular by repository convention: `item`, `prerequisi
 ## Current state
 
 - Accepted roadmap item: 33
-- Planned and quarantined: 33
-- Implemented: 0
+- Planned and quarantined: 29
+- Implemented: 4
 - Passing: 0
-- Active product benchmark: 0
+- Active product benchmark: 4
 - Active planning gate: `python3 tool/validate.py`
 
-Every specification is red because its deliverable does not exist. Every specification is excluded from the active gate so the repository can remain green without pretending that future capability passes.
+Every specification remains red. Four product surface are implemented with active acceptance contracts, while unmet prerequisite or matrix evidence prevents passing status. The other 29 remain excluded so the repository can stay green without pretending that future capability passes.
 
 ## Required specification field
 
@@ -44,18 +44,18 @@ Every specification is red because its deliverable does not exist. Every specifi
 | `procedure` | Reproducible action |
 | `pass_criterion` | Observable success condition |
 
-Every runtime golden, tolerance, performance budget, variance allowance, and sample requirement consumes the immutable threshold metadata frozen by BPTK-002. A later implementation may fill the predeclared keys from that versioned corpus; it may not choose an easier threshold after seeing an implementation result. Changing a threshold requires a new corpus version and an explicit denominator change record.
+Every runtime tolerance, performance budget, variance allowance, and sample requirement consumes the immutable threshold metadata frozen by BPTK-002. A later implementation may fill the predeclared keys from that versioned corpus; it may not choose an easier threshold after seeing an implementation result. Changing a threshold requires a new corpus version and an explicit denominator change record.
 
 ## Promotion
 
 Do not merely edit a benchmark from red to green. Promotion is one atomic implementation change:
 
 1. add the scoped implementation;
-2. add the approved fixture content and license metadata;
-3. prove the expected red failure where practical;
-4. prove the green result;
-5. activate the benchmark in the real gate;
-6. retain artifact and environment metadata;
+2. restate the user behavior, metric, pass condition, and deciding product command or observation;
+3. use live or operating-system temporary input when a runnable check is justified by a named regression risk;
+4. prove the expected red failure where practical and the implemented behavior at its real surface;
+5. activate the acceptance contract while leaving unmet prerequisite truth red;
+6. remove temporary input without committing a baseline, golden file, or retained-evidence JSON;
 7. update the manifest count and synchronized documentation.
 
 The validator rejects an active benchmark whose item is still planned, an orphan spec, a missing spec, a duplicate ID, an invalid dependency, or a count that was edited without the matching state change.
@@ -68,4 +68,4 @@ Run from the repository root:
 python3 tool/validate.py
 ```
 
-The expected planning result is a pass reporting 33 accepted item and 33 quarantined red specification.
+The expected planning result is a pass reporting 33 accepted item, 4 implemented item, 0 passing item, and 33 red specification with 4 active and 29 excluded.

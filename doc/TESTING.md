@@ -2,13 +2,13 @@
 
 ## Current truth
 
-BPTK has no game-runtime test because it has no game-runtime implementation. The active repository gate validates the roadmap package, bounded local-analysis surface, and the Tier 1 safe inspector:
+BPTK has no guest-execution game-runtime test because it has no guest-execution runtime. The active repository gate validates the roadmap package, bounded local-analysis surface, and the Tier 1 safe inspector:
 
 ```sh
 npm run gate
 ```
 
-All 33 product benchmark specification remains red. BPTK-003, BPTK-007, and BPTK-017 are active and implemented-but-red; the other 30 are excluded. A red specification is not evidence that a capability passes.
+All 33 product benchmark specification remains red. BPTK-003, BPTK-007, BPTK-008, and BPTK-017 are active and implemented-but-red; the other 29 are excluded. A red specification is not evidence that a capability passes.
 
 The gate runs three independent layer:
 
@@ -18,7 +18,7 @@ The gate runs three independent layer:
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. Two BPTK-026 checks generate a temporary package and prove that off denies and prompt requires consent with zero network attempts; they do not test a runtime bridge, so BPTK-026 stays excluded and red. Three boundary checks generate a temporary package, prove the save base stays read-only, reject a path-shaped save profile, and prove import stages and executes nothing; BPTK-015 and BPTK-016 stay excluded and red because persistence and a first playable do not exist. The exact 30-file tarball is checked separately. Tier 3 platform and research behavior uses written acceptance and a live disposable-input product walk rather than a runnable benchmark. These checks do not execute a game or prove compatibility.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. Two BPTK-026 checks generate a temporary package and prove that off denies and prompt requires consent with zero network attempts; they do not test a runtime bridge, so BPTK-026 stays excluded and red. Three boundary checks generate a temporary package, prove the save base stays read-only, reject a path-shaped save profile, and prove import stages and executes nothing; BPTK-015 and BPTK-016 stay excluded and red because persistence and a first playable do not exist. The exact 30-file tarball is checked separately. BPTK-008 uses a Tier 3 written acceptance plus a live disposable A-J product walk through `bptk run`: preferred and relocated base, named and ordinal import binding, unresolved import reporting, TLS metadata without execution, stack/heap boundary, malformed header/section/import rejection, and deterministic repetition. The temporary input is removed and no baseline, golden map, or evidence JSON is retained. These checks do not execute a game or prove compatibility.
 
 ## Benchmark taxonomy
 

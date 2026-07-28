@@ -26,7 +26,7 @@ test("status JSON exposes the immutable roadmap snapshot", () => {
   assert.equal(result.status, 0);
   assert.equal(value.snapshot, true);
   assert.equal(value.count.accepted, 33);
-  assert.equal(value.count.implemented, 3);
+  assert.equal(value.count.implemented, 4);
   assert.equal(value.count.passing, 0);
   assert.match(value.source.sha256, /^[a-f0-9]{64}$/);
 });
