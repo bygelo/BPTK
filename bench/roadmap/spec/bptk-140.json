@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-140",
+  "item_id": "BPTK-140",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No guest execution exists to measure crossing cost.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when peak memory and growth hold the ceiling and crossing cost holds the bound.",
+  "expected_failing_assertion": "No guest execution exists to measure.",
+  "owner_item": "BPTK-140",
+  "active_gate_evidence": "The performance profile keeps package memory timing separate from runtime claims.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Run the frozen workload and measure peak and growth.",
+    "Measure the per-crossing cost across the boundary.",
+    "Compare both against their declared bound."
+  ],
+  "pass_criterion": [
+    "Peak and growth hold the ceiling.",
+    "Crossing cost holds the bound."
+  ]
+}

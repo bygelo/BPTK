@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-138",
+  "item_id": "BPTK-138",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No game runtime exists to produce frame.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the tail frame time holds the declared per-lane budget over the frozen capture.",
+  "expected_failing_assertion": "No frame production exists to measure.",
+  "owner_item": "BPTK-138",
+  "active_gate_evidence": "The performance profile keeps package timing separated from any runtime claim.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Run the frozen capture per lane.",
+    "Measure the tail frame time percentile.",
+    "Compare against the declared per-lane budget."
+  ],
+  "pass_criterion": [
+    "Tail frame time is inside the budget.",
+    "The capture length is the frozen one."
+  ]
+}

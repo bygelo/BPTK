@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 149,
-    "accepted": 135,
+    "raw": 156,
+    "accepted": 142,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -2824,6 +2824,133 @@
         "SRC-024",
         "SRC-025",
         "SRC-026"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-136",
+      "title": "Meet the recompiled instruction-throughput floor",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-046"
+      ],
+      "deliverable": "A throughput benchmark over the frozen workload with the declared floor and reference-desktop definition.",
+      "benchmark_id": "BENCH-136",
+      "failure_meaning": "The recompiler cannot out-run the interpreter wall it exists to beat.",
+      "risk": "A workload dominated by one instruction class overstates general throughput.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013",
+        "SRC-032",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-137",
+      "title": "Prove the recompile-over-interpret speedup",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A comparative benchmark of recompiled against interpreted and native execution on the frozen workload.",
+      "benchmark_id": "BENCH-137",
+      "failure_meaning": "The recompiler adds complexity without its performance thesis.",
+      "risk": "A workload where the interpreter is accidentally fast flatters the ratio.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-032"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-138",
+      "title": "Hold the per-lane frame-time budget",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A frame-time benchmark with per-lane budget and tail-percentile measurement.",
+      "benchmark_id": "BENCH-138",
+      "failure_meaning": "Title run but not at playable frame pacing.",
+      "risk": "A percentile taken over a short capture hides the stall that matters.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-139",
+      "title": "Hold the cold and warm start budget",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A start-up benchmark covering compile and streamed-asset time against the declared budget.",
+      "benchmark_id": "BENCH-139",
+      "failure_meaning": "Players quit before the first frame.",
+      "risk": "A budget measured on a fast connection hides the constrained-network case.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-013",
+        "SRC-039"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-140",
+      "title": "Hold the memory ceiling and boundary cost",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A memory benchmark with ceiling, growth, and guest-host boundary-cost measurement.",
+      "benchmark_id": "BENCH-140",
+      "failure_meaning": "Long title die on memory exhaustion mid-run.",
+      "risk": "A ceiling measured at peak only misses the sawtooth growth pattern.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-019"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-141",
+      "title": "Hold the audio and latency bound",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "An audio-underrun and input-latency benchmark over the sustained workload.",
+      "benchmark_id": "BENCH-141",
+      "failure_meaning": "The game sounds broken and feels laggy on capable hardware.",
+      "risk": "A latency measure that starts at the event handler misses the queue before it.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-021"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-142",
+      "title": "Hold sustained-run stability",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A sustained-run stability benchmark measuring jitter, pause ceiling, and memory return over the declared duration.",
+      "benchmark_id": "BENCH-142",
+      "failure_meaning": "Long session degrade or die.",
+      "risk": "A machine with different garbage-collection tuning changes the result class entirely.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-013"
       ],
       "promotion_state": "planned"
     }

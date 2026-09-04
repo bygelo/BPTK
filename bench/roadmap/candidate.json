@@ -3,7 +3,7 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 82,
+    "product": 89,
     "prior_art": 49,
     "constraint": 14
   },
@@ -1199,6 +1199,62 @@
       "target_id": "BPTK-135",
       "summary": "Grade untrusted input into legal trust tier",
       "dedupe_key": "gs-091-trust-tier-boundary"
+    },
+    {
+      "candidate_id": "CAND-150",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-136",
+      "summary": "Meet the recompiled instruction-throughput floor",
+      "dedupe_key": "gs-092-mips-throughput-floor"
+    },
+    {
+      "candidate_id": "CAND-151",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-137",
+      "summary": "Prove the recompile-over-interpret speedup",
+      "dedupe_key": "gs-093-recompile-speedup"
+    },
+    {
+      "candidate_id": "CAND-152",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-138",
+      "summary": "Hold the per-lane frame-time budget",
+      "dedupe_key": "gs-094-frame-time-budget"
+    },
+    {
+      "candidate_id": "CAND-153",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-139",
+      "summary": "Hold the cold and warm start budget",
+      "dedupe_key": "gs-095-cold-start-budget"
+    },
+    {
+      "candidate_id": "CAND-154",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-140",
+      "summary": "Hold the memory ceiling and boundary cost",
+      "dedupe_key": "gs-096-memory-ceiling"
+    },
+    {
+      "candidate_id": "CAND-155",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-141",
+      "summary": "Hold the audio and latency bound",
+      "dedupe_key": "gs-097-audio-latency-bound"
+    },
+    {
+      "candidate_id": "CAND-156",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-142",
+      "summary": "Hold sustained-run stability",
+      "dedupe_key": "gs-098-sustained-stability"
     }
   ]
 }

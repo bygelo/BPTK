@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-141",
+  "item_id": "BPTK-141",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No audio bridge or input pipeline exists to measure.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the sustained run holds zero underrun and the latency bound.",
+  "expected_failing_assertion": "No audio or input pipeline exists.",
+  "owner_item": "BPTK-141",
+  "active_gate_evidence": "The performance profile keeps its measurement surface honest about what it times.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Run the sustained workload and count underrun at the device level.",
+    "Measure input-to-photon from the event origin.",
+    "Compare against the declared bound."
+  ],
+  "pass_criterion": [
+    "Zero underrun over the run.",
+    "Latency is inside the bound."
+  ]
+}

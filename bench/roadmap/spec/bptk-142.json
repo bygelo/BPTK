@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-142",
+  "item_id": "BPTK-142",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No game runtime exists for a sustained run.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the sustained run holds jitter, pause, and memory-return bound on the declared host set.",
+  "expected_failing_assertion": "No sustained run exists to measure.",
+  "owner_item": "BPTK-142",
+  "active_gate_evidence": "The performance profile keeps its measurement scope declared.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Run the declared sustained duration on each declared host.",
+    "Measure tail-minus-median jitter and the largest pause.",
+    "Compare memory end-state against baseline."
+  ],
+  "pass_criterion": [
+    "Jitter and pause hold their bound.",
+    "Memory returns to baseline."
+  ]
+}

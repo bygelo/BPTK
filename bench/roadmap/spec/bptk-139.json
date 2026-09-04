@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-139",
+  "item_id": "BPTK-139",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No module compile or streamed-asset runtime exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when cold and warm start hold their declared budget on the reference host.",
+  "expected_failing_assertion": "No start path exists to measure.",
+  "owner_item": "BPTK-139",
+  "active_gate_evidence": "The packaging timing surface keeps cold and warm read measurement for the asset layer.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Measure cold start including compile and streaming.",
+    "Measure warm start on the same host.",
+    "Compare both against the declared budget."
+  ],
+  "pass_criterion": [
+    "Cold and warm start hold their budget.",
+    "Measurement includes compile and streaming."
+  ]
+}

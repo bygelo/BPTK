@@ -1192,7 +1192,8 @@
       "dep": [
         "GS-001"
       ],
-      "spec": "**GS-092 · MIPS throughput floor** — ≥ **770 MIPS** on the reference desktop for the frozen CPU-bound workload (BottleShip's own \"required\" figure; it reaches 174) · **T1** · deps GS-001."
+      "spec": "**GS-092 · MIPS throughput floor** — ≥ **770 MIPS** on the reference desktop for the frozen CPU-bound workload (BottleShip's own \"required\" figure; it reaches 174) · **T1** · deps GS-001.",
+      "promoted_as": "BPTK-136"
     },
     {
       "gs_id": "GS-093",
@@ -1202,7 +1203,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-093 · Recompile-vs-interpret speedup** — recompiled ≥ **5×** the BPTK-009 interpreter AND ≥ **50%** of native · **T1**. *The moat metric.*"
+      "spec": "**GS-093 · Recompile-vs-interpret speedup** — recompiled ≥ **5×** the BPTK-009 interpreter AND ≥ **50%** of native · **T1**. *The moat metric.*",
+      "promoted_as": "BPTK-137"
     },
     {
       "gs_id": "GS-094",
@@ -1212,7 +1214,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-094 · Frame-time budget / per-lane fps floor** — p99 ≤ **16.67 ms** (60 fps) / ≤ **33.3 ms** (30 fps console) per the lane matrix · **T1**."
+      "spec": "**GS-094 · Frame-time budget / per-lane fps floor** — p99 ≤ **16.67 ms** (60 fps) / ≤ **33.3 ms** (30 fps console) per the lane matrix · **T1**.",
+      "promoted_as": "BPTK-138"
     },
     {
       "gs_id": "GS-095",
@@ -1222,7 +1225,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-095 · Cold-start / time-to-first-frame** — ≤ declared budget (e.g. ≤5 s cold / ≤1.5 s warm) incl. WASM compile + streamed assets · **T2**."
+      "spec": "**GS-095 · Cold-start / time-to-first-frame** — ≤ declared budget (e.g. ≤5 s cold / ≤1.5 s warm) incl. WASM compile + streamed assets · **T2**.",
+      "promoted_as": "BPTK-139"
     },
     {
       "gs_id": "GS-096",
@@ -1232,7 +1236,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-096 · Memory ceiling + guest-host boundary cost** — peak ≤ declared ceiling (e.g. ≤2 GB, no unbounded growth) + per-crossing cost under bound · **T1**."
+      "spec": "**GS-096 · Memory ceiling + guest-host boundary cost** — peak ≤ declared ceiling (e.g. ≤2 GB, no unbounded growth) + per-crossing cost under bound · **T1**.",
+      "promoted_as": "BPTK-140"
     },
     {
       "gs_id": "GS-097",
@@ -1242,7 +1247,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-097 · Audio-underrun + input-to-photon latency** — zero underruns over a sustained run; input-to-photon ≤ declared bound (e.g. ≤50 ms) · **T2**."
+      "spec": "**GS-097 · Audio-underrun + input-to-photon latency** — zero underruns over a sustained run; input-to-photon ≤ declared bound (e.g. ≤50 ms) · **T2**.",
+      "promoted_as": "BPTK-141"
     },
     {
       "gs_id": "GS-098",
@@ -1252,7 +1258,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-098 · Sustained-run stability / jitter** — over ≥30 min: jitter (p99.9−median) under bound, no GC/compile pause > one frame, memory returns to baseline · **T2**."
+      "spec": "**GS-098 · Sustained-run stability / jitter** — over ≥30 min: jitter (p99.9−median) under bound, no GC/compile pause > one frame, memory returns to baseline · **T2**.",
+      "promoted_as": "BPTK-142"
     },
     {
       "gs_id": "GS-099",
