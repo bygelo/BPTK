@@ -3,8 +3,8 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 34,
-    "prior_art": 45,
+    "product": 53,
+    "prior_art": 47,
     "constraint": 14
   },
   "candidate": [
@@ -783,6 +783,174 @@
       "target_id": "BPTK-128",
       "summary": "Govern breaking change and analytics honestly",
       "dedupe_key": "gs-085-governance-rfc-analytics"
+    },
+    {
+      "candidate_id": "CAND-098",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-076",
+      "summary": "Serve a generic Win32 and DirectX conformance suite",
+      "dedupe_key": "gs-036-generic-conformance-suite"
+    },
+    {
+      "candidate_id": "CAND-099",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-077",
+      "summary": "Maintain the captured API-trace corpus",
+      "dedupe_key": "gs-037-captured-api-trace-corpus"
+    },
+    {
+      "candidate_id": "CAND-100",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-078",
+      "summary": "Rate compatibility only from passing predicate",
+      "dedupe_key": "gs-038-compatibility-rating-scheme"
+    },
+    {
+      "candidate_id": "CAND-101",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-079",
+      "summary": "Produce the per-title deterministic reference artifact",
+      "dedupe_key": "gs-039-deterministic-reference-artifact"
+    },
+    {
+      "candidate_id": "CAND-102",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-080",
+      "summary": "Generate every database row from evidence",
+      "dedupe_key": "gs-040-database-row-from-evidence"
+    },
+    {
+      "candidate_id": "CAND-103",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-081",
+      "summary": "Track the emulation export-coverage ledger",
+      "dedupe_key": "gs-041-hle-export-coverage-ledger"
+    },
+    {
+      "candidate_id": "CAND-104",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-082",
+      "summary": "Audit promotion against false-green sabotage",
+      "dedupe_key": "gs-042-no-false-green-self-audit"
+    },
+    {
+      "candidate_id": "CAND-105",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-083",
+      "summary": "Acquire a lawful freeware executable corpus",
+      "dedupe_key": "gs-104-freeware-corpus-acquisition"
+    },
+    {
+      "candidate_id": "CAND-106",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-084",
+      "summary": "Run the real executable corpus end to end",
+      "dedupe_key": "gs-105-run-real-exe-harness"
+    },
+    {
+      "candidate_id": "CAND-107",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-085",
+      "summary": "Gate every fix on measured corpus breadth",
+      "dedupe_key": "gs-106-generalization-gate"
+    },
+    {
+      "candidate_id": "CAND-108",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-086",
+      "summary": "Support non-game executable program",
+      "dedupe_key": "gs-107-non-game-exe-support"
+    },
+    {
+      "candidate_id": "CAND-109",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-087",
+      "summary": "Step a recorded run forward and backward to first divergence",
+      "dedupe_key": "gs-108-time-travel-debugger"
+    },
+    {
+      "candidate_id": "CAND-110",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-096",
+      "summary": "Mix three-dimensional and positional audio",
+      "dedupe_key": "gs-052-positional-audio-xaudio-eax"
+    },
+    {
+      "candidate_id": "CAND-111",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-097",
+      "summary": "Serve the full input spectrum",
+      "dedupe_key": "gs-053-full-input-spectrum"
+    },
+    {
+      "candidate_id": "CAND-112",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-098",
+      "summary": "Serve storage and registry fidelity",
+      "dedupe_key": "gs-054-storage-registry-fidelity"
+    },
+    {
+      "candidate_id": "CAND-113",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-099",
+      "summary": "Mediate guest networking through consented transport",
+      "dedupe_key": "gs-055-guest-networking-mediation"
+    },
+    {
+      "candidate_id": "CAND-114",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-100",
+      "summary": "Keep full-motion video in sync with subtitle cue",
+      "dedupe_key": "gs-056-fmv-sync-subtitles"
+    },
+    {
+      "candidate_id": "CAND-115",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-101",
+      "summary": "Broaden the emulation surface across Win32 module",
+      "dedupe_key": "gs-057-win32-module-breadth"
+    },
+    {
+      "candidate_id": "CAND-116",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-102",
+      "summary": "Mount an optical disc image for the guest",
+      "dedupe_key": "gs-058-optical-drive-mount"
+    },
+    {
+      "candidate_id": "CAND-117",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-103",
+      "summary": "Match locale, codepage, and Unicode conversion",
+      "dedupe_key": "gs-059-locale-codepage-fidelity"
+    },
+    {
+      "candidate_id": "CAND-118",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-104",
+      "summary": "Pace the frame clock to the vertical blank",
+      "dedupe_key": "gs-060-frame-pacing-vblank"
     }
   ]
 }

@@ -405,7 +405,8 @@
         "BPTK-010"
       ],
       "dep": [],
-      "spec": "**GS-036 · Generic Win32/DirectX conformance suite** — synthetic + captured traces per API; return/last-error/out-bytes/side-effects vs oracle; any runtime export with zero case = coverage hole = fail · **T1** · extends BPTK-010/003. *What BottleShip structurally lacks.*"
+      "spec": "**GS-036 · Generic Win32/DirectX conformance suite** — synthetic + captured traces per API; return/last-error/out-bytes/side-effects vs oracle; any runtime export with zero case = coverage hole = fail · **T1** · extends BPTK-010/003. *What BottleShip structurally lacks.*",
+      "promoted_as": "BPTK-076"
     },
     {
       "gs_id": "GS-037",
@@ -417,7 +418,8 @@
         "BPTK-002"
       ],
       "dep": [],
-      "spec": "**GS-037 · Captured API-trace corpus** — every trace has provenance + redaction proof + byte-stability · **T1** · extends BPTK-002."
+      "spec": "**GS-037 · Captured API-trace corpus** — every trace has provenance + redaction proof + byte-stability · **T1** · extends BPTK-002.",
+      "promoted_as": "BPTK-077"
     },
     {
       "gs_id": "GS-038",
@@ -429,7 +431,8 @@
         "BPTK-030"
       ],
       "dep": [],
-      "spec": "**GS-038 · Compatibility rating scheme with provenance** — ladder broken→boots→in-game→playable→complete; each rung only on a passing predicate; no rating above highest-passing (no false green) · **T1** · extends BPTK-030."
+      "spec": "**GS-038 · Compatibility rating scheme with provenance** — ladder broken→boots→in-game→playable→complete; each rung only on a passing predicate; no rating above highest-passing (no false green) · **T1** · extends BPTK-030.",
+      "promoted_as": "BPTK-078"
     },
     {
       "gs_id": "GS-039",
@@ -442,7 +445,8 @@
         "BPTK-039",
         "GS-006"
       ],
-      "spec": "**GS-039 · Per-title deterministic reference/replay artifact** — two replays hash-match at all checkpoints; no embedded asset/PII · **T1** · deps BPTK-039, GS-006."
+      "spec": "**GS-039 · Per-title deterministic reference/replay artifact** — two replays hash-match at all checkpoints; no embedded asset/PII · **T1** · deps BPTK-039, GS-006.",
+      "promoted_as": "BPTK-079"
     },
     {
       "gs_id": "GS-040",
@@ -452,7 +456,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-040 · Public compatibility database** — every row regenerable from evidence + revision-pinned; stale/unprovenanced refused · **T2** · *Reconciled (correctness+ecosystem, → GS-080).*"
+      "spec": "**GS-040 · Public compatibility database** — every row regenerable from evidence + revision-pinned; stale/unprovenanced refused · **T2** · *Reconciled (correctness+ecosystem, → GS-080).*",
+      "promoted_as": "BPTK-080"
     },
     {
       "gs_id": "GS-041",
@@ -464,7 +469,8 @@
       "dep": [
         "GS-036"
       ],
-      "spec": "**GS-041 · HLE export-coverage ledger** — corpus imports ∩ HLE symbols; `absent`/`stub`-with-zero-case = tracked gap, release gate holds gap budget · **T1** · deps GS-036. *Kills the manual missing-export hunt.*"
+      "spec": "**GS-041 · HLE export-coverage ledger** — corpus imports ∩ HLE symbols; `absent`/`stub`-with-zero-case = tracked gap, release gate holds gap budget · **T1** · deps GS-036. *Kills the manual missing-export hunt.*",
+      "promoted_as": "BPTK-081"
     },
     {
       "gs_id": "GS-042",
@@ -476,7 +482,8 @@
         "BPTK-003"
       ],
       "dep": [],
-      "spec": "**GS-042 · No-false-green promotion self-audit** — sabotage fixtures (wrong return, out-of-tol frame, inflated rating, stale provenance, nondeterministic replay) all rejected · **T1** · extends BPTK-003."
+      "spec": "**GS-042 · No-false-green promotion self-audit** — sabotage fixtures (wrong return, out-of-tol frame, inflated rating, stale provenance, nondeterministic replay) all rejected · **T1** · extends BPTK-003.",
+      "promoted_as": "BPTK-082"
     },
     {
       "gs_id": "GS-104",
@@ -490,7 +497,8 @@
       "dep": [
         "GS-084"
       ],
-      "spec": "**GS-104 · Real freeware/`.exe` corpus acquisition** — a versioned pipeline that **downloads lawfully-redistributable freeware games and freeware `.exe` programs** (games *and* utility programs) from named online sources, records provenance + license + hash, and stages them for testing; payload bytes stay out of git (provenance-only manifest, per R-003). Benchmark: the manifest resolves every entry to a redistribution basis + hash and rebuilds byte-stably; a non-redistributable or unlicensed entry is refused · **T1** · extends BPTK-002 · deps GS-084."
+      "spec": "**GS-104 · Real freeware/`.exe` corpus acquisition** — a versioned pipeline that **downloads lawfully-redistributable freeware games and freeware `.exe` programs** (games *and* utility programs) from named online sources, records provenance + license + hash, and stages them for testing; payload bytes stay out of git (provenance-only manifest, per R-003). Benchmark: the manifest resolves every entry to a redistribution basis + hash and rebuilds byte-stably; a non-redistributable or unlicensed entry is refused · **T1** · extends BPTK-002 · deps GS-084.",
+      "promoted_as": "BPTK-083"
     },
     {
       "gs_id": "GS-105",
@@ -505,7 +513,8 @@
         "GS-104",
         "GS-041"
       ],
-      "spec": "**GS-105 · Run-real-`.exe` empirical harness** — actually execute each corpus binary end-to-end, headless, through the real `bptk ingest`/`run` path, recording reached-stage (loads / entry / interactive / crash) and, on failure, the **generic gap** that broke it (missing export, unimplemented API, unsupported instruction) — not a per-title patch. Benchmark: every corpus binary produces a reproducible run record with a stage and, on failure, a named generic gap that maps to a roadmap item · **T1** · extends BPTK-007/016 · deps GS-104, GS-041."
+      "spec": "**GS-105 · Run-real-`.exe` empirical harness** — actually execute each corpus binary end-to-end, headless, through the real `bptk ingest`/`run` path, recording reached-stage (loads / entry / interactive / crash) and, on failure, the **generic gap** that broke it (missing export, unimplemented API, unsupported instruction) — not a per-title patch. Benchmark: every corpus binary produces a reproducible run record with a stage and, on failure, a named generic gap that maps to a roadmap item · **T1** · extends BPTK-007/016 · deps GS-104, GS-041.",
+      "promoted_as": "BPTK-084"
     },
     {
       "gs_id": "GS-106",
@@ -518,7 +527,8 @@
         "GS-105",
         "GS-041"
       ],
-      "spec": "**GS-106 · Generalization gate (anti-per-title metric)** — a candidate fix is accepted only when it raises the reached-stage of **≥ N distinct corpus titles**, measured by GS-105 before/after; a fix that helps exactly one title is refused unless declared a sandboxed last-resort adapter (R-006). Benchmark: the gate computes per-fix corpus-wide delta and blocks a merge whose only beneficiary is a single title · **T1** · deps GS-105, GS-041. *The direct fix for BottleShip's non-generalization.*"
+      "spec": "**GS-106 · Generalization gate (anti-per-title metric)** — a candidate fix is accepted only when it raises the reached-stage of **≥ N distinct corpus titles**, measured by GS-105 before/after; a fix that helps exactly one title is refused unless declared a sandboxed last-resort adapter (R-006). Benchmark: the gate computes per-fix corpus-wide delta and blocks a merge whose only beneficiary is a single title · **T1** · deps GS-105, GS-041. *The direct fix for BottleShip's non-generalization.*",
+      "promoted_as": "BPTK-085"
     },
     {
       "gs_id": "GS-107",
@@ -533,7 +543,8 @@
         "GS-105",
         "GS-057"
       ],
-      "spec": "**GS-107 · Non-game `.exe` program support** — the runtime targets arbitrary freeware Win32 *programs/utilities*, not only games (the \"any `.exe`\" half most competitors skip): console/GUI apps, no game loop, no D3D. Benchmark: a set of freeware utility `.exe` from the GS-104 corpus reach interactive/complete through generic Win32 HLE with the same conformance discipline as games · **T2** · extends BPTK-010 · deps GS-105, GS-057."
+      "spec": "**GS-107 · Non-game `.exe` program support** — the runtime targets arbitrary freeware Win32 *programs/utilities*, not only games (the \"any `.exe`\" half most competitors skip): console/GUI apps, no game loop, no D3D. Benchmark: a set of freeware utility `.exe` from the GS-104 corpus reach interactive/complete through generic Win32 HLE with the same conformance discipline as games · **T2** · extends BPTK-010 · deps GS-105, GS-057.",
+      "promoted_as": "BPTK-086"
     },
     {
       "gs_id": "GS-108",
@@ -546,7 +557,8 @@
         "GS-010",
         "GS-039"
       ],
-      "spec": "**GS-108 · Time-travel debugger for recompiled/guest execution** — step forward **and backward** over a deterministic trace, inspecting guest memory, registers, stack, locals, and CFG at any instruction — the same debugger code running both in-browser (WASM) and as a TUI. Benchmark: on a recorded divergence, the debugger reconstructs exact guest state at any instruction index and reverse-steps to the **first instruction that differs** from the BPTK-009 reference oracle; identical results in the browser and TUI harness · **T2** · deps GS-010, GS-039. *Reverse-stepping to the first divergence is the decisive tool for the recompiler moat (GS-001/002); prior art: [qip wasm-debugger](https://github.com/royalicing/qip/blob/main/components/interactive/wasm-debugger.zig) (royalicing/qip, Zig, portable browser+TUI, time-travel).*"
+      "spec": "**GS-108 · Time-travel debugger for recompiled/guest execution** — step forward **and backward** over a deterministic trace, inspecting guest memory, registers, stack, locals, and CFG at any instruction — the same debugger code running both in-browser (WASM) and as a TUI. Benchmark: on a recorded divergence, the debugger reconstructs exact guest state at any instruction index and reverse-steps to the **first instruction that differs** from the BPTK-009 reference oracle; identical results in the browser and TUI harness · **T2** · deps GS-010, GS-039. *Reverse-stepping to the first divergence is the decisive tool for the recompiler moat (GS-001/002); prior art: [qip wasm-debugger](https://github.com/royalicing/qip/blob/main/components/interactive/wasm-debugger.zig) (royalicing/qip, Zig, portable browser+TUI, time-travel).*",
+      "promoted_as": "BPTK-087"
     },
     {
       "gs_id": "GS-043",
@@ -652,7 +664,8 @@
         "BPTK-014"
       ],
       "dep": [],
-      "spec": "**GS-052 · 3D/positional audio: XAudio2 · EAX · DS3D** — submix/voice-ramp/3D-geometry/EAX-reverb mix within tolerance, zero SAB underrun · **T1** · extends BPTK-014."
+      "spec": "**GS-052 · 3D/positional audio: XAudio2 · EAX · DS3D** — submix/voice-ramp/3D-geometry/EAX-reverb mix within tolerance, zero SAB underrun · **T1** · extends BPTK-014.",
+      "promoted_as": "BPTK-096"
     },
     {
       "gs_id": "GS-053",
@@ -664,7 +677,8 @@
         "BPTK-011"
       ],
       "dep": [],
-      "spec": "**GS-053 · Full input: DirectInput · XInput · gamepad · touch · pointer-lock · rumble** — input-trace replay matches oracle incl. relative-motion + one rumble effect · **T1** · extends BPTK-011/027."
+      "spec": "**GS-053 · Full input: DirectInput · XInput · gamepad · touch · pointer-lock · rumble** — input-trace replay matches oracle incl. relative-motion + one rumble effect · **T1** · extends BPTK-011/027.",
+      "promoted_as": "BPTK-097"
     },
     {
       "gs_id": "GS-054",
@@ -676,7 +690,8 @@
         "BPTK-015"
       ],
       "dep": [],
-      "spec": "**GS-054 · Storage & registry fidelity** — registry hive + Win32 path (case-insensitive/8.3/UNC/reserved) + quota rollback; base byte-unchanged · **T1** · extends BPTK-015."
+      "spec": "**GS-054 · Storage & registry fidelity** — registry hive + Win32 path (case-insensitive/8.3/UNC/reserved) + quota rollback; base byte-unchanged · **T1** · extends BPTK-015.",
+      "promoted_as": "BPTK-098"
     },
     {
       "gs_id": "GS-055",
@@ -688,7 +703,8 @@
         "BPTK-026"
       ],
       "dep": [],
-      "spec": "**GS-055 · Networking: Winsock/DirectPlay→WebRTC/WebSocket, lockstep, NAT** — session semantics + lockstep sync; only allowlisted endpoints, zero off-allowlist · **T1** · extends BPTK-026."
+      "spec": "**GS-055 · Networking: Winsock/DirectPlay→WebRTC/WebSocket, lockstep, NAT** — session semantics + lockstep sync; only allowlisted endpoints, zero off-allowlist · **T1** · extends BPTK-026.",
+      "promoted_as": "BPTK-099"
     },
     {
       "gs_id": "GS-056",
@@ -700,7 +716,8 @@
         "BPTK-040"
       ],
       "dep": [],
-      "spec": "**GS-056 · FMV sync & subtitles** — A/V drift in budget across seek/pause; cues on-time · **T2** · extends BPTK-040."
+      "spec": "**GS-056 · FMV sync & subtitles** — A/V drift in budget across seek/pause; cues on-time · **T2** · extends BPTK-040.",
+      "promoted_as": "BPTK-100"
     },
     {
       "gs_id": "GS-057",
@@ -714,7 +731,8 @@
       "dep": [
         "GS-036"
       ],
-      "spec": "**GS-057 · Win32 breadth: user32/gdi32/ole32/COM/CRT/SxS/msvbvm** — per-module conformance slice passes incl. COM marshaling, SxS activation, VB6 main window · **T1** · extends BPTK-010, deps GS-036/041."
+      "spec": "**GS-057 · Win32 breadth: user32/gdi32/ole32/COM/CRT/SxS/msvbvm** — per-module conformance slice passes incl. COM marshaling, SxS activation, VB6 main window · **T1** · extends BPTK-010, deps GS-036/041.",
+      "promoted_as": "BPTK-101"
     },
     {
       "gs_id": "GS-058",
@@ -726,7 +744,8 @@
         "BPTK-038"
       ],
       "dep": [],
-      "spec": "**GS-058 · Installer/CD/virtual optical drive** — DRM-free image mounts, sector reads hash-match, Red Book CD-audio in sync; DRM refused · **T2** · extends BPTK-038."
+      "spec": "**GS-058 · Installer/CD/virtual optical drive** — DRM-free image mounts, sector reads hash-match, Red Book CD-audio in sync; DRM refused · **T2** · extends BPTK-038.",
+      "promoted_as": "BPTK-102"
     },
     {
       "gs_id": "GS-059",
@@ -736,7 +755,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-059 · Locale / codepage / Unicode fidelity** — ANSI↔wide across codepages incl. DBCS byte-exact; CompareString/LCMapString match oracle · **T2**."
+      "spec": "**GS-059 · Locale / codepage / Unicode fidelity** — ANSI↔wide across codepages incl. DBCS byte-exact; CompareString/LCMapString match oracle · **T2**.",
+      "promoted_as": "BPTK-103"
     },
     {
       "gs_id": "GS-060",
@@ -748,7 +768,8 @@
         "BPTK-039"
       ],
       "dep": [],
-      "spec": "**GS-060 · Frame-pacing / vblank scheduler** — cadence within jitter budget, speed host-throughput-independent, QPC/RDTSC busy-wait yields to rAF (no spin) · **T1** · extends BPTK-039. *Retires the 6500-line spin-loop.*"
+      "spec": "**GS-060 · Frame-pacing / vblank scheduler** — cadence within jitter budget, speed host-throughput-independent, QPC/RDTSC busy-wait yields to rAF (no spin) · **T1** · extends BPTK-039. *Retires the 6500-line spin-loop.*",
+      "promoted_as": "BPTK-104"
     },
     {
       "gs_id": "GS-061",

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-076",
+  "item_id": "BPTK-076",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Win32 HLE exists to conform, so no export has a case table.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every declared export has at least one oracle case and any zero-case export fails the suite.",
+  "expected_failing_assertion": "No emulated export exists to cover.",
+  "owner_item": "BPTK-076",
+  "active_gate_evidence": "The roadmap keeps BPTK-010 red and the conformance denominator empty.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Generate synthetic and captured case per declared export.",
+    "Compare return value, last error, output byte, and side effect against the oracle.",
+    "Assert any zero-case export fails the suite."
+  ],
+  "pass_criterion": [
+    "Every export has oracle case.",
+    "A zero-case export fails."
+  ]
+}

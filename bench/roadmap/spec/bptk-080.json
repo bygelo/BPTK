@@ -1,0 +1,25 @@
+{
+  "benchmark_id": "BENCH-080",
+  "item_id": "BPTK-080",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No compatibility session or database exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every declared row regenerates byte-stably from its evidence and the stale and unprovenanced case is refused.",
+  "expected_failing_assertion": "No database row exists to regenerate.",
+  "owner_item": "BPTK-080",
+  "active_gate_evidence": "The report command keeps recording privacy-minimized and revision-pinned.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Regenerate each declared row from its evidence and compare.",
+    "Attempt a stale row and an unprovenanced row and assert refusal."
+  ],
+  "pass_criterion": [
+    "Every row regenerates.",
+    "Stale and unprovenanced row are refused."
+  ]
+}

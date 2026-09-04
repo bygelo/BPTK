@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-078",
+  "item_id": "BPTK-078",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No package runtime exists to rate and the compatibility surface claims nothing.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every rung maps to a passing predicate and the inflated-rating case is red by construction.",
+  "expected_failing_assertion": "No rating ladder exists.",
+  "owner_item": "BPTK-078",
+  "active_gate_evidence": "The compatibility surface keeps observing capability without emitting a support claim.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Evaluate each ladder rung against its predicate on the fixture.",
+    "Assert the rating never exceeds the highest-passing rung.",
+    "Mutate a predicate to pass falsely and assert the construction check fails."
+  ],
+  "pass_criterion": [
+    "Rung grant only on passing predicate.",
+    "Inflated rating is red by construction."
+  ]
+}

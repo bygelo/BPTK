@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-077",
+  "item_id": "BPTK-077",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "BPTK-002 corpus freezing remains red and no capture pipeline exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every corpus trace carries provenance and redaction proof and regenerates byte-stably.",
+  "expected_failing_assertion": "No captured trace exists in the corpus.",
+  "owner_item": "BPTK-077",
+  "active_gate_evidence": "The corpus command publishes no denominator without approval.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Capture each declared trace through the recording pipeline.",
+    "Verify provenance and redaction proof per trace.",
+    "Regenerate and compare bytes."
+  ],
+  "pass_criterion": [
+    "Provenance and redaction proof exist per trace.",
+    "Regeneration is byte-stable."
+  ]
+}

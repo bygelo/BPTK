@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-101",
+  "item_id": "BPTK-101",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The core kernel surface is absent and no module breadth exists.",
+  "prerequisite": [
+    "BPTK-076"
+  ],
+  "promotion_trigger": "Promote when every declared module passes its conformance slice with the ledger holding the gap budget.",
+  "expected_failing_assertion": "No breadth module exists.",
+  "owner_item": "BPTK-101",
+  "active_gate_evidence": "The conformance denominator stays empty and BPTK-010 remains red.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Run each declared module conformance slice.",
+    "Assert COM marshaling and side-by-side activation cases pass.",
+    "Assert the ledger holds the gap budget for the module set."
+  ],
+  "pass_criterion": [
+    "Every module passes its slice.",
+    "Gap stay within the declared budget."
+  ]
+}

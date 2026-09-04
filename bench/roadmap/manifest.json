@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 97,
-    "accepted": 83,
+    "raw": 118,
+    "accepted": 104,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -1721,6 +1721,453 @@
         "SRC-011",
         "SRC-013",
         "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-076",
+      "title": "Serve a generic Win32 and DirectX conformance suite",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A conformance suite covering each emulated export with oracle comparison and a zero-case-is-failure coverage rule.",
+      "benchmark_id": "BENCH-076",
+      "failure_meaning": "The structural gap behind the per-title missing-export hunt reproduces.",
+      "risk": "A suite that only covers the happy path of each export misses the argument-shape edge that games hit.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-012",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-077",
+      "title": "Maintain the captured API-trace corpus",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A captured API-trace corpus with per-trace provenance, redaction proof, and byte-stable regeneration.",
+      "benchmark_id": "BENCH-077",
+      "failure_meaning": "Conformance oracle rest on unverifiable or leaking trace.",
+      "risk": "A redaction proof that covers payload but not metadata leaks game identity.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-006",
+        "SRC-010",
+        "SRC-011"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-078",
+      "title": "Rate compatibility only from passing predicate",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A rating ladder with per-rung predicate, provenance, and a by-construction ban on rating above the highest-passing rung.",
+      "benchmark_id": "BENCH-078",
+      "failure_meaning": "Compatibility rating becomes marketing instead of measurement.",
+      "risk": "A rung predicate that reads configuration instead of evidence inflates the rating.",
+      "source_evidence": [
+        "SRC-003",
+        "SRC-009",
+        "SRC-016",
+        "SRC-018",
+        "SRC-019",
+        "SRC-020",
+        "SRC-021",
+        "SRC-022",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026",
+        "SRC-027",
+        "SRC-028"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-079",
+      "title": "Produce the per-title deterministic reference artifact",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-039",
+        "BPTK-051"
+      ],
+      "deliverable": "A per-title reference and replay artifact format with checkpoint hash and a privacy proof.",
+      "benchmark_id": "BENCH-079",
+      "failure_meaning": "Compatibility verification loses its reproducible reference.",
+      "risk": "A checkpoint set too sparse hides divergence between checkpoints.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-018",
+        "SRC-019",
+        "SRC-024",
+        "SRC-035"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-080",
+      "title": "Generate every database row from evidence",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A row-generation pipeline for the compatibility database with revision pinning and stale-refusal.",
+      "benchmark_id": "BENCH-080",
+      "failure_meaning": "The database accumulates rows no one can reproduce.",
+      "risk": "A regeneration that silently fills missing evidence with defaults forges provenance.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-081",
+      "title": "Track the emulation export-coverage ledger",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-076"
+      ],
+      "deliverable": "An export-coverage ledger that joins corpus import against emulated symbol and tracks every gap against a declared budget.",
+      "benchmark_id": "BENCH-081",
+      "failure_meaning": "The manual missing-export hunt returns per title.",
+      "risk": "A ledger that counts a stub as covered hides the gap it exists to expose.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-012",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-082",
+      "title": "Audit promotion against false-green sabotage",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A promotion self-audit that plants one fixture per false-green class and asserts rejection.",
+      "benchmark_id": "BENCH-082",
+      "failure_meaning": "A false green promotes unsupported behavior as passing.",
+      "risk": "A sabotage set that misses a class leaves that false green open.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-083",
+      "title": "Acquire a lawful freeware executable corpus",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-127"
+      ],
+      "deliverable": "A versioned acquisition pipeline that downloads named lawful sources into a provenance-only manifest with payload byte kept out of git.",
+      "benchmark_id": "BENCH-083",
+      "failure_meaning": "Validation stays on synthetic fixture and generality stays unproven.",
+      "risk": "A named source that relICENSEs or disappears silently breaks the rebuild.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-084",
+      "title": "Run the real executable corpus end to end",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-081",
+        "BPTK-083"
+      ],
+      "deliverable": "An empirical harness that drives the corpus through the real path, records reached stage, and classifies failure into named generic gap.",
+      "benchmark_id": "BENCH-084",
+      "failure_meaning": "Generality claims rest on curated fixture instead of measured breadth.",
+      "risk": "A gap classification that names the title instead of the API is a per-title patch in disguise.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-085",
+      "title": "Gate every fix on measured corpus breadth",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-081",
+        "BPTK-084"
+      ],
+      "deliverable": "A generalization gate that measures corpus-wide stage delta per fix and refuses single-beneficiary merge without the declared adapter status.",
+      "benchmark_id": "BENCH-085",
+      "failure_meaning": "Coverage scales per title by hand instead of by generic fix.",
+      "risk": "A delta measured on a tiny corpus makes the declared breadth unreachable and the gate vacuous.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-086",
+      "title": "Support non-game executable program",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-084",
+        "BPTK-101"
+      ],
+      "deliverable": "Runtime coverage for non-game Win32 program on the corpus, exercised through the same conformance and ledger discipline.",
+      "benchmark_id": "BENCH-086",
+      "failure_meaning": "The any-executable promise stays game-only in practice.",
+      "risk": "A utility-specific shim per program is the per-title defect under another name.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-087",
+      "title": "Step a recorded run forward and backward to first divergence",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-055",
+        "BPTK-079"
+      ],
+      "deliverable": "A time-travel debugger over the deterministic record that reconstructs guest state at any index and locates first divergence against the interpreter oracle.",
+      "benchmark_id": "BENCH-087",
+      "failure_meaning": "Recompiler divergence stays undiagnosable and the moat slows to interpreter speed of fix.",
+      "risk": "A reconstruction that reads live instead of recorded state diverges from the run itself.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-018",
+        "SRC-019",
+        "SRC-024",
+        "SRC-035"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-096",
+      "title": "Mix three-dimensional and positional audio",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A positional audio layer covering the declared submix, geometry, and reverb subset over the browser audio graph.",
+      "benchmark_id": "BENCH-096",
+      "failure_meaning": "Positional and reverberant title sound wrong or drop out.",
+      "risk": "A reverb approximation outside tolerance passes casual listening and fails the game's own audio cues.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-019",
+        "SRC-021"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-097",
+      "title": "Serve the full input spectrum",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "An input layer spanning the declared device spectrum with trace replay and effect delivery.",
+      "benchmark_id": "BENCH-097",
+      "failure_meaning": "Title beyond keyboard and pointer are unplayable.",
+      "risk": "A replay that samples device state at the wrong cadence passes the suite and misses the game.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-009"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-098",
+      "title": "Serve storage and registry fidelity",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A storage layer with registry hive, Win32 path semantics, and quota rollback over the overlay.",
+      "benchmark_id": "BENCH-098",
+      "failure_meaning": "Save and configuration behave differently than Windows and corrupt.",
+      "risk": "A rollback that restores file content but not metadata is an incomplete restore.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-009",
+        "SRC-010",
+        "SRC-022",
+        "SRC-023"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-099",
+      "title": "Mediate guest networking through consented transport",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A networking layer mediating guest socket semantics over the declared transport with consent, allowlist, and lockstep support.",
+      "benchmark_id": "BENCH-099",
+      "failure_meaning": "Multiplayer and connectivity title cannot play.",
+      "risk": "A mediation layer that negotiates before consent creates the leak it guards.",
+      "source_evidence": [
+        "SRC-006",
+        "SRC-010",
+        "SRC-017"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-100",
+      "title": "Keep full-motion video in sync with subtitle cue",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "FMV playback with subtitle cue timing over the frame and audio bridge, with drift measured across seek and pause.",
+      "benchmark_id": "BENCH-100",
+      "failure_meaning": "Cutscene-heavy title drift out of sync.",
+      "risk": "A seek that resyncs video but not subtitle leaves the cue permanently offset.",
+      "source_evidence": [
+        "SRC-033",
+        "SRC-037"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-101",
+      "title": "Broaden the emulation surface across Win32 module",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-076"
+      ],
+      "deliverable": "Emulation breadth across the declared Win32 module set, each covered by its conformance slice under the ledger discipline.",
+      "benchmark_id": "BENCH-101",
+      "failure_meaning": "Title built on the broader module set cannot start.",
+      "risk": "Breadth without ledger discipline recreates the zero-case-export hole.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-012",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-102",
+      "title": "Mount an optical disc image for the guest",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A virtual optical drive over the extracted or mounted image with sector-level read and disc-audio service.",
+      "benchmark_id": "BENCH-102",
+      "failure_meaning": "Title that stream from disc cannot run or corrupt their stream.",
+      "risk": "A drive emulation that lies about sector timing passes read tests and breaks copy-based loading.",
+      "source_evidence": [
+        "SRC-033",
+        "SRC-036"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-103",
+      "title": "Match locale, codepage, and Unicode conversion",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A locale and codepage layer with byte-exact conversion and oracle-matching comparison and mapping.",
+      "benchmark_id": "BENCH-103",
+      "failure_meaning": "Non-Western title misrender or misfile their text.",
+      "risk": "A best-fit mapping that silently substitutes byte changes file names and save path.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-012"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-104",
+      "title": "Pace the frame clock to the vertical blank",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A frame-pacing scheduler that serves guest timing from the monotonic clock and yields instead of spinning.",
+      "benchmark_id": "BENCH-104",
+      "failure_meaning": "The known thousands-of-line spin-loop defect reproduces.",
+      "risk": "A scheduler that paces the wall clock instead of the guest clock runs the game fast or slow on fast host.",
+      "source_evidence": [
+        "SRC-035"
       ],
       "promotion_state": "planned"
     }

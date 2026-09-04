@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-085",
+  "item_id": "BPTK-085",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No empirical harness exists to measure a delta.",
+  "prerequisite": [
+    "BPTK-081",
+    "BPTK-084"
+  ],
+  "promotion_trigger": "Promote when the gate computes the per-fix delta from harness record and blocks the single-beneficiary case.",
+  "expected_failing_assertion": "No per-fix corpus delta exists to compute.",
+  "owner_item": "BPTK-085",
+  "active_gate_evidence": "The gate keeps failing on roadmap-package inconsistency, which is the same merge-blocking mechanism.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Land a drill fix that benefits one title and assert the gate blocks it.",
+    "Land a drill fix that meets the declared breadth and assert acceptance.",
+    "Assert the sandboxed-adapter declaration is the only single-title exception."
+  ],
+  "pass_criterion": [
+    "Single-beneficiary merge is blocked.",
+    "Breadth-meeting fix is accepted."
+  ]
+}

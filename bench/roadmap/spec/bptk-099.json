@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-099",
+  "item_id": "BPTK-099",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No transport or mediation exists; the network command validates policy only.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the session fixture holds semantics with zero off-allowlist attempt.",
+  "expected_failing_assertion": "No transport exists to mediate.",
+  "owner_item": "BPTK-099",
+  "active_gate_evidence": "The network command keeps deny-by-default with consent required and zero attempt recorded.",
+  "fixture": [
+    "FIX-019"
+  ],
+  "procedure": [
+    "Run the session and lockstep fixture over the mediated transport.",
+    "Assert every endpoint is on the allowlist.",
+    "Assert zero off-allowlist attempt is recorded."
+  ],
+  "pass_criterion": [
+    "Session semantics hold.",
+    "Zero off-allowlist attempt."
+  ]
+}

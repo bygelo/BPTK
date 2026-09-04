@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-097",
+  "item_id": "BPTK-097",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No browser input bridge exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the trace replay matches the oracle across the declared device set.",
+  "expected_failing_assertion": "No input bridge exists.",
+  "owner_item": "BPTK-097",
+  "active_gate_evidence": "The control command validates profile selection without a bridge.",
+  "fixture": [
+    "FIX-020"
+  ],
+  "procedure": [
+    "Replay the declared input trace per device class.",
+    "Compare against the oracle including relative motion.",
+    "Assert at least one rumble effect is delivered."
+  ],
+  "pass_criterion": [
+    "Trace replay matches the oracle.",
+    "Rumble effect is delivered."
+  ]
+}

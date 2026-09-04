@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-100",
+  "item_id": "BPTK-100",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No frame or audio bridge exists to decode into.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the FMV fixture holds the drift budget across seek and pause with on-time cue.",
+  "expected_failing_assertion": "No FMV decode path exists.",
+  "owner_item": "BPTK-100",
+  "active_gate_evidence": "The roadmap keeps proprietary codec refusal in place and BPTK-040 red.",
+  "fixture": [
+    "FIX-007"
+  ],
+  "procedure": [
+    "Play the FMV fixture with subtitle cue.",
+    "Seek and pause at declared point and measure drift.",
+    "Assert cue timing within the declared budget."
+  ],
+  "pass_criterion": [
+    "Drift stays in budget.",
+    "Cue fire on time after seek."
+  ]
+}

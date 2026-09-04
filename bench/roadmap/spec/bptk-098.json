@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-098",
+  "item_id": "BPTK-098",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The copy-on-write overlay and registry service are unavailable per the roadmap truth.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the registry and path fixture match the oracle and rollback restores the base exactly.",
+  "expected_failing_assertion": "No registry or path-semantics surface exists.",
+  "owner_item": "BPTK-098",
+  "active_gate_evidence": "The storage boundary keeps the base read-only with no overlay created yet.",
+  "fixture": [
+    "FIX-008"
+  ],
+  "procedure": [
+    "Run the registry and path-semantics fixture against the oracle.",
+    "Trigger quota rollback and compare the base byte-for-byte.",
+    "Assert alias case cannot cross the sandbox boundary."
+  ],
+  "pass_criterion": [
+    "Registry and path behavior match the oracle.",
+    "Rollback leaves the base byte-unchanged."
+  ]
+}

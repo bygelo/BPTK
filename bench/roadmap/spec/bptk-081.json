@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-081",
+  "item_id": "BPTK-081",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No emulated symbol set or corpus import ledger exists.",
+  "prerequisite": [
+    "BPTK-076"
+  ],
+  "promotion_trigger": "Promote when the ledger joins real corpus import against the emulated symbol set and a zero-case stub lands in tracked gap.",
+  "expected_failing_assertion": "No emulated symbol set exists to join.",
+  "owner_item": "BPTK-081",
+  "active_gate_evidence": "The inspect surface keeps classifying import without claiming coverage.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Join the corpus import set against the emulated symbol set.",
+    "Classify absent and zero-case stub as tracked gap.",
+    "Assert the release gate enforces the declared gap budget."
+  ],
+  "pass_criterion": [
+    "The ledger joins both set.",
+    "Zero-case stub is a tracked gap against the budget."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-082",
+  "item_id": "BPTK-082",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The promotion runner is active for eleven implemented surface but no sabotage audit exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every declared sabotage class is rejected by the live promotion path.",
+  "expected_failing_assertion": "No sabotage fixture exists to reject.",
+  "owner_item": "BPTK-082",
+  "active_gate_evidence": "The benchmark runner keeps deterministic in-memory checks and content-addressed promotion without retained result.",
+  "fixture": [
+    "FIX-000"
+  ],
+  "procedure": [
+    "Plant each declared sabotage fixture against the promotion path.",
+    "Assert every class is rejected.",
+    "Assert the clean path still promotes."
+  ],
+  "pass_criterion": [
+    "Every sabotage class is rejected.",
+    "The clean path promotes."
+  ]
+}

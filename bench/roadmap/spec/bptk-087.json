@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-087",
+  "item_id": "BPTK-087",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No deterministic record or replay exists to step over.",
+  "prerequisite": [
+    "BPTK-055",
+    "BPTK-079"
+  ],
+  "promotion_trigger": "Promote when the debugger reconstructs recorded state at any index and finds the first divergence identically in both harness.",
+  "expected_failing_assertion": "No recorded run exists to step over.",
+  "owner_item": "BPTK-087",
+  "active_gate_evidence": "The report command keeps recording deterministic-replay-friendly and privacy-minimized.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Record a run with a planted divergence.",
+    "Reconstruct guest state at declared instruction index and compare with the run.",
+    "Reverse-step to the first differing instruction and compare across both harness."
+  ],
+  "pass_criterion": [
+    "State reconstruction matches the run at every index.",
+    "First divergence is found identically in both harness."
+  ]
+}

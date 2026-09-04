@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-104",
+  "item_id": "BPTK-104",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No frame loop exists to pace and the clock layer serves the probe only.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when cadence, speed independence, and the yield-not-spin property all hold on the fixture.",
+  "expected_failing_assertion": "No frame scheduler exists.",
+  "owner_item": "BPTK-104",
+  "active_gate_evidence": "The clock layer keeps one monotonic source with clamped delta.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Run the frame fixture at the declared cadence.",
+    "Measure jitter against the budget and speed against host throughput change.",
+    "Assert the busy-wait call yields instead of spinning."
+  ],
+  "pass_criterion": [
+    "Jitter stays in budget.",
+    "Speed is host-independent and the wait yields."
+  ]
+}

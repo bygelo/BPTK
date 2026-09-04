@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-086",
+  "item_id": "BPTK-086",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No corpus execution or broad emulation exists.",
+  "prerequisite": [
+    "BPTK-084",
+    "BPTK-101"
+  ],
+  "promotion_trigger": "Promote when the declared utility set reaches interactive or complete through generic emulation.",
+  "expected_failing_assertion": "No utility program executes in the runtime.",
+  "owner_item": "BPTK-086",
+  "active_gate_evidence": "The ingest path classifies non-game executable honestly and the census routes by evidence.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Run the declared utility set through the real path.",
+    "Record reached stage with the same conformance discipline.",
+    "Assert no program-specific shim exists in the diff."
+  ],
+  "pass_criterion": [
+    "The utility set reaches interactive or complete.",
+    "No program-specific shim exists."
+  ]
+}

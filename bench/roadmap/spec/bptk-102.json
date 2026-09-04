@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-102",
+  "item_id": "BPTK-102",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The installer extractor handles payload only and no drive emulation exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the mounted image serves hash-matching sector read and in-sync disc audio, refusing protected image.",
+  "expected_failing_assertion": "No optical mount exists.",
+  "owner_item": "BPTK-102",
+  "active_gate_evidence": "The extractor keeps refusing protected and encrypted input with identity.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Mount the DRM-free image fixture.",
+    "Verify sector hash and disc-audio sync against the reference.",
+    "Attempt a protected image and assert refusal."
+  ],
+  "pass_criterion": [
+    "Sector read hash-match.",
+    "Disc audio is in sync and protected image is refused."
+  ]
+}

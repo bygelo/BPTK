@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-084",
+  "item_id": "BPTK-084",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No corpus acquisition or guest runtime exists to execute.",
+  "prerequisite": [
+    "BPTK-081",
+    "BPTK-083"
+  ],
+  "promotion_trigger": "Promote when every corpus binary yields a reproducible run record with stage and generic-gap classification.",
+  "expected_failing_assertion": "No corpus binary can be executed end to end.",
+  "owner_item": "BPTK-084",
+  "active_gate_evidence": "The ingest path classifies and packages without executing, and the bounded probe runs a declared subset only.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Run each corpus binary through the real ingest and run path.",
+    "Record the reached stage per binary.",
+    "Classify each failure into a named generic gap that maps to a roadmap item."
+  ],
+  "pass_criterion": [
+    "Every binary yields a reproducible record.",
+    "Failure maps to a generic gap, never a title patch."
+  ]
+}

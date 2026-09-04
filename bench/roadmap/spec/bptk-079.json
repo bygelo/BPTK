@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-079",
+  "item_id": "BPTK-079",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No guest loop or recording exists to replay.",
+  "prerequisite": [
+    "BPTK-039",
+    "BPTK-051"
+  ],
+  "promotion_trigger": "Promote when two replay hash-match at every declared checkpoint and the artifact privacy proof holds.",
+  "expected_failing_assertion": "No replay artifact exists.",
+  "owner_item": "BPTK-079",
+  "active_gate_evidence": "The report command keeps consent recording minimized and off by default.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Record the fixture run and produce the reference artifact.",
+    "Replay twice and compare checkpoint hash.",
+    "Audit the artifact for embedded asset and personal data."
+  ],
+  "pass_criterion": [
+    "Replay hash-match at all checkpoint.",
+    "The artifact is free of asset and personal data."
+  ]
+}

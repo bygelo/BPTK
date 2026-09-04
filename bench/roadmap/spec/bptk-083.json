@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-083",
+  "item_id": "BPTK-083",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No acquisition pipeline or corpus manifest exists and BPTK-002 freezing remains red.",
+  "prerequisite": [
+    "BPTK-127"
+  ],
+  "promotion_trigger": "Promote when the manifest rebuilds byte-stably from named source with provenance and the non-redistributable case is refused.",
+  "expected_failing_assertion": "No acquisition pipeline or manifest exists.",
+  "owner_item": "BPTK-083",
+  "active_gate_evidence": "The corpus command publishes no denominator without approval and the research note records the lawful source survey.",
+  "fixture": [
+    "FIX-009",
+    "doc/research-game-sources.md"
+  ],
+  "procedure": [
+    "Rebuild the corpus from the manifest against the named source.",
+    "Verify license, redistribution basis, and hash per entry.",
+    "Attempt a non-redistributable entry and assert refusal."
+  ],
+  "pass_criterion": [
+    "Rebuild is byte-stable with provenance.",
+    "Non-redistributable entry is refused."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-096",
+  "item_id": "BPTK-096",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No waveOut or DirectSound bridge exists to extend.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the positional and reverb fixture mixes within the frozen tolerance with zero underrun.",
+  "expected_failing_assertion": "No audio bridge exists.",
+  "owner_item": "BPTK-096",
+  "active_gate_evidence": "The graphics probes observe AudioContext availability without a mixing claim.",
+  "fixture": [
+    "FIX-007"
+  ],
+  "procedure": [
+    "Run the submix, voice-ramp, geometry, and reverb fixture.",
+    "Compare the mix against the reference within the frozen tolerance.",
+    "Measure underrun over the sustained fixture."
+  ],
+  "pass_criterion": [
+    "Mixing is within tolerance.",
+    "Zero underrun over the run."
+  ]
+}

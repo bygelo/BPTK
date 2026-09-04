@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-103",
+  "item_id": "BPTK-103",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No conversion surface exists in the runtime.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the codepage fixture converts byte-exactly and comparison matches the oracle.",
+  "expected_failing_assertion": "No locale layer exists.",
+  "owner_item": "BPTK-103",
+  "active_gate_evidence": "The conformance denominator stays empty and the runtime surface is absent.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Convert the declared codepage fixture both directions and compare bytes.",
+    "Run comparison and mapping case against the oracle.",
+    "Assert double-byte encoding is byte-exact."
+  ],
+  "pass_criterion": [
+    "Conversion is byte-exact.",
+    "Comparison and mapping match the oracle."
+  ]
+}
