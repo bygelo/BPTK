@@ -13,6 +13,8 @@ const content = JSON.parse(readFileSync(contentPath, "utf8"));
 const pack = spawnSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
   cwd: root,
   encoding: "utf8",
+  // Windows resolves npm to npm.cmd, which Node refuses to spawn without a shell.
+  shell: process.platform === "win32",
 });
 
 if (pack.status !== 0) {

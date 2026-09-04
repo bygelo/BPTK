@@ -289,7 +289,12 @@ test("regression risk: run surface refuses a symlink package manifest", (context
   mkdirSync(packagePath);
   const targetPath = join(rootPath, "manifest.json");
   writeFileSync(targetPath, JSON.stringify({ schema_version: 1, executable: "game.exe" }));
-  symlinkSync(targetPath, join(packagePath, "bptk.json"));
+  try {
+    symlinkSync(targetPath, join(packagePath, "bptk.json"));
+  } catch (error) {
+    if (error.code === "EPERM") context.skip("the host denies symbolic-link creation");
+    throw error;
+  }
   const result = run(["run", packagePath, "--json"]);
   assert.equal(result.status, 1);
   assert.equal(JSON.parse(result.stderr).error_code, "package_manifest_symlink");

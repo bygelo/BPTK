@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -414,8 +416,21 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
 
     if "package-lock.json" in package_content.get("file", []):
         error.append("package-lock.json must not be included in the published tarball")
-    if (ROOT / "bin/bptk.mjs").is_file() and not ((ROOT / "bin/bptk.mjs").stat().st_mode & 0o111):
-        error.append("bin/bptk.mjs must retain executable mode")
+    if (ROOT / "bin/bptk.mjs").is_file():
+        # NTFS and other non-POSIX working tree carry no execute bit; the committed
+        # index mode is the durable truth the published tarball inherits.
+        if os.name == "posix":
+            executable_mode = bool((ROOT / "bin/bptk.mjs").stat().st_mode & 0o111)
+        else:
+            index_listing = subprocess.run(
+                ["git", "-C", str(ROOT), "ls-files", "-s", "bin/bptk.mjs"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            executable_mode = index_listing.stdout.strip().startswith("100755")
+        if not executable_mode:
+            error.append("bin/bptk.mjs must retain executable mode")
 
     package_text = "\n".join(
         path.read_text(encoding="utf-8")

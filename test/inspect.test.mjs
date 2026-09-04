@@ -61,7 +61,12 @@ test("inspect refuses a symbolic-link root", (context) => {
   const targetPath = join(rootPath, "target");
   const linkPath = join(rootPath, "link");
   mkdirSync(targetPath);
-  symlinkSync(targetPath, linkPath);
+  try {
+    symlinkSync(targetPath, linkPath);
+  } catch (error) {
+    if (error.code === "EPERM") context.skip("the host denies symbolic-link creation");
+    throw error;
+  }
   const runValue = run(["inspect", linkPath, "--json"]);
   assert.equal(runValue.status, 1);
   const failure = JSON.parse(runValue.stderr);
