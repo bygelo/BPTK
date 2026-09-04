@@ -4,8 +4,8 @@
   "origin_count": {
     "repository": 4,
     "product": 7,
-    "prior_art": 23,
-    "constraint": 12
+    "prior_art": 34,
+    "constraint": 14
   },
   "candidate": [
     {"candidate_id": "CAND-001", "origin": "repository", "decision": "accepted", "target_id": "BPTK-001", "summary": "Approve the outbound license posture and upstream reuse strategy", "dedupe_key": "license-reuse-provenance"},
@@ -53,6 +53,19 @@
     {"candidate_id": "CAND-043", "origin": "constraint", "decision": "deferred", "target_id": "D-002", "summary": "Add general .NET, WPF, and desktop application support", "dedupe_key": "managed-desktop-runtime"},
     {"candidate_id": "CAND-044", "origin": "constraint", "decision": "deferred", "target_id": "D-003", "summary": "Require a privileged browser extension or native helper", "dedupe_key": "privileged-native-helper"},
     {"candidate_id": "CAND-045", "origin": "constraint", "decision": "deferred", "target_id": "D-004", "summary": "Optimize for mobile before the desktop baseline", "dedupe_key": "mobile-first-performance"},
-    {"candidate_id": "CAND-046", "origin": "product", "decision": "deferred", "target_id": "D-005", "summary": "Offer hosted import processing or cloud conversion", "dedupe_key": "hosted-conversion-service"}
+    {"candidate_id": "CAND-046", "origin": "product", "decision": "deferred", "target_id": "D-005", "summary": "Offer hosted import processing or cloud conversion", "dedupe_key": "hosted-conversion-service"},
+    {"candidate_id": "CAND-047", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-034", "summary": "Bridge blocking Win32 and synchronous storage over async browser API via JSPI", "dedupe_key": "jspi-blocking-call-bridge"},
+    {"candidate_id": "CAND-048", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-035", "summary": "Adopt a WebAssembly 3.0 execution substrate for the i386 engine", "dedupe_key": "wasm3-execution-substrate"},
+    {"candidate_id": "CAND-049", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-036", "summary": "Evaluate per-title static recompilation to WebAssembly as a fourth lane", "dedupe_key": "static-recompilation-lane"},
+    {"candidate_id": "CAND-050", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-037", "summary": "Classify game middleware and copy protection to route handle, warn, extract, or refuse", "dedupe_key": "middleware-drm-census"},
+    {"candidate_id": "CAND-051", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-038", "summary": "Extract a supported installer to the game payload without executing it", "dedupe_key": "installer-extraction"},
+    {"candidate_id": "CAND-052", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-039", "summary": "Serve every guest time source from one monotonic clock", "dedupe_key": "unified-monotonic-clock"},
+    {"candidate_id": "CAND-053", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-040", "summary": "Play supported full-motion-video middleware in sync with the game", "dedupe_key": "fmv-middleware-playback"},
+    {"candidate_id": "CAND-054", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-041", "summary": "Provide the redistributable runtime a supported game expects", "dedupe_key": "redistributable-dll-kit"},
+    {"candidate_id": "CAND-055", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-042", "summary": "Build a game source tree to the browser with a pinned Emscripten profile", "dedupe_key": "emscripten-source-build-profile"},
+    {"candidate_id": "CAND-056", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-043", "summary": "Route a supported game to a matching open engine reimplementation", "dedupe_key": "engine-family-detect-route"},
+    {"candidate_id": "CAND-057", "origin": "prior_art", "decision": "deferred", "target_id": "D-006", "summary": "Decompilation-assisted source recovery for the source and recompilation lane", "dedupe_key": "decompilation-source-recovery"},
+    {"candidate_id": "CAND-058", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-044", "summary": "Bound extraction, streaming, and execution against resource exhaustion", "dedupe_key": "resource-exhaustion-bound"},
+    {"candidate_id": "CAND-059", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-045", "summary": "Contain guest execution to a policy that cannot reach host capability", "dedupe_key": "guest-containment-policy"}
   ]
 }

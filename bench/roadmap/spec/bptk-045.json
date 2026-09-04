@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-045",
+  "item_id": "BPTK-045",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No guest execution runtime exists yet, so a containment policy has nothing to confine and no escape attempt has been measured.",
+  "prerequisite": ["BPTK-004"],
+  "promotion_trigger": "Promote when guest code stays confined to WebAssembly memory, a content-security policy without arbitrary host script, the package OPFS sandbox, and the mediated relay, and every escape attempt is refused.",
+  "expected_failing_assertion": "The containment suite cannot refuse a guest attempt to reach host script, storage outside its sandbox, or unmediated network.",
+  "owner_item": "BPTK-045",
+  "active_gate_evidence": "The product records the required guest containment policy as evidence and executes no guest code outside a confined boundary.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Run a guest fixture that attempts host script, out-of-sandbox storage, and unmediated network access.", "Confirm each attempt is refused while an in-policy guest continues."],
+  "pass_criterion": ["Every out-of-policy host, storage, and network attempt is refused.", "An in-policy guest executes without reaching a host capability."]
+}

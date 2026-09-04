@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-036",
+  "item_id": "BPTK-036",
+  "kind": "evidence",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The comparative binary-runtime spike is incomplete, so no measured pipeline, legal input path, or advantage over the existing binary and source lane has been demonstrated for static recompilation.",
+  "prerequisite": ["BPTK-005"],
+  "promotion_trigger": "Promote when an approved report compares a per-title static recompilation pipeline against the binary and source lane on effort, coverage, legal input, and measured performance for at least one representative title.",
+  "expected_failing_assertion": "No credible per-title static-recompilation-to-WebAssembly pipeline has been demonstrated against the binary and source lane.",
+  "owner_item": "BPTK-036",
+  "active_gate_evidence": "The product records N64Recomp, PSXRecomp, XenonRecomp, and browser source-port prior art as upstream evidence and returns defer without a lane commitment.",
+  "fixture": ["FIX-026"],
+  "procedure": ["Survey the static-recompilation prior art and its legal input requirement from current primary source.", "Prototype the highest-risk step of a per-title machine-code to WebAssembly pipeline and compare cost and coverage to the binary and source lane."],
+  "pass_criterion": ["The report contains reproducible evidence rather than roadmap aspiration.", "It recommends bounded adoption, continued research, or rejection of the lane without expanding a support claim."]
+}

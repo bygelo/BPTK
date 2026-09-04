@@ -161,6 +161,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/graphics.mjs"),
     Path("lib/input.mjs"),
     Path("lib/import.mjs"),
+    Path("lib/i386.mjs"),
     Path("lib/index.mjs"),
     Path("lib/inspect.mjs"),
     Path("lib/legal.mjs"),
@@ -171,6 +172,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/port.mjs"),
     Path("lib/report.mjs"),
     Path("lib/research.mjs"),
+    Path("lib/runtime.mjs"),
     Path("lib/run.mjs"),
     Path("lib/security.mjs"),
     Path("lib/status.mjs"),
@@ -184,6 +186,7 @@ ALLOWED_MJS_PATH = {
     Path("test/inspect.test.mjs"),
     Path("test/package.test.mjs"),
     Path("test/policy.test.mjs"),
+    Path("test/runtime.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -340,6 +343,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/graphics.mjs",
         "lib/input.mjs",
         "lib/import.mjs",
+        "lib/i386.mjs",
         "lib/index.mjs",
         "lib/inspect.mjs",
         "lib/legal.mjs",
@@ -350,6 +354,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/port.mjs",
         "lib/report.mjs",
         "lib/research.mjs",
+        "lib/runtime.mjs",
         "lib/run.mjs",
         "lib/security.mjs",
         "lib/status.mjs",
@@ -405,7 +410,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         if path.is_file()
     )
     for token in (
-        "No game runtime exists",
+        "No supported Windows game runtime exists",
         "Browser/runtime compatibility is NOT tested",
         "This snapshot is not compatibility evidence",
     ):

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-043",
+  "item_id": "BPTK-043",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No engine-family census exists and the engine adapter contract is incomplete, so a supported game cannot be routed to a matching open reimplementation.",
+  "prerequisite": ["BPTK-029"],
+  "promotion_trigger": "Promote when a labelled corpus routes each supported game to the correct open engine reimplementation or reports no match, with no engine or game code bundled.",
+  "expected_failing_assertion": "The engine-family census cannot route a labelled sample to the correct open reimplementation or a correct no-match.",
+  "owner_item": "BPTK-043",
+  "active_gate_evidence": "The product records a known engine-family signature and the matching open reimplementation as evidence and returns a routing decision without bundling code.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Fingerprint a supported game engine from executable and asset signal.", "Route each labelled sample to a matching open reimplementation or report no match and compare against the reference label."],
+  "pass_criterion": ["Every labelled sample routes to the correct open engine reimplementation or a correct no-match.", "No engine or game code is bundled and no unsupported engine is claimed as portable."]
+}

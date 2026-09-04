@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-039",
+  "item_id": "BPTK-039",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Win32 high-level emulation exists yet, so no guest time source can be served, and no single-clock behavior has been measured against a busy-wait or double-speed failure.",
+  "prerequisite": ["BPTK-010"],
+  "promotion_trigger": "Promote when QueryPerformanceCounter, RDTSC, GetTickCount, timeGetTime, and vertical-blank all derive from one monotonic source with the one-millisecond period expectation and clamped delta.",
+  "expected_failing_assertion": "The timing suite cannot keep every guest time source consistent with one monotonic clock under a busy-wait and a variable-frame workload.",
+  "owner_item": "BPTK-039",
+  "active_gate_evidence": "The product records the guest time-source requirement as evidence and exposes no real timestamp counter to the guest.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Drive each guest time source from a single monotonic base with a one-millisecond period and clamped delta.", "Run a busy-wait, a vertical-blank spin, and a variable-frame workload and compare elapsed guest time against the reference."],
+  "pass_criterion": ["Every time source stays consistent with the monotonic base within tolerance.", "The guest neither busy-spins at full utilization nor runs at double speed."]
+}

@@ -2,15 +2,15 @@
 
 ## Status
 
-This document describes both the implemented local-analysis boundary and the target runtime architecture. Local analysis is not game execution or browser compatibility.
+This document describes the implemented package boundary and the target runtime architecture. The opt-in entry probe executes a bounded guest-integer subset, but neither local analysis nor that probe establishes game execution or browser compatibility.
 
 ## Repository tooling boundary
 
-The current package source additionally exposes atomic asset packaging, HTML and React host-source emission, privacy-minimized local reporting, and platform-policy diagnosis. The command uses Node.js built-ins only and never uploads imported content. It has a bounded static PE32 image mapper, declared import binding, and live browser capability probe but no CPU core, Win32 shim, graphics translator, executable browser host, or compatibility runner.
+The current package source additionally exposes atomic asset packaging, HTML and React host-source emission, privacy-minimized local reporting, and platform-policy diagnosis. The command uses Node.js built-ins only and never uploads imported content. It has a bounded PE32 image mapper, declared import binding, live browser capability probe, and opt-in deterministic i386 entry probe. It has no complete CPU core, Win32 shim, graphics translator, executable browser host, or compatibility runner.
 
 BPTK-003, BPTK-007, BPTK-008, and BPTK-017 are implemented but red because their operational prerequisite, approved corpus input, or complete profile remain red. The legal, corpus, and security command expose useful governance state without promoting BPTK-001, BPTK-002, or BPTK-004. Passing coverage remains 0 / 33.
 
-## Implemented local-analysis boundary
+## Implemented package boundary
 
 `lib/input.mjs` resolves a local file or directory, rejects symbolic-link roots, refuses path escape, bounds entry count, depth, and per-file size, and does not follow nested symbolic links. The reader returns metadata plus a bounded file prefix; it never launches content or opens a network connection.
 
@@ -22,7 +22,7 @@ BPTK-003, BPTK-007, BPTK-008, and BPTK-017 are implemented but red because their
 
 `lib/foundation.mjs` and `lib/port.mjs` combine real input classification with local executable discovery. They report that Emscripten and the SDL/OpenGL adapter are absent on this host and never call a scaffold a runnable package.
 
-`lib/pe.mjs` maps a bounded PE32/i386 static image, validates header, section, file, image, memory-reserve, import, relocation, TLS, and executable entry-point range, and applies supported HIGHLOW relocation when a different base is requested. It resolves ordinary named and ordinal import only when the package declares one exact external address per binding, patches the mapped IAT deterministically, and reports every unresolved symbol. It parses bounded TLS raw-data, index, and executable callback metadata without invoking a callback. `lib/run.mjs` exposes this through a raw executable or a directory containing strict `bptk.json`; a raw executable has no declared import catalog. The image hash is calculated after relocation and import patching. Guest entry, TLS callback, i386, and Win32 behavior remain runtime blockers and `is_executed` stays false.
+`lib/pe.mjs` maps a bounded PE32/i386 image, validates header, section, file, image, memory-reserve, import, relocation, TLS, and executable entry-point range, and applies supported HIGHLOW relocation when a different base is requested. It resolves ordinary named and ordinal import only when the package declares one exact external address per binding, patches the mapped IAT deterministically, and reports every unresolved symbol. It parses bounded TLS raw-data, index, and executable callback metadata without invoking a callback. `lib/run.mjs` exposes this through a raw executable or a directory containing strict `bptk.json`; a raw executable has no declared import catalog. The image hash is calculated after relocation and import patching. Raw executable and package without an execution profile stay static with `is_executed: false`. A package may select `i386_probe_v1` with an explicit instruction budget; `lib/i386.mjs` then runs the mapped entry through the deterministic `lib/runtime.mjs` integer subset. The probe supports bounded register and memory MOV/LEA, integer ALU flag behavior, stack, CALL/RET, JMP/Jcc, ModRM access, and self-modification. Import or TLS callback refuses execution. Unsupported instruction including x87, fetch/read/write fault, entry return, and exact budget exhaustion produce structured stop state. Full instruction, FPU, exception, Win32, timing, and game-loop behavior remain unavailable.
 
 `lib/graphics.mjs` discovers a local Chrome or Chromium executable and launches it headlessly against an in-memory data document. The document creates a real canvas context and observes WebGPU, WebGL2, WebGL, AudioContext, cross-origin isolation, SharedArrayBuffer, and renderer state. The result is removed with the browser process and not retained. One observed Chrome profile cannot establish cross-browser compatibility.
 
@@ -60,7 +60,7 @@ The report is a valid terminal output. Unsupported input must fail closed with a
 
 ## Shared workbench
 
-All lane share a control plane. Only bounded import inspection is implemented today:
+All lane share a control plane. The implemented surface includes bounded import inspection, PE32 mapping, packaging, platform diagnosis, and the isolated i386 entry probe:
 
 - **Importer**: currently reads bounded local metadata and file prefixes for folder, archive, installer container, executable, source tree, and engine asset without executing imported code.
 - **Inspector**: currently identifies PE architecture, container or source form, candidate lane, and known blocker. Import-table, graphics-API, and middleware analysis remain planned.

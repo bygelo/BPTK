@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-038",
+  "item_id": "BPTK-038",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No installer extractor exists yet and the safe importer prerequisite is incomplete, so a supported installer cannot be unpacked to a payload without execution.",
+  "prerequisite": ["BPTK-007"],
+  "promotion_trigger": "Promote when a supported Inno Setup, GOG, and InstallShield cabinet installer unpacks to the correct payload, a 16-bit setup stub is refused, and no installer code runs.",
+  "expected_failing_assertion": "The extractor cannot unpack a supported installer to its reference payload without executing installer code.",
+  "owner_item": "BPTK-038",
+  "active_gate_evidence": "The product identifies a supported installer format and reports the extraction plan without unpacking or executing it.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Identify the installer format from overlay and sibling-file evidence.", "Unpack a supported Inno Setup, GOG, or InstallShield cabinet fixture to a payload and refuse a 16-bit setup stub."],
+  "pass_criterion": ["Each supported installer fixture unpacks to the reference payload file set.", "A 16-bit or unsupported installer is refused and no installer code is executed."]
+}

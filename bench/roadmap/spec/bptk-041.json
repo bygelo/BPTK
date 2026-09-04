@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-041",
+  "item_id": "BPTK-041",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Win32 high-level emulation exists yet to load a redistributable component, and no redistributable-only kit has been assembled or license-checked.",
+  "prerequisite": ["BPTK-010"],
+  "promotion_trigger": "Promote when a supported game's exact D3DX, XInput, XAudio, Visual C++, Visual Basic 6, and DirectMusic instrument dependency resolves from a redistributable-only kit, and an unmet dependency is reported.",
+  "expected_failing_assertion": "The redistributable kit cannot satisfy a supported game's declared runtime dependency from redistributable component alone.",
+  "owner_item": "BPTK-041",
+  "active_gate_evidence": "The product reports the exact redistributable dependency a game expects and whether each is redistributable, without bundling a non-redistributable component.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Resolve a supported game's declared D3DX, XInput, XAudio, Visual C++, Visual Basic 6, and DirectMusic instrument dependency from a redistributable-only kit.", "Report any unmet or non-redistributable dependency rather than faking it."],
+  "pass_criterion": ["Every supported redistributable dependency resolves to the correct component and version.", "A non-redistributable or missing dependency is reported, not silently substituted."]
+}

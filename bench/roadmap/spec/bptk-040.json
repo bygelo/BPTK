@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-040",
+  "item_id": "BPTK-040",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No browser frame or audio bridge exists yet, so a full-motion-video middleware path has nothing to decode into and no synchronization has been measured.",
+  "prerequisite": ["BPTK-013", "BPTK-014"],
+  "promotion_trigger": "Promote when a supported Bink, Smacker, and VP6 clip decodes and presents in sync through the browser frame and audio, and a proprietary WMV or Indeo bitstream is refused.",
+  "expected_failing_assertion": "The full-motion-video suite cannot decode and present a supported clip in audio-video sync.",
+  "owner_item": "BPTK-040",
+  "active_gate_evidence": "The product identifies a full-motion-video middleware signal and reports the decode plan without decoding or presenting a frame.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Decode a supported Bink, Smacker, and VP6 fixture and present it through the browser frame and audio.", "Measure audio-video synchronization and refuse a proprietary WMV or Indeo bitstream."],
+  "pass_criterion": ["Each supported clip decodes and presents within the declared synchronization tolerance.", "An unsupported proprietary bitstream is refused rather than mis-decoded."]
+}

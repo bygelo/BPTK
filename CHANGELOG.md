@@ -28,6 +28,9 @@ All notable planning and implementation change will be recorded here.
 - Added safe import-and-run diagnosis that neither stages nor executes an asset package.
 - Added bounded x86-64, D3D11, and modern research surfaces that combine input signal with live browser capability and return an explicit defer decision.
 - Added temporary-package Tier 1 checks for save path refusal and import non-execution.
+- Added an opt-in `i386_probe_v1` package profile that deterministically runs a bounded integer instruction subset at the mapped PE32 entry point with structured stop state.
+- Added disposable real-CLI regression checks for arithmetic and flag behavior, branch and call flow, memory access, self-modification, exact instruction budget, deterministic state, unsupported x87, import and TLS refusal, and memory fault.
+- Added instruction-atomic fault rollback, faulting-address diagnostics, bounded no-follow executable and package-manifest reads, and one global import-entry allocation budget.
 
 ### Changed
 
@@ -39,12 +42,13 @@ All notable planning and implementation change will be recorded here.
 - Expanded the exact dependency-free package inventory to 27 files; platform diagnostics remain planned and red until their runtime prerequisite exist.
 - Expanded the exact dependency-free package inventory to 30 files; save, integration, and research behavior remain red until their execution or prototype prerequisite exist.
 - Promoted BPTK-008 to implemented-but-red after its disposable A-J product walk passed; foundation, importer, and approved corpus evidence remain red.
+- Expanded the exact dependency-free package inventory to 32 files for the i386 probe checkpoint; BPTK-009 remains planned, excluded, and red.
 
 ### Known gap
 
 - BPTK-001, BPTK-002, and BPTK-004 still require genuine named review; command output does not constitute approval.
-- No input is executable through BPTK, and no game-runtime or browser-package behavior passes yet.
-- Full SDL/OpenGL source output, i386 CPU behavior, Win32 API behavior behind declared import binding, TLS callback execution, and game-loop execution remain weeks-scale.
+- No Windows game is executable through BPTK, and no game-runtime or browser-package behavior passes yet; only an explicitly selected, import-free, TLS-free integer entry probe executes guest instruction.
+- Full SDL/OpenGL source output, complete i386 and FPU behavior, Win32 API behavior behind declared import binding, TLS callback execution, and game-loop execution remain weeks-scale.
 - The current Chrome profile exposes WebGL2 but lacks cross-origin isolation; Firefox and the remaining declared browser profile have not been observed.
 - The live matrix walk observed Chrome 150 as WebGL2-only and unisolated, found Safari installed but unautomated, and found Firefox absent; no browser support state is claimed.
 

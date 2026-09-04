@@ -302,6 +302,136 @@ No source was copied into BPTK during this planning pass.
 - Confidence: High
 - Roadmap influence: BPTK-027 owns accessible workbench and host control, and each adapter must declare game-content accessibility support separately.
 
+### SRC-029 — WebAssembly 3.0 feature set
+
+- Authoritative source: [WebAssembly features](https://webassembly.org/features/)
+- Revision checked: live specification reference, 2026-09-04
+- License class: W3C and WebAssembly Community Group documentation reference
+- Demonstrated capability: the WebAssembly 3.0 core standard (released 2025-09-17) folds tail calls, exnref exception handling, relaxed SIMD, memory64, multi-memory, garbage collection, and JavaScript string builtins into the language.
+- Limitation for BPTK: per-feature browser support differs, and Safari lacks memory64 and ships relaxed SIMD behind a flag, so no feature can be assumed universally available.
+- Confidence: High
+- Roadmap influence: BPTK-035 owns the execution substrate that adopts tail calls, exnref, and relaxed SIMD with fallback, and BPTK-031 tracks memory64 as x86-64 research.
+
+### SRC-030 — JavaScript Promise Integration for WebAssembly
+
+- Authoritative source: [V8 JSPI](https://v8.dev/blog/jspi)
+- Revision checked: live vendor reference, 2026-09-04
+- License class: vendor engineering documentation reference
+- Demonstrated capability: JSPI suspends and resumes a WebAssembly stack across a JavaScript promise, letting synchronous guest code call an asynchronous browser API without whole-module Asyncify instrumentation; shipped default in Chrome 137.
+- Limitation for BPTK: Safari and Firefox stable shipping lags Chrome, so a feature-detected Asyncify fallback remains required for portability.
+- Confidence: High
+- Roadmap influence: BPTK-034 owns the blocking-call bridge that services a synchronous Win32 and storage call over an asynchronous browser API.
+
+### SRC-031 — WebAssembly tail call, exception, and SIMD browser support
+
+- Authoritative source: [Can I use WebAssembly relaxed SIMD](https://caniuse.com/wf-wasm-simd-relaxed)
+- Revision checked: live compatibility reference, 2026-09-04
+- License class: aggregated browser-support reference
+- Demonstrated capability: tail calls and exnref exception handling are default across Chrome, Firefox, and Safari 18.2 through 18.4, and relaxed SIMD is default in Chrome and Firefox.
+- Limitation for BPTK: Safari relaxed-SIMD status is unresolved and reported behind a flag, so a strict-SIMD fallback is required.
+- Confidence: Medium
+- Roadmap influence: BPTK-035 owns the substrate that selects these features or their fallback per browser profile.
+
+### SRC-032 — Static recompilation to native and WebAssembly prior art
+
+- Authoritative source: [Pepsiman Recompiled](https://pepsiman.ol.mr/)
+- Revision checked: live project reference, 2026-09-04
+- License class: third-party project reference
+- Demonstrated capability: N64Recomp, PSXRecomp (Pepsiman Recompiled), and XenonRecomp statically recompile console machine code to C or C++ and then to a native or WebAssembly target, running at full frame rate rather than interpreting each instruction.
+- Limitation for BPTK: static recompilation needs a per-title analysis pass and a legally obtained image, and it does not generalize to arbitrary no-source Win32, which remains the high-level-emulation lane.
+- Confidence: Medium
+- Roadmap influence: BPTK-036 evaluates per-title static recompilation to WebAssembly as a distinct fourth lane.
+
+### SRC-033 — Browser game port prior art
+
+- Authoritative source: [BottleShip](https://github.com/jenissimo/bottleship)
+- Revision checked: live project reference, 2026-09-04
+- License class: third-party project reference (Apache-2.0)
+- Demonstrated capability: BottleShip runs an unmodified 32-bit PE game through a WebAssembly x86 core with high-level Win32 and DirectX emulation over WebGPU and OPFS, while NewShoes and reVC ship a large game as an Emscripten source port; both patterns run entirely client-side from a user-supplied image.
+- Limitation for BPTK: these are early or single-title efforts, several famous-title ports have drawn DMCA takedown, and none supplies a reusable cross-title library.
+- Confidence: High
+- Roadmap influence: BPTK-034 and BPTK-036 draw on this browser-runtime and source-port evidence, and BottleShip remains the closest prior art for the binary lane.
+
+### SRC-034 — Game middleware and copy-protection component catalog
+
+- Authoritative source: [PCGamingWiki DRM and copy protection](https://www.pcgamingwiki.com/wiki/Category:DRM)
+- Revision checked: live community reference, 2026-09-04
+- License class: aggregated third-party compatibility reference
+- Demonstrated capability: 1998 through 2008 Windows games ship identifiable middleware (Bink `binkw32.dll`, Smacker `smackw32.dll`, Miles `mss32.dll`, FMOD, DirectMusic, D3DX `d3dx9_##.dll`) and copy protection (SafeDisc `CLCD32.DLL`/`secdrv.sys`, SecuROM `.securom`, StarForce driver) detectable from PE import, section, overlay, and sibling-file evidence.
+- Limitation for BPTK: copy protection that authenticates media geometry, decrypts a wrapper, or emulates a kernel driver is DRM and must be detected to refuse, never circumvented.
+- Confidence: Medium
+- Roadmap influence: BPTK-037 owns the census that routes each detected component to handle, warn, extract, or refuse.
+
+### SRC-035 — Game timing and multicore guidance
+
+- Authoritative source: [Game Timing and Multicore Processors](https://learn.microsoft.com/en-us/windows/win32/dxtecharts/game-timing-and-multicore-processors)
+- Revision checked: live vendor reference, 2026-09-04
+- License class: vendor engineering documentation reference
+- Demonstrated capability: RDTSC is not a reliable clock across cores and power states; the guidance is to use QueryPerformanceCounter, pin the timing thread, and clamp a delta, and legacy games also mix GetTickCount, timeGetTime, and vertical-blank waits.
+- Limitation for BPTK: a browser exposes performance.now, vertical-blank via requestAnimationFrame, and an AudioContext clock, none of which a 1999 busy-wait or beam-sync game expects, so all must derive from one source.
+- Confidence: High
+- Roadmap influence: BPTK-039 owns the single monotonic clock that serves every guest time source.
+
+### SRC-036 — Installer extraction tooling
+
+- Authoritative source: [innoextract](https://constexpr.org/innoextract/)
+- Revision checked: live project reference, 2026-09-04
+- License class: third-party project reference
+- Demonstrated capability: an Inno Setup and GOG offline installer unpacks with innoextract and an InstallShield cabinet with unshield, without executing the installer, while a 16-bit setup stub cannot run on a 64-bit host.
+- Limitation for BPTK: a GOG Galaxy binary-reassembly step and non-redistributable payload remain the responsibility of the user's legally obtained copy.
+- Confidence: High
+- Roadmap influence: BPTK-038 owns client-side installer extraction to the game payload.
+
+### SRC-037 — Full-motion-video middleware decoding
+
+- Authoritative source: [FFmpeg](https://ffmpeg.org/)
+- Revision checked: live project reference, 2026-09-04
+- License class: third-party project reference
+- Demonstrated capability: FFmpeg decodes Bink1, Smacker, and VP6 bitstreams (ScummVM and BottleShip already use this), so a supported cutscene can be decoded and presented in the browser without the vendor codec DLL doing the bitstream work.
+- Limitation for BPTK: Bink2 open decoding is incomplete, and proprietary WMV and Indeo bitstreams cannot be decoded lawfully in this scope and must be refused or pre-transcoded by the user.
+- Confidence: Medium
+- Roadmap influence: BPTK-040 owns supported full-motion-video decode and presentation.
+
+### SRC-038 — Redistributable runtime component
+
+- Authoritative source: [DirectX End-User Runtimes (D3DX redistributable)](https://www.microsoft.com/en-us/download/details.aspx?id=8109)
+- Revision checked: live vendor reference, 2026-09-04
+- License class: vendor redistributable component reference
+- Demonstrated capability: almost every Direct3D 9 game needs an exact out-of-box D3DX redistributable (`d3dx9_24` through `d3dx9_43`), and late ports also need XInput, XAudio, Visual C++, Visual Basic 6, and DirectMusic instrument (`gm.dls`) components that ship as redistributables.
+- Limitation for BPTK: only a redistributable component may ship; a non-redistributable runtime or the user's own build stays out of the repository.
+- Confidence: Medium
+- Roadmap influence: BPTK-041 owns the redistributable runtime kit that satisfies or reports each declared dependency.
+
+### SRC-039 — Emscripten browser build configuration
+
+- Authoritative source: [Emscripten pthreads](https://emscripten.org/docs/porting/pthreads.html)
+- Revision checked: live project reference, 2026-09-04
+- License class: third-party project reference
+- Demonstrated capability: an Emscripten source build reaches SharedArrayBuffer threads only under cross-origin isolation (COOP and COEP), uses native WebAssembly exception rather than legacy handling, and drives a WASMFS OPFS backend through JSPI, which avoids the documented legacy-Asyncify OPFS incompatibility.
+- Limitation for BPTK: the profile applies only to a source tree the user may lawfully compile, and JSPI shipping still lags on some browser, so an Asyncify fallback remains.
+- Confidence: High
+- Roadmap influence: BPTK-042 owns the pinned source-lane Emscripten build profile.
+
+### SRC-040 — Open engine reimplementation for the browser
+
+- Authoritative source: [ScummVM](https://www.scummvm.org/)
+- Revision checked: live project reference, 2026-09-04
+- License class: third-party project reference
+- Demonstrated capability: an open engine reimplementation can run a supported game family in the browser from user-supplied asset — ScummVM for adventure engine, WebXash for GoldSrc, Qwasm2 for Quake, OpenSA and dhewm3 for their families — replacing the original engine binary while the player supplies legally obtained asset.
+- Limitation for BPTK: each reimplementation has its own license and asset-format expectation, and an engine match does not guarantee full title compatibility.
+- Confidence: Medium
+- Roadmap influence: BPTK-043 fingerprints an engine family and routes it to a matching open reimplementation under the BPTK-029 adapter contract.
+
+### SRC-041 — Resource-exhaustion and decompression-bomb defense
+
+- Authoritative source: [CWE-409 Improper Handling of Highly Compressed Data](https://cwe.mitre.org/data/definitions/409.html)
+- Revision checked: live reference, 2026-09-04
+- License class: aggregated security reference
+- Demonstrated capability: a compressed archive or asset stream can expand to exhaust memory or storage as a decompression bomb, and untrusted code execution can exhaust CPU and memory, so a defense must bound output size, expansion ratio, nesting depth, and a memory and time budget.
+- Limitation for BPTK: a bound must admit a legitimate multi-gigabyte game yet refuse an amplification attack, which requires a per-surface budget rather than one global limit.
+- Confidence: High
+- Roadmap influence: BPTK-044 owns bounded-resource enforcement across extraction, streaming, and guest execution, and BPTK-045 owns guest containment.
+
 ## Synthesis
 
 The audit supports a feasible, staged product but does not support an unrestricted compatibility claim. The highest-leverage route is:

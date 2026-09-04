@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-044",
+  "item_id": "BPTK-044",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The extraction, streaming, and execution surface that would carry a resource bound are incomplete, so no decompression-bomb or quota-exhaustion defense has been measured.",
+  "prerequisite": ["BPTK-004"],
+  "promotion_trigger": "Promote when a decompression-bomb, deep-nesting, and quota-exhaustion fixture is refused at its declared bound and a legitimate large game stays within budget.",
+  "expected_failing_assertion": "The bounded-resource suite cannot refuse an amplification or quota-exhaustion fixture while admitting a legitimate large input.",
+  "owner_item": "BPTK-044",
+  "active_gate_evidence": "The product records the required per-surface resource bound as evidence and refuses to extract, stream, or execute beyond a declared budget.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Feed a decompression-bomb, deep-nesting, and quota-exhaustion fixture through extraction, streaming, and a bounded execution budget.", "Confirm a legitimate large-game fixture stays within budget."],
+  "pass_criterion": ["Every amplification and quota-exhaustion fixture is refused at its declared bound.", "A legitimate large input completes within the per-surface memory, storage, and time budget."]
+}

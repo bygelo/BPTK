@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-042",
+  "item_id": "BPTK-042",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The source-assisted pipeline spike is incomplete and no Emscripten toolchain integration exists, so no supported source tree can build under a pinned profile.",
+  "prerequisite": ["BPTK-006"],
+  "promotion_trigger": "Promote when a supported source fixture builds deterministically under the pinned profile with cross-origin isolation, native exception, and JSPI-driven WASMFS OPFS rather than legacy Asyncify.",
+  "expected_failing_assertion": "The source lane cannot produce a deterministic browser module from a supported source tree under the pinned Emscripten profile.",
+  "owner_item": "BPTK-042",
+  "active_gate_evidence": "The product reports the required Emscripten profile and toolchain gap without emitting a build.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Build a supported source fixture under the pinned Emscripten profile.", "Rebuild it and compare the module for determinism and required isolation, exception, and storage configuration."],
+  "pass_criterion": ["The supported source fixture builds to a working browser module.", "The build is reproducible and uses isolation, native exception, and JSPI-driven OPFS rather than legacy Asyncify."]
+}

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-035",
+  "item_id": "BPTK-035",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The i386 engine has only a bounded integer entry probe, so tail-call dispatch, exnref unwinding, and relaxed SIMD have no engine to attach to and no portability fallback has been measured.",
+  "prerequisite": ["BPTK-009"],
+  "promotion_trigger": "Promote when a translated block dispatches by tail call, a guest exception unwinds through exnref, and packed SIMD executes, each with a verified fallback where the feature is flagged or absent.",
+  "expected_failing_assertion": "The execution-substrate suite cannot dispatch, unwind, and execute SIMD without wasm-stack growth or a cross-browser divergence.",
+  "owner_item": "BPTK-035",
+  "active_gate_evidence": "The product records tail-call, exnref, and relaxed-SIMD availability as upstream capability evidence only.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Detect tail-call, exnref, and relaxed-SIMD support on each required browser profile.", "Run a dispatch, exception-unwind, and packed-SIMD microprogram and compare against the strict and legacy fallback path."],
+  "pass_criterion": ["Dispatch, unwinding, and SIMD match the reference machine state.", "A missing feature selects the declared fallback rather than diverging."]
+}

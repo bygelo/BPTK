@@ -2,7 +2,7 @@
 
 ## Current truth
 
-BPTK has no guest-execution game-runtime test because it has no guest-execution runtime. The active repository gate validates the roadmap package, bounded local-analysis surface, and the Tier 1 safe inspector:
+BPTK has an opt-in deterministic i386 entry probe, not a supported Windows game runtime. The active repository gate validates the roadmap package, bounded local-analysis surface, Tier 1 safe inspector, and the probe's explicitly supported integer behavior:
 
 ```sh
 npm run gate
@@ -13,12 +13,12 @@ All 33 product benchmark specification remains red. BPTK-003, BPTK-007, BPTK-008
 The gate runs three independent layer:
 
 1. `python3 tool/validate.py` checks the roadmap, legal boundary, package metadata, deterministic status snapshot, and exact allowlist.
-2. `npm test` runs sixteen Node.js test after checking the status snapshot against its content-addressed roadmap source.
+2. `npm test` runs thirty-three Node.js test after checking the status snapshot against its content-addressed roadmap source.
 3. `npm run check:package` asks npm for the dry-run tarball inventory and compares its identity and sorted path list exactly with `bench/npm/content.json`.
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. Two BPTK-026 checks generate a temporary package and prove that off denies and prompt requires consent with zero network attempts; they do not test a runtime bridge, so BPTK-026 stays excluded and red. Three boundary checks generate a temporary package, prove the save base stays read-only, reject a path-shaped save profile, and prove import stages and executes nothing; BPTK-015 and BPTK-016 stay excluded and red because persistence and a first playable do not exist. The exact 30-file tarball is checked separately. BPTK-008 uses a Tier 3 written acceptance plus a live disposable A-J product walk through `bptk run`: preferred and relocated base, named and ordinal import binding, unresolved import reporting, TLS metadata without execution, stack/heap boundary, malformed header/section/import rejection, and deterministic repetition. The temporary input is removed and no baseline, golden map, or evidence JSON is retained. These checks do not execute a game or prove compatibility.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. Two BPTK-026 checks generate a temporary package and prove that off denies and prompt requires consent with zero network attempts; they do not test a runtime bridge, so BPTK-026 stays excluded and red. Three boundary checks generate a temporary package, prove the save base stays read-only, reject a path-shaped save profile, and prove import stages and executes nothing; BPTK-015 and BPTK-016 stay excluded and red because persistence and a first playable do not exist. Seventeen runtime checks use disposable input and exercise the real `bptk run <package> --json` surface. They cover static backward compatibility, arithmetic/branch/call/return including `CALL ESP`, 32-bit carry, INC flag preservation, high-byte register access, self-modification, exact instruction budget, x87 structured stop, import/TLS refusal, fault-state rollback, oversized sparse executable and manifest refusal, symlink-manifest refusal, global import accounting, and repeated-state determinism. They protect the partial probe without promoting BPTK-009, whose full FIX-002 instruction, FPU, exception, memory, oracle, corpus, and prerequisite contract remains excluded and red. The exact 32-file tarball is checked separately. BPTK-008 uses a Tier 3 written acceptance plus a live disposable A-J product walk through `bptk run`: preferred and relocated base, named and ordinal import binding, unresolved import reporting, TLS metadata without execution, stack/heap boundary, malformed header/section/import rejection, and deterministic repetition. Temporary input is removed and no baseline, reference map, or evidence JSON is retained. These checks execute only the declared probe subset; they do not execute a game or prove compatibility.
 
 ## Benchmark taxonomy
 
@@ -188,8 +188,8 @@ A failing compatibility benchmark must identify one boundary:
 - source-evidence reference;
 - local Markdown link target;
 - synchronized compatibility and evidence state field plus the client-only game-execution boundary;
-- absence of game binary and product runtime code while permitting only the exact reviewed JavaScript status, diagnostic, package-check, and test path; repository metadata under `.git` and local `node_modules` are excluded from content validation;
-- dependency-free npm metadata, absence of install lifecycle script, Node.js engine floor, scoped public access, deterministic source snapshot, executable CLI mode, mandatory no-runtime disclaimer, and exact tarball file manifest;
+- absence of game binary while permitting only the exact reviewed JavaScript product, diagnostic, package-check, runtime, and test path; repository metadata under `.git` and local `node_modules` are excluded from content validation;
+- dependency-free npm metadata, absence of install lifecycle script, Node.js engine floor, scoped public access, deterministic source snapshot, executable CLI mode, mandatory unsupported-game-runtime disclaimer, and exact tarball file manifest;
 - absence of an unrestricted compatibility or completed-testing implication in README.md and ROADMAP.md.
 
 The allowlist must be revised when implementation begins; doing so is part of BPTK-003, not a way to bypass the current gate.

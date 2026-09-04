@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-037",
+  "item_id": "BPTK-037",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No middleware or copy-protection signature catalog exists yet, and the safe importer that would carry the routing decision is incomplete, so no title can be classified into handle, warn, extract, or refuse.",
+  "prerequisite": ["BPTK-007"],
+  "promotion_trigger": "Promote when a signature catalog routes a labelled corpus into handle, warn, extract, and refuse with no known copy-protection binary accepted as portable.",
+  "expected_failing_assertion": "The middleware and copy-protection census cannot route a labelled sample to the correct handle, warn, extract, or refuse decision.",
+  "owner_item": "BPTK-037",
+  "active_gate_evidence": "The product records known middleware and copy-protection signature as detection evidence and returns a defer decision without a portability claim.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Scan PE import, section, overlay, and sibling-file evidence for a known middleware and copy-protection signature.", "Route each labelled sample to a handle, warn, extract, or refuse decision and compare against the reference label."],
+  "pass_criterion": ["Every labelled middleware and protection sample routes to the correct decision.", "No copy-protected or unsupported binary is routed as portable, and no protection is circumvented."]
+}

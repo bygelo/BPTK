@@ -1,6 +1,6 @@
 # Roadmap rejection and defer ledger
 
-The raw candidate denominator was frozen at 46 after deduplication on 2026-07-18. [The machine-readable candidate ledger](../bench/roadmap/candidate.json) maps every identity and dedupe key to one accepted, rejected, or deferred target. Thirty-three candidate were accepted into ROADMAP.md; every remaining candidate is explained here.
+The raw candidate denominator was frozen at 46 after deduplication on 2026-07-18, then grew to 59 through documented roadmap additions that each add a new raw candidate and classify it in the same change. [The machine-readable candidate ledger](../bench/roadmap/candidate.json) maps every identity and dedupe key to one accepted, rejected, or deferred target. Forty-five candidate were accepted into ROADMAP.md; every remaining candidate is explained here.
 
 ## Rejected candidate
 
@@ -71,15 +71,20 @@ The raw candidate denominator was frozen at 46 after deduplication on 2026-07-18
 - Decision: Deferred
 - Revisit trigger: local-first import proves insufficient, rights and privacy control are designed, and the cost model is independently validated.
 
+### D-006 — Decompilation-assisted source recovery for the source and recompilation lane
+
+- Decision: Deferred
+- Revisit trigger: the source lane has a working pinned build and BPTK-036 has a credible per-title static-recompilation pipeline, and a title exists whose only viable route is decompilation-recovered source rather than the binary, source, or engine lane.
+
 ## Count reconciliation
 
 | State | Count |
 |---|---:|
-| Raw candidate | 46 |
-| Accepted | 33 |
+| Raw candidate | 59 |
+| Accepted | 45 |
 | Rejected | 8 |
-| Deferred | 5 |
-| Implemented | 0 |
+| Deferred | 6 |
+| Implemented | 4 |
 | Passing | 0 |
 
 The denominator changes only through a documented roadmap revision that adds a new raw candidate and classifies it in the same change.

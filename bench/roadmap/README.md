@@ -1,6 +1,6 @@
 # Roadmap benchmark package
 
-This directory turns ROADMAP.md into a mechanically checkable contract. It does not contain the BPTK product; the implemented static PE32 mapper and other user surfaces live under `lib/` and `bin/`.
+This directory turns ROADMAP.md into a mechanically checkable contract. It does not contain the BPTK product; the implemented PE32 mapper, bounded i386 entry probe, and other user surfaces live under `lib/` and `bin/`.
 
 The separate [`bench/npm/content.json`](../npm/content.json) file freezes the bounded npm tarball surface. That packaging check is repository tooling and does not implement or promote any roadmap item.
 

@@ -1,0 +1,17 @@
+{
+  "benchmark_id": "BENCH-034",
+  "item_id": "BPTK-034",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Win32 high-level emulation or synchronous storage path exists yet, so a blocking-call bridge has nothing to service and no cross-browser fallback has been measured.",
+  "prerequisite": ["BPTK-010", "BPTK-015"],
+  "promotion_trigger": "Promote when a blocking Win32 wait, sleep, and synchronous file and OPFS access complete over JSPI, and a feature-detected Asyncify fallback produces the same observable result.",
+  "expected_failing_assertion": "The blocking-call bridge suite cannot complete a synchronous guest call over an asynchronous browser API on any required browser profile.",
+  "owner_item": "BPTK-034",
+  "active_gate_evidence": "The product observes live JSPI and Asyncify availability and returns a defer decision without claiming a working blocking-call path.",
+  "fixture": ["FIX-002"],
+  "procedure": ["Detect JSPI and Asyncify support on each required browser profile.", "Drive a blocking wait, sleep, and synchronous file and OPFS call through the bridge and compare the JSPI and fallback result."],
+  "pass_criterion": ["Each supported blocking call completes with the correct value and ordering.", "The JSPI and fallback path produce the same observable state, or the fallback is reported as unavailable rather than diverging."]
+}
