@@ -4,14 +4,24 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The extraction, streaming, and execution surface that would carry a resource bound are incomplete, so no decompression-bomb or quota-exhaustion defense has been measured.",
-  "prerequisite": ["BPTK-004"],
+  "gate": "active",
+  "exclusion_reason": "The declared extraction and execution bound layer is implemented and active, but the frozen FIX-002 quota-exhaustion corpus evidence that would prove every declared bound against the approved corpus is unavailable while BPTK-002 remains red, and the browser streaming surface does not exist yet.",
+  "prerequisite": [
+    "BPTK-004"
+  ],
   "promotion_trigger": "Promote when a decompression-bomb, deep-nesting, and quota-exhaustion fixture is refused at its declared bound and a legitimate large game stays within budget.",
-  "expected_failing_assertion": "The bounded-resource suite cannot refuse an amplification or quota-exhaustion fixture while admitting a legitimate large input.",
+  "expected_failing_assertion": "The streaming and OPFS quota half of the bound suite cannot run without a browser runtime, and the corpus-wide bound measurement waits on the frozen BPTK-002 denominator.",
   "owner_item": "BPTK-044",
-  "active_gate_evidence": "The product records the required per-surface resource bound as evidence and refuses to extract, stream, or execute beyond a declared budget.",
-  "fixture": ["FIX-002"],
-  "procedure": ["Feed a decompression-bomb, deep-nesting, and quota-exhaustion fixture through extraction, streaming, and a bounded execution budget.", "Confirm a legitimate large-game fixture stays within budget."],
-  "pass_criterion": ["Every amplification and quota-exhaustion fixture is refused at its declared bound.", "A legitimate large input completes within the per-surface memory, storage, and time budget."]
+  "active_gate_evidence": "The bound layer refuses a decompression-bomb fixture at the declared amplification bound through the real bptk import surface, the probe enforces the declared instruction budget, and the declared bound metadata is reported on every extraction.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Feed a decompression-bomb, deep-nesting, and quota-exhaustion fixture through extraction, streaming, and a bounded execution budget.",
+    "Confirm a legitimate large-game fixture stays within budget."
+  ],
+  "pass_criterion": [
+    "Every amplification and quota-exhaustion fixture is refused at its declared bound.",
+    "A legitimate large input completes within the per-surface memory, storage, and time budget."
+  ]
 }

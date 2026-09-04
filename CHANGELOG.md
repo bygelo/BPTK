@@ -6,6 +6,8 @@ All notable planning and implementation change will be recorded here.
 
 ### Added
 
+- Added `bptk import <input>` installer extraction (BPTK-038): the bounded extractor unpacks the pinned Inno Setup 6 unicode family and an MSCF cabinet with stored or MSZIP folder to a declared output directory, refuses a 16-bit setup stub, an encrypted or BZip2 or LZMA chunk, a checksum mismatch, and a payload path escape, and never executes installer code. Plan-only import reports the payload without writing.
+- Added the declared resource-bound layer (BPTK-044): one frozen bound caps decompressed output, amplification ratio, entry count, nesting depth, and compressed chunk read for extraction, and the probe enforces the declared instruction budget; a decompression bomb is refused before its output is allocated.
 - Added `legal`, `corpus status`, `security`, and `inspect` as bounded local-analysis commands.
 - Added safe path traversal with entry, depth, and file-size limits; symbolic-link roots are rejected and nested symbolic links are never followed.
 - Added PE32, source-project, archive, installer-container, engine-asset, folder, and unknown-file classification without execution or upload.

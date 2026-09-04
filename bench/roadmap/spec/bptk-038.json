@@ -4,14 +4,24 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No installer extractor exists yet and the safe importer prerequisite is incomplete, so a supported installer cannot be unpacked to a payload without execution.",
-  "prerequisite": ["BPTK-007"],
+  "gate": "active",
+  "exclusion_reason": "The Inno Setup 6 and MSCF cabinet extractor is implemented and active, but the frozen FIX-002 corpus evidence that would prove the full labelled installer corpus is unavailable while BPTK-002 remains red.",
+  "prerequisite": [
+    "BPTK-007"
+  ],
   "promotion_trigger": "Promote when a supported Inno Setup, GOG, and InstallShield cabinet installer unpacks to the correct payload, a 16-bit setup stub is refused, and no installer code runs.",
-  "expected_failing_assertion": "The extractor cannot unpack a supported installer to its reference payload without executing installer code.",
+  "expected_failing_assertion": "The labelled installer corpus cannot be assembled while BPTK-002 owns no frozen denominator, so the extractor cannot show corpus-wide correctness.",
   "owner_item": "BPTK-038",
-  "active_gate_evidence": "The product identifies a supported installer format and reports the extraction plan without unpacking or executing it.",
-  "fixture": ["FIX-002"],
-  "procedure": ["Identify the installer format from overlay and sibling-file evidence.", "Unpack a supported Inno Setup, GOG, or InstallShield cabinet fixture to a payload and refuse a 16-bit setup stub."],
-  "pass_criterion": ["Each supported installer fixture unpacks to the reference payload file set.", "A 16-bit or unsupported installer is refused and no installer code is executed."]
+  "active_gate_evidence": "Eleven temporary-input extraction check exercise the real bptk import surface: Inno Setup 6 round trip through the CLI, plan-only import, stored chunk, 16-bit stub refusal, decompression-bomb bound, encrypted chunk refusal, checksum refusal, {app} escape refusal, unsupported version refusal, and the MSCF cabinet with stored and MSZIP folder.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Identify the installer format from overlay and sibling-file evidence.",
+    "Unpack a supported Inno Setup, GOG, or InstallShield cabinet fixture to a payload and refuse a 16-bit setup stub."
+  ],
+  "pass_criterion": [
+    "Each supported installer fixture unpacks to the reference payload file set.",
+    "A 16-bit or unsupported installer is refused and no installer code is executed."
+  ]
 }

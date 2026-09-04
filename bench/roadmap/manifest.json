@@ -9,7 +9,7 @@
     "accepted": 45,
     "rejected": 8,
     "deferred": 6,
-    "implemented": 4,
+    "implemented": 6,
     "passing": 0
   },
   "item": [
@@ -23,7 +23,20 @@
       "benchmark_id": "BENCH-001",
       "failure_meaning": "BPTK cannot lawfully or coherently integrate upstream component or publish a runtime.",
       "risk": "A late license decision can force an architectural rewrite or prevent distribution.",
-      "source_evidence": ["SRC-001", "SRC-002", "SRC-003", "SRC-004", "SRC-005", "SRC-006", "SRC-008", "SRC-009", "SRC-012", "SRC-013", "SRC-014", "SRC-015"],
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -31,12 +44,21 @@
       "title": "Freeze a representative compatibility corpus",
       "tier": "P0",
       "kind": "evidence",
-      "prerequisite": ["BPTK-001"],
+      "prerequisite": [
+        "BPTK-001"
+      ],
       "deliverable": "A versioned corpus manifest of synthetic and redistributable fixture plus metadata-only user-title profile, stratified by API, architecture, era, and browser capability, with precommitted numeric correctness, startup, frame, audio, memory, variance, and sample threshold for every applicable scenario.",
       "benchmark_id": "BENCH-002",
       "failure_meaning": "Compatibility percentage and architecture choice have no stable denominator.",
       "risk": "A convenient but unrepresentative corpus can reward title-specific behavior and hide major gap.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-004", "SRC-006", "SRC-010", "SRC-011"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-006",
+        "SRC-010",
+        "SRC-011"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -44,12 +66,20 @@
       "title": "Implement the benchmark runner and promotion gate",
       "tier": "P0",
       "kind": "runtime",
-      "prerequisite": ["BPTK-001", "BPTK-002"],
+      "prerequisite": [
+        "BPTK-001",
+        "BPTK-002"
+      ],
       "deliverable": "A deterministic local and CI runner that executes live or temporary generated checks, retains no evidence artifact, enforces promotion metadata, and derives coverage count.",
       "benchmark_id": "BENCH-003",
       "failure_meaning": "Roadmap status can change without executable evidence or denominator reconciliation.",
       "risk": "Flaky browser artifact or mutable fixture would make promotion meaningless.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-011", "SRC-013"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
       "promotion_state": "implemented"
     },
     {
@@ -57,12 +87,24 @@
       "title": "Approve the untrusted-import threat model",
       "tier": "P0",
       "kind": "evidence",
-      "prerequisite": ["BPTK-001"],
+      "prerequisite": [
+        "BPTK-001"
+      ],
       "deliverable": "A reviewed threat model for archive expansion, path traversal, parser memory, Wasm isolation, permission, network, storage, privacy, and hostile game code.",
       "benchmark_id": "BENCH-004",
       "failure_meaning": "The importer may expose local file, browser origin, network, or device resource to hostile input.",
       "risk": "An import-any-file UX creates a high-value parser and sandbox attack surface.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-009", "SRC-019", "SRC-020", "SRC-023", "SRC-024", "SRC-025", "SRC-026"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-009",
+        "SRC-019",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -70,12 +112,24 @@
       "title": "Complete the binary-runtime comparative spike",
       "tier": "P0",
       "kind": "runtime",
-      "prerequisite": ["BPTK-001", "BPTK-002", "BPTK-003", "BPTK-004"],
+      "prerequisite": [
+        "BPTK-001",
+        "BPTK-002",
+        "BPTK-003",
+        "BPTK-004"
+      ],
       "deliverable": "A reproducible comparison of BottleShip adaptation, permissive component composition, and new implementation on the same PE32 fixture and browser profile.",
       "benchmark_id": "BENCH-005",
       "failure_meaning": "No binary architecture has demonstrated acceptable correctness, performance, license fit, and maintainability.",
       "risk": "Duplicating active prior art could consume the project before product differentiation is proven.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-004", "SRC-005", "SRC-012", "SRC-013"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -83,12 +137,24 @@
       "title": "Complete the source-assisted pipeline spike",
       "tier": "P0",
       "kind": "runtime",
-      "prerequisite": ["BPTK-001", "BPTK-002", "BPTK-003", "BPTK-004"],
+      "prerequisite": [
+        "BPTK-001",
+        "BPTK-002",
+        "BPTK-003",
+        "BPTK-004"
+      ],
       "deliverable": "A minimal C or C++ SDL and OpenGL game fixture compiled to Wasm, persisted, packaged, and run in the target browser profile.",
       "benchmark_id": "BENCH-006",
       "failure_meaning": "The source lane cannot produce a repeatable browser package from a representative native project.",
       "risk": "Toolchain success can hide application-level graphics, main-loop, file, thread, and network adaptation cost.",
-      "source_evidence": ["SRC-006", "SRC-007", "SRC-010", "SRC-016", "SRC-017", "SRC-018"],
+      "source_evidence": [
+        "SRC-006",
+        "SRC-007",
+        "SRC-010",
+        "SRC-016",
+        "SRC-017",
+        "SRC-018"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -96,12 +162,25 @@
       "title": "Build the safe importer and compatibility report",
       "tier": "P0",
       "kind": "runtime",
-      "prerequisite": ["BPTK-002", "BPTK-003", "BPTK-004", "BPTK-005", "BPTK-006"],
+      "prerequisite": [
+        "BPTK-002",
+        "BPTK-003",
+        "BPTK-004",
+        "BPTK-005",
+        "BPTK-006"
+      ],
       "deliverable": "A local-only inspector that classifies folder, archive, installer, PE, source tree, and engine asset into a lane or a specific blocked state without executing input.",
       "benchmark_id": "BENCH-007",
       "failure_meaning": "BPTK cannot uphold its minimum promise of accepting broad input and explaining what is required.",
       "risk": "Format ambiguity and hostile archive can cause unsafe parsing or misleading lane selection.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-008", "SRC-009", "SRC-010", "SRC-011"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011"
+      ],
       "promotion_state": "implemented"
     },
     {
@@ -109,12 +188,19 @@
       "title": "Implement PE32 loading and import resolution",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-005", "BPTK-007"],
+      "prerequisite": [
+        "BPTK-005",
+        "BPTK-007"
+      ],
       "deliverable": "A bounded PE32 loader that maps section, relocation, import, TLS, stack, heap, and entry point for synthetic fixture.",
       "benchmark_id": "BENCH-008",
       "failure_meaning": "An eligible 32-bit executable cannot reach a deterministic entry point with a correct memory image.",
       "risk": "Malformed PE structure can produce memory corruption, unbounded allocation, or silent import mismatch.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-004"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004"
+      ],
       "promotion_state": "implemented"
     },
     {
@@ -122,12 +208,20 @@
       "title": "Implement the i386 execution baseline",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-005", "BPTK-008"],
+      "prerequisite": [
+        "BPTK-005",
+        "BPTK-008"
+      ],
       "deliverable": "An interpreter or selected upstream core that executes the frozen i386 instruction fixture with correct register, flag, FPU, exception, and memory result.",
       "benchmark_id": "BENCH-009",
       "failure_meaning": "Guest code diverges before operating-system API compatibility can be evaluated.",
       "risk": "Rare instruction, self-modifying code, FPU precision, and exception semantics can create deep title-specific failure.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-004", "SRC-005"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -135,12 +229,19 @@
       "title": "Implement the Win32 core HLE",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-009"],
+      "prerequisite": [
+        "BPTK-009"
+      ],
       "deliverable": "A measured Kernel32, NTDLL, CRT, synchronization, time, process, thread-stub, memory, and COM baseline sufficient for the P1 fixture.",
       "benchmark_id": "BENCH-010",
       "failure_meaning": "Guest startup or main-loop control fails on an unimplemented or behaviorally incorrect core API.",
       "risk": "Windows behavior includes edge case and undocumented coupling that an API-name checklist will miss.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-012", "SRC-013"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-012",
+        "SRC-013"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -148,12 +249,18 @@
       "title": "Implement USER32 window, message, and input behavior",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-010"],
+      "prerequisite": [
+        "BPTK-010"
+      ],
       "deliverable": "A deterministic window and message model mapped to canvas, keyboard, pointer, focus, cursor, timer, and browser lifecycle.",
       "benchmark_id": "BENCH-011",
       "failure_meaning": "The game cannot create a surface, pump a message loop, or receive reproducible input.",
       "risk": "Browser gesture, focus, shortcut, and asynchronous event rule differ substantially from Win32.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-009"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-009"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -161,12 +268,17 @@
       "title": "Implement the GDI compatibility slice",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-011"],
+      "prerequisite": [
+        "BPTK-011"
+      ],
       "deliverable": "A GDI surface supporting the corpus text, bitmap, palette, blit, clipping, brush, pen, font, and invalidation operation with image-golden output.",
       "benchmark_id": "BENCH-012",
       "failure_meaning": "Installer, launcher, menu, or software-rendered game output is missing or visually incorrect.",
       "risk": "Font and raster behavior vary by browser and platform and require controlled golden tolerance.",
-      "source_evidence": ["SRC-003", "SRC-012"],
+      "source_evidence": [
+        "SRC-003",
+        "SRC-012"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -174,12 +286,18 @@
       "title": "Implement DirectDraw surface and presentation",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-010", "BPTK-011"],
+      "prerequisite": [
+        "BPTK-010",
+        "BPTK-011"
+      ],
       "deliverable": "A DirectDraw baseline for primary and offscreen surface, lock, blit, flip, palette, color key, pitch, and deterministic canvas presentation.",
       "benchmark_id": "BENCH-013",
       "failure_meaning": "A representative 2D game cannot render and present a correct frame.",
       "risk": "Legacy pixel format, pitch, palette, and timing behavior can differ from modern GPU surface.",
-      "source_evidence": ["SRC-002", "SRC-003"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -187,12 +305,20 @@
       "title": "Implement waveOut and DirectSound audio",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-010"],
+      "prerequisite": [
+        "BPTK-010"
+      ],
       "deliverable": "A WebAudio and AudioWorklet bridge for required PCM format, buffer, loop, volume, pan, timing, and lifecycle behavior.",
       "benchmark_id": "BENCH-014",
       "failure_meaning": "Audio is absent, corrupted, desynchronized, or blocks the guest main loop.",
       "risk": "Autoplay policy, callback timing, shared memory, sample conversion, and browser suspension can cause nondeterminism.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-004", "SRC-019", "SRC-021"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-019",
+        "SRC-021"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -200,12 +326,21 @@
       "title": "Implement file, registry, and OPFS overlay",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-004", "BPTK-010"],
+      "prerequisite": [
+        "BPTK-004",
+        "BPTK-010"
+      ],
       "deliverable": "A case-aware virtual drive and registry with read-only base, copy-on-write save overlay, path normalization, quota behavior, and deterministic persistence.",
       "benchmark_id": "BENCH-015",
       "failure_meaning": "Game data, configuration, or save state is lost, exposed, aliased incorrectly, or written outside its sandbox.",
       "risk": "Windows path and case semantics, browser quota, transaction failure, and archive traversal can corrupt state.",
-      "source_evidence": ["SRC-002", "SRC-009", "SRC-010", "SRC-022", "SRC-023"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-009",
+        "SRC-010",
+        "SRC-022",
+        "SRC-023"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -213,12 +348,29 @@
       "title": "Import the local package and prove the integrated 2D first playable",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-004", "BPTK-007", "BPTK-008", "BPTK-009", "BPTK-010", "BPTK-011", "BPTK-012", "BPTK-013", "BPTK-014", "BPTK-015"],
+      "prerequisite": [
+        "BPTK-004",
+        "BPTK-007",
+        "BPTK-008",
+        "BPTK-009",
+        "BPTK-010",
+        "BPTK-011",
+        "BPTK-012",
+        "BPTK-013",
+        "BPTK-014",
+        "BPTK-015"
+      ],
       "deliverable": "A bounded importer for folder, ZIP, BPTK bundle, and explicitly supported installer format plus one integrated synthetic PE32 2D package that exercises loading, CPU, Win32, window, GDI, DirectDraw, audio, file, registry, save, input, and reload in one scenario.",
       "benchmark_id": "BENCH-016",
       "failure_meaning": "A supported package cannot be staged safely or the P1 component cannot operate together as one interactive, persistent 2D scenario.",
       "risk": "Archive failure or cross-component timing and lifecycle mismatch can pass isolated checks while the integrated package remains unusable.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-010", "SRC-022", "SRC-023"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-010",
+        "SRC-022",
+        "SRC-023"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -226,12 +378,22 @@
       "title": "Define WebGPU and WebGL2 capability profile",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-003", "BPTK-004"],
+      "prerequisite": [
+        "BPTK-003",
+        "BPTK-004"
+      ],
       "deliverable": "A secure-context GPU probe and declared primary, fallback, degradation, limit, feature, format, and shader contract for each browser profile.",
       "benchmark_id": "BENCH-017",
       "failure_meaning": "Rendering code cannot distinguish a supported GPU path from a missing or partially compatible browser feature.",
       "risk": "WebGPU availability and limit vary across browser, operating system, driver, and hardware.",
-      "source_evidence": ["SRC-002", "SRC-007", "SRC-014", "SRC-015", "SRC-016", "SRC-020"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014",
+        "SRC-015",
+        "SRC-016",
+        "SRC-020"
+      ],
       "promotion_state": "implemented"
     },
     {
@@ -239,12 +401,19 @@
       "title": "Translate Direct3D 7 and 8 fixed-function rendering",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-013", "BPTK-017"],
+      "prerequisite": [
+        "BPTK-013",
+        "BPTK-017"
+      ],
       "deliverable": "A fixed-function state translator covering corpus transform, lighting, texture stage, blend, depth, fog, vertex format, draw, and presentation behavior.",
       "benchmark_id": "BENCH-018",
       "failure_meaning": "A representative early 3D fixture produces an incorrect frame or unsupported state without a precise report.",
       "risk": "State-combination explosion and implicit legacy default can cause shader-cache growth and subtle image divergence.",
-      "source_evidence": ["SRC-002", "SRC-007", "SRC-014"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -252,12 +421,18 @@
       "title": "Translate Direct3D 9 fixed-function rendering",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-018"],
+      "prerequisite": [
+        "BPTK-018"
+      ],
       "deliverable": "A D3D9 fixed-function, resource, state block, render target, query-stub, and device-reset slice proven by image and API trace.",
       "benchmark_id": "BENCH-019",
       "failure_meaning": "A fixed-function D3D9 fixture cannot render correctly or recover from the declared device lifecycle.",
       "risk": "D3D9 caps, lost-device behavior, format conversion, and driver quirk exceed the simpler D3D7/8 model.",
-      "source_evidence": ["SRC-002", "SRC-007", "SRC-014"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -265,12 +440,20 @@
       "title": "Translate Direct3D 9 shader model 1 through 3",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-019"],
+      "prerequisite": [
+        "BPTK-019"
+      ],
       "deliverable": "A validated translator from D3D9 tokenized vertex and pixel shader bytecode into the selected browser shader form with reflection, cache, error map, and golden output.",
       "benchmark_id": "BENCH-020",
       "failure_meaning": "A corpus shader is rejected, miscompiled, or renders outside the declared tolerance.",
       "risk": "Precision, undefined behavior, sampler model, shader limit, and backend difference can produce device-specific failure.",
-      "source_evidence": ["SRC-001", "SRC-002", "SRC-014", "SRC-015", "SRC-020"],
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-014",
+        "SRC-015",
+        "SRC-020"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -278,12 +461,20 @@
       "title": "Publish the source-assisted adapter SDK",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-006", "BPTK-017"],
+      "prerequisite": [
+        "BPTK-006",
+        "BPTK-017"
+      ],
       "deliverable": "A versioned Emscripten project adapter with main-loop, SDL, OpenGL, file, audio, input, build, patch, and diagnostic template for a representative source game.",
       "benchmark_id": "BENCH-021",
       "failure_meaning": "A developer cannot reproduce a source port without undocumented local step or bespoke host code.",
       "risk": "Build-system diversity and legacy dependency can turn a template into a misleading one-off.",
-      "source_evidence": ["SRC-006", "SRC-007", "SRC-010", "SRC-016"],
+      "source_evidence": [
+        "SRC-006",
+        "SRC-007",
+        "SRC-010",
+        "SRC-016"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -291,12 +482,21 @@
       "title": "Implement asset packaging, streaming, and cache",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-015", "BPTK-016", "BPTK-017"],
+      "prerequisite": [
+        "BPTK-015",
+        "BPTK-016",
+        "BPTK-017"
+      ],
       "deliverable": "A content-addressed package format with chunk, compression, integrity, lazy fetch, local cache, update, quota, and offline behavior.",
       "benchmark_id": "BENCH-022",
       "failure_meaning": "A legal large fixture cannot start within the size and time budget or cannot resume safely.",
       "risk": "Browser storage eviction, compression cost, cache poisoning, and monolithic asset can make a correct port unusable.",
-      "source_evidence": ["SRC-002", "SRC-006", "SRC-010", "SRC-022"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-010",
+        "SRC-022"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -304,12 +504,23 @@
       "title": "Meet the execution performance budget",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-009", "BPTK-010", "BPTK-018"],
+      "prerequisite": [
+        "BPTK-009",
+        "BPTK-010",
+        "BPTK-018"
+      ],
       "deliverable": "A profile-guided JIT or selected execution optimization, fast guest-host call path, cache policy, and frame-time budget on the frozen desktop fixture.",
       "benchmark_id": "BENCH-023",
       "failure_meaning": "Correct fixture cannot maintain its declared CPU, frame, audio, memory, and startup budget.",
       "risk": "Dynamic Wasm generation, browser compilation behavior, invalidation, and optimization complexity can trade correctness for speed.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-004", "SRC-005", "SRC-013", "SRC-014"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-013",
+        "SRC-014"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -317,12 +528,25 @@
       "title": "Emit a framework-neutral browser package and React adapter",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-016", "BPTK-017", "BPTK-021"],
+      "prerequisite": [
+        "BPTK-016",
+        "BPTK-017",
+        "BPTK-021"
+      ],
       "deliverable": "A shared static package contract used by the integrated binary fixture and the source-assisted fixture, with canonical HTML canvas host, lifecycle API, capability report, worker and asset manifest, plus a thin React mount adapter.",
       "benchmark_id": "BENCH-024",
       "failure_meaning": "Binary and source output diverge into separate package contracts or cannot be embedded, resized, started, stopped, and deployed through both host forms.",
       "risk": "Host lifecycle, bundler, CSP, path, isolation header, and framework remount can corrupt runtime state.",
-      "source_evidence": ["SRC-001", "SRC-002", "SRC-006", "SRC-009", "SRC-010", "SRC-020", "SRC-023", "SRC-024"],
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-006",
+        "SRC-009",
+        "SRC-010",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -330,12 +554,21 @@
       "title": "Support the threaded deployment profile",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-021", "BPTK-024"],
+      "prerequisite": [
+        "BPTK-021",
+        "BPTK-024"
+      ],
       "deliverable": "Separate threaded and single-thread package profile with COOP, COEP, worker pool, capability selection, and deterministic synchronization fixture.",
       "benchmark_id": "BENCH-025",
       "failure_meaning": "A thread-dependent port deadlocks, loses isolation, or silently runs the wrong build profile.",
       "risk": "Cross-origin resource, hosting configuration, browser worker limit, and main-thread proxy behavior can break deployment.",
-      "source_evidence": ["SRC-002", "SRC-006", "SRC-018", "SRC-019", "SRC-024"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-018",
+        "SRC-019",
+        "SRC-024"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -343,12 +576,21 @@
       "title": "Implement the mediated network bridge",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-004", "BPTK-010", "BPTK-021", "BPTK-024"],
+      "prerequisite": [
+        "BPTK-004",
+        "BPTK-010",
+        "BPTK-021",
+        "BPTK-024"
+      ],
       "deliverable": "A declared WebSocket, WebRTC, WebTransport, or optional proxy bridge with endpoint allowlist, consent, protocol adapter, latency metric, and offline failure.",
       "benchmark_id": "BENCH-026",
       "failure_meaning": "A network fixture cannot communicate through a browser-permitted transport with bounded security and latency.",
       "risk": "Raw TCP or UDP semantics, server compatibility, cheating, privacy, CORS, certificate, and relay cost cannot be hidden by a shim.",
-      "source_evidence": ["SRC-006", "SRC-010", "SRC-017"],
+      "source_evidence": [
+        "SRC-006",
+        "SRC-010",
+        "SRC-017"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -356,12 +598,23 @@
       "title": "Complete controller, fullscreen, touch, and accessibility input",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-011", "BPTK-024"],
+      "prerequisite": [
+        "BPTK-011",
+        "BPTK-024"
+      ],
       "deliverable": "A remappable input layer with keyboard, pointer lock, gamepad, fullscreen, touch control, focus recovery, accessible workbench UI, and browser-shortcut policy.",
       "benchmark_id": "BENCH-027",
       "failure_meaning": "A user cannot control, recover, or exit a packaged game reliably on the supported host profile.",
       "risk": "Gesture gating, browser-reserved shortcut, controller variance, mobile overlay, and accessibility conflict can make play unsafe or unusable.",
-      "source_evidence": ["SRC-001", "SRC-009", "SRC-010", "SRC-025", "SRC-026", "SRC-027", "SRC-028"],
+      "source_evidence": [
+        "SRC-001",
+        "SRC-009",
+        "SRC-010",
+        "SRC-025",
+        "SRC-026",
+        "SRC-027",
+        "SRC-028"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -369,12 +622,22 @@
       "title": "Build the compatibility catalog and replay artifact",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-002", "BPTK-003", "BPTK-007", "BPTK-024"],
+      "prerequisite": [
+        "BPTK-002",
+        "BPTK-003",
+        "BPTK-007",
+        "BPTK-024"
+      ],
       "deliverable": "A revisioned catalog with environment, input hash, capability, status, trace, replay, crash, screenshot, provenance, and community-observation state.",
       "benchmark_id": "BENCH-028",
       "failure_meaning": "Compatibility work cannot be reproduced, compared, diagnosed, or communicated truthfully.",
       "risk": "User asset privacy, personal data, nondeterminism, stale report, and title-version ambiguity can corrupt the catalog.",
-      "source_evidence": ["SRC-002", "SRC-003", "SRC-011", "SRC-013"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -382,12 +645,23 @@
       "title": "Publish the engine-family adapter contract",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-001", "BPTK-003", "BPTK-007", "BPTK-021", "BPTK-024"],
+      "prerequisite": [
+        "BPTK-001",
+        "BPTK-003",
+        "BPTK-007",
+        "BPTK-021",
+        "BPTK-024"
+      ],
       "deliverable": "A plugin contract for asset detector, version, local import, engine module, save, mod, input, network, package, license, and fixture, proven by one redistributable adapter.",
       "benchmark_id": "BENCH-029",
       "failure_meaning": "An engine-specific port requires a one-off workbench and cannot share BPTK packaging or evidence.",
       "risk": "An adapter can accidentally imply right to game asset or fragment the core with title-specific behavior.",
-      "source_evidence": ["SRC-008", "SRC-009", "SRC-010", "SRC-011"],
+      "source_evidence": [
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -395,12 +669,32 @@
       "title": "Pass the cross-browser and device matrix",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-017", "BPTK-024", "BPTK-025", "BPTK-027"],
+      "prerequisite": [
+        "BPTK-017",
+        "BPTK-024",
+        "BPTK-025",
+        "BPTK-027"
+      ],
       "deliverable": "A declared Chrome, Edge, Firefox, and Safari desktop matrix with selected mobile probe, GPU profile, degradation rule, artifact, and support floor.",
       "benchmark_id": "BENCH-030",
       "failure_meaning": "A package labeled supported behaves differently or fails silently on a declared browser or device profile.",
       "risk": "WebGPU rollout, codec, storage, input, memory, isolation, and driver behavior can differ despite shared web standard.",
-      "source_evidence": ["SRC-003", "SRC-009", "SRC-016", "SRC-018", "SRC-019", "SRC-020", "SRC-021", "SRC-022", "SRC-023", "SRC-024", "SRC-025", "SRC-026", "SRC-027", "SRC-028"],
+      "source_evidence": [
+        "SRC-003",
+        "SRC-009",
+        "SRC-016",
+        "SRC-018",
+        "SRC-019",
+        "SRC-020",
+        "SRC-021",
+        "SRC-022",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026",
+        "SRC-027",
+        "SRC-028"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -408,12 +702,21 @@
       "title": "Research the x86-64 and memory64 path",
       "tier": "P4",
       "kind": "evidence",
-      "prerequisite": ["BPTK-023", "BPTK-030"],
+      "prerequisite": [
+        "BPTK-023",
+        "BPTK-030"
+      ],
       "deliverable": "A measured architecture decision for x86-64 execution, address space, Wasm memory64 or segmentation, browser support, JIT, exception, and performance with a promotion proposal.",
       "benchmark_id": "BENCH-031",
       "failure_meaning": "There is no evidenced browser architecture for 64-bit Windows game within the supported memory and performance envelope.",
       "risk": "Pointer width, address-space reservation, browser memory limit, JIT design, and missing upstream CPU feature can invalidate the PE32 architecture.",
-      "source_evidence": ["SRC-002", "SRC-004", "SRC-005", "SRC-013", "SRC-019"],
+      "source_evidence": [
+        "SRC-002",
+        "SRC-004",
+        "SRC-005",
+        "SRC-013",
+        "SRC-019"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -421,12 +724,21 @@
       "title": "Research Direct3D 10 and 11 translation",
       "tier": "P4",
       "kind": "evidence",
-      "prerequisite": ["BPTK-020", "BPTK-023", "BPTK-030"],
+      "prerequisite": [
+        "BPTK-020",
+        "BPTK-023",
+        "BPTK-030"
+      ],
       "deliverable": "A feature-gap and prototype report for DXGI, D3D10/11, DXBC, resource model, shader translation, synchronization, and WebGPU limit on a bounded fixture.",
       "benchmark_id": "BENCH-032",
       "failure_meaning": "The modern graphics feature set cannot be mapped to WebGPU with acceptable correctness and performance.",
       "risk": "DXVK behavior assumes Vulkan feature and native driver control that WebGPU intentionally abstracts or omits.",
-      "source_evidence": ["SRC-001", "SRC-013", "SRC-014", "SRC-020"],
+      "source_evidence": [
+        "SRC-001",
+        "SRC-013",
+        "SRC-014",
+        "SRC-020"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -434,12 +746,22 @@
       "title": "Research Direct3D 12 and Vulkan-era compatibility",
       "tier": "P4",
       "kind": "evidence",
-      "prerequisite": ["BPTK-030", "BPTK-031", "BPTK-032"],
+      "prerequisite": [
+        "BPTK-030",
+        "BPTK-031",
+        "BPTK-032"
+      ],
       "deliverable": "A no-marketing feasibility report comparing D3D12 and Vulkan requirement to current WebGPU, shader, descriptor, synchronization, memory, x86-64, and browser capability.",
       "benchmark_id": "BENCH-033",
       "failure_meaning": "Modern API compatibility lacks a credible mapping or depends on browser feature outside the declared horizon.",
       "risk": "The gap can remain architectural rather than an implementation backlog, making broad modern-game support uneconomic.",
-      "source_evidence": ["SRC-001", "SRC-013", "SRC-014", "SRC-015", "SRC-020"],
+      "source_evidence": [
+        "SRC-001",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015",
+        "SRC-020"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -447,12 +769,18 @@
       "title": "Bridge blocking Win32 and synchronous storage over async browser API",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-010", "BPTK-015"],
+      "prerequisite": [
+        "BPTK-010",
+        "BPTK-015"
+      ],
       "deliverable": "A JS Promise Integration call bridge that services blocking Win32 wait, sleep, and synchronous file and OPFS access over asynchronous browser API, with a feature-detected Asyncify fallback where JSPI is unavailable.",
       "benchmark_id": "BENCH-034",
       "failure_meaning": "A supported blocking Win32 or synchronous storage call cannot complete in the browser without whole-module instrumentation, or diverges between the JSPI and fallback path.",
       "risk": "Synchronous game code stalls, deadlocks, or corrupts state when a blocking call is serviced incorrectly across the async boundary.",
-      "source_evidence": ["SRC-030", "SRC-033"],
+      "source_evidence": [
+        "SRC-030",
+        "SRC-033"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -460,12 +788,17 @@
       "title": "Adopt a WebAssembly 3.0 execution substrate for the i386 engine",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-009"],
+      "prerequisite": [
+        "BPTK-009"
+      ],
       "deliverable": "An i386 execution substrate that uses WebAssembly tail-call dispatch, exnref exception handling, and relaxed SIMD where available, with strict-SIMD and legacy exception fallback for a browser that lacks them.",
       "benchmark_id": "BENCH-035",
       "failure_meaning": "The engine cannot dispatch a translated block, unwind a guest exception, or execute packed SIMD without wasm-stack growth or a portability regression across the declared browser set.",
       "risk": "A substrate that assumes one browser feature set silently loses correctness or performance where that feature is flagged or absent.",
-      "source_evidence": ["SRC-029", "SRC-031"],
+      "source_evidence": [
+        "SRC-029",
+        "SRC-031"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -473,12 +806,17 @@
       "title": "Learn whether per-title static recompilation to WebAssembly is a viable fourth lane",
       "tier": "P4",
       "kind": "evidence",
-      "prerequisite": ["BPTK-005"],
+      "prerequisite": [
+        "BPTK-005"
+      ],
       "deliverable": "A no-marketing feasibility report evaluating static machine-code to C or C++ to WebAssembly recompilation, in the N64Recomp, PSXRecomp, and XenonRecomp tradition, as a distinct lane for a title the general high-level-emulation binary lane cannot reach when source or a clean recompilation exists.",
       "benchmark_id": "BENCH-036",
       "failure_meaning": "The static-recompilation lane lacks a credible per-title pipeline, a legal input path, or a measured advantage over the existing binary and source lane.",
       "risk": "A speculative fourth lane consumes roadmap capacity without a title that only it can reach.",
-      "source_evidence": ["SRC-032", "SRC-033"],
+      "source_evidence": [
+        "SRC-032",
+        "SRC-033"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -486,12 +824,17 @@
       "title": "Classify known game middleware and copy protection to route handle, warn, extract, or refuse",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-007"],
+      "prerequisite": [
+        "BPTK-007"
+      ],
       "deliverable": "A static pre-flight census that detects a known middleware and copy-protection signal from PE import, section, overlay, and sibling-file evidence across video, audio, installer, and protection component, and returns a handle, warn, extract, or refuse routing decision without executing the input or circumventing any protection.",
       "benchmark_id": "BENCH-037",
       "failure_meaning": "A supported title is mis-routed, so a portable middleware path is refused or a copy-protected or unsupported binary is accepted as portable.",
       "risk": "A false portable decision wastes downstream lane effort, and a false refuse hides a title that would run.",
-      "source_evidence": ["SRC-033", "SRC-034"],
+      "source_evidence": [
+        "SRC-033",
+        "SRC-034"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -499,25 +842,34 @@
       "title": "Extract a supported installer to the game payload without executing it",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-007"],
+      "prerequisite": [
+        "BPTK-007"
+      ],
       "deliverable": "A client-side extractor that unpacks a supported Inno Setup, GOG, or InstallShield cabinet installer to the game payload, refuses a 16-bit setup stub, and never runs installer code.",
       "benchmark_id": "BENCH-038",
       "failure_meaning": "A supported installer cannot be unpacked to a usable payload, or installer code is executed instead of extracted.",
       "risk": "Running an installer stub executes untrusted code, and a failed extraction blocks a title whose payload is otherwise portable.",
-      "source_evidence": ["SRC-033", "SRC-036"],
-      "promotion_state": "planned"
+      "source_evidence": [
+        "SRC-033",
+        "SRC-036"
+      ],
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-039",
       "title": "Serve every guest time source from one monotonic clock",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-010"],
+      "prerequisite": [
+        "BPTK-010"
+      ],
       "deliverable": "A timing layer that derives QueryPerformanceCounter, RDTSC, GetTickCount, timeGetTime, vertical-blank, and frame timing from a single monotonic source, honors the one-millisecond period expectation, and clamps a delta so a guest neither busy-spins nor runs at double speed.",
       "benchmark_id": "BENCH-039",
       "failure_meaning": "Guest timing diverges across the clock source, so the game slows, double-speeds, or busy-waits at full utilization.",
       "risk": "A per-call clock choice desynchronizes physics, animation, and audio from the frame.",
-      "source_evidence": ["SRC-035"],
+      "source_evidence": [
+        "SRC-035"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -525,12 +877,18 @@
       "title": "Play supported full-motion-video middleware in sync with the game",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-013", "BPTK-014"],
+      "prerequisite": [
+        "BPTK-013",
+        "BPTK-014"
+      ],
       "deliverable": "A video path that decodes a supported Bink, Smacker, and VP6 full-motion video and presents it through the browser frame and audio, while refusing a proprietary WMV or Indeo bitstream that cannot be decoded lawfully.",
       "benchmark_id": "BENCH-040",
       "failure_meaning": "A supported cutscene cannot decode or present in sync, or an unsupported proprietary bitstream is accepted.",
       "risk": "A missing or out-of-sync cutscene path blocks progression or desynchronizes video from audio.",
-      "source_evidence": ["SRC-033", "SRC-037"],
+      "source_evidence": [
+        "SRC-033",
+        "SRC-037"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -538,12 +896,16 @@
       "title": "Provide the redistributable runtime a supported game expects",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-010"],
+      "prerequisite": [
+        "BPTK-010"
+      ],
       "deliverable": "A redistributable kit that satisfies a supported game's exact D3DX, XInput, XAudio, Visual C++ runtime, Visual Basic 6 runtime, and DirectMusic instrument dependency, ships only a redistributable component, and reports an unmet dependency rather than faking it.",
       "benchmark_id": "BENCH-041",
       "failure_meaning": "A supported game exits because an expected redistributable runtime component is missing or wrongly versioned.",
       "risk": "Bundling a non-redistributable component creates a license violation, while omitting one blocks an otherwise portable title.",
-      "source_evidence": ["SRC-038"],
+      "source_evidence": [
+        "SRC-038"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -551,12 +913,17 @@
       "title": "Build a game source tree to the browser with a pinned Emscripten profile",
       "tier": "P2",
       "kind": "runtime",
-      "prerequisite": ["BPTK-006"],
+      "prerequisite": [
+        "BPTK-006"
+      ],
       "deliverable": "A committed, reproducible Emscripten build profile for the source lane that sets cross-origin isolation, pthreads with SharedArrayBuffer, native WebAssembly exception, relaxed SIMD with fallback, and a WASMFS OPFS backend driven by JSPI rather than legacy Asyncify, and produces a deterministic module from a supported source tree.",
       "benchmark_id": "BENCH-042",
       "failure_meaning": "A supported source tree cannot build to a working browser module under the pinned profile, or the build is not reproducible.",
       "risk": "An unpinned build silently selects legacy Asyncify or drops isolation and ships a broken or non-reproducible module.",
-      "source_evidence": ["SRC-033", "SRC-039"],
+      "source_evidence": [
+        "SRC-033",
+        "SRC-039"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -564,12 +931,17 @@
       "title": "Route a supported game to a matching open engine reimplementation",
       "tier": "P3",
       "kind": "runtime",
-      "prerequisite": ["BPTK-029"],
+      "prerequisite": [
+        "BPTK-029"
+      ],
       "deliverable": "An engine-family census that fingerprints a supported game engine from executable and asset signal and routes it to a matching browser-capable open reimplementation under the adapter contract, or reports no match, without bundling engine or game code.",
       "benchmark_id": "BENCH-043",
       "failure_meaning": "A supported game is routed to the wrong open engine, or a matchable game reports no match.",
       "risk": "A wrong engine match wastes adapter effort and misleads the compatibility decision.",
-      "source_evidence": ["SRC-033", "SRC-040"],
+      "source_evidence": [
+        "SRC-033",
+        "SRC-040"
+      ],
       "promotion_state": "planned"
     },
     {
@@ -577,25 +949,33 @@
       "title": "Bound extraction, streaming, and execution against resource exhaustion",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-004"],
+      "prerequisite": [
+        "BPTK-004"
+      ],
       "deliverable": "A bounded-resource enforcement layer that caps decompressed output size, nesting depth, and expansion ratio during installer extraction and asset streaming, guards the OPFS quota, and enforces a memory and time budget on guest execution, refusing input that exceeds a declared bound.",
       "benchmark_id": "BENCH-044",
       "failure_meaning": "A crafted archive, asset stream, or guest program exhausts memory, storage, or time instead of being refused at a declared bound.",
       "risk": "An unbounded extraction or execution path is a denial-of-service and quota-exhaustion vector against the user's browser.",
-      "source_evidence": ["SRC-041"],
-      "promotion_state": "planned"
+      "source_evidence": [
+        "SRC-041"
+      ],
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-045",
       "title": "Contain guest execution to a policy that cannot reach host capability",
       "tier": "P1",
       "kind": "runtime",
-      "prerequisite": ["BPTK-004"],
+      "prerequisite": [
+        "BPTK-004"
+      ],
       "deliverable": "A guest containment policy that confines executed game code to WebAssembly memory, a content-security policy without arbitrary host script, storage limited to the package OPFS sandbox, and network only through the mediated relay, and refuses any escape attempt.",
       "benchmark_id": "BENCH-045",
       "failure_meaning": "Executed guest code reaches a host capability such as arbitrary script, storage outside its sandbox, or unmediated network, outside the declared policy.",
       "risk": "A containment gap turns an imported game into a host-compromise or data-exfiltration vector.",
-      "source_evidence": ["SRC-024"],
+      "source_evidence": [
+        "SRC-024"
+      ],
       "promotion_state": "planned"
     }
   ]

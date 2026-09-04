@@ -2,23 +2,23 @@
 
 ## Current truth
 
-BPTK has an opt-in deterministic i386 entry probe, not a supported Windows game runtime. The active repository gate validates the roadmap package, bounded local-analysis surface, Tier 1 safe inspector, and the probe's explicitly supported integer behavior:
+BPTK has an opt-in deterministic i386 entry probe, a bounded installer extractor, and a declared resource-bound layer, not a supported Windows game runtime. The active repository gate validates the roadmap package, bounded local-analysis surface, Tier 1 safe inspector, the probe's explicitly supported integer behavior, and the extraction bound:
 
 ```sh
 npm run gate
 ```
 
-All 33 product benchmark specification remains red. BPTK-003, BPTK-007, BPTK-008, and BPTK-017 are active and implemented-but-red; the other 29 are excluded. A red specification is not evidence that a capability passes.
+All 45 product benchmark specification remains red. BPTK-003, BPTK-007, BPTK-008, BPTK-017, BPTK-038, and BPTK-044 are active and implemented-but-red; the other 39 are excluded. A red specification is not evidence that a capability passes.
 
 The gate runs three independent layer:
 
 1. `python3 tool/validate.py` checks the roadmap, legal boundary, package metadata, deterministic status snapshot, and exact allowlist.
-2. `npm test` runs thirty-three Node.js test after checking the status snapshot against its content-addressed roadmap source.
+2. `npm test` runs forty-three Node.js test after checking the status snapshot against its content-addressed roadmap source.
 3. `npm run check:package` asks npm for the dry-run tarball inventory and compares its identity and sorted path list exactly with `bench/npm/content.json`.
 
 The GitHub workflow uses read-only repository permission, pins each external action to an immutable revision recorded in `doc/third-party.md`, and runs the same gate on Node.js 22 and 24 for every push and pull request. `npm ci --ignore-scripts` installs the dependency-free lockfile without executing package lifecycle code.
 
-Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. Two BPTK-026 checks generate a temporary package and prove that off denies and prompt requires consent with zero network attempts; they do not test a runtime bridge, so BPTK-026 stays excluded and red. Three boundary checks generate a temporary package, prove the save base stays read-only, reject a path-shaped save profile, and prove import stages and executes nothing; BPTK-015 and BPTK-016 stay excluded and red because persistence and a first playable do not exist. Seventeen runtime checks use disposable input and exercise the real `bptk run <package> --json` surface. They cover static backward compatibility, arithmetic/branch/call/return including `CALL ESP`, 32-bit carry, INC flag preservation, high-byte register access, self-modification, exact instruction budget, x87 structured stop, import/TLS refusal, fault-state rollback, oversized sparse executable and manifest refusal, symlink-manifest refusal, global import accounting, and repeated-state determinism. They protect the partial probe without promoting BPTK-009, whose full FIX-002 instruction, FPU, exception, memory, oracle, corpus, and prerequisite contract remains excluded and red. The exact 32-file tarball is checked separately. BPTK-008 uses a Tier 3 written acceptance plus a live disposable A-J product walk through `bptk run`: preferred and relocated base, named and ordinal import binding, unresolved import reporting, TLS metadata without execution, stack/heap boundary, malformed header/section/import rejection, and deterministic repetition. Temporary input is removed and no baseline, reference map, or evidence JSON is retained. These checks execute only the declared probe subset; they do not execute a game or prove compatibility.
+Five general CLI checks cover truthful help, deterministic status JSON, environment diagnostics, no-runtime disclaimers, and invalid-input failure. Three BPTK-007 checks generate temporary PE32, source-project, and symbolic-link input and remove it after the run. One BPTK-003 check exercises the in-memory benchmark and verifies that it cannot promote blocked work. Two packaging checks generate temporary content, verify shared HTML/React identity for BPTK-024, and verify off/consent report writes for BPTK-028. Two BPTK-026 checks generate a temporary package and prove that off denies and prompt requires consent with zero network attempts; they do not test a runtime bridge, so BPTK-026 stays excluded and red. Three boundary checks generate a temporary package, prove the save base stays read-only, reject a path-shaped save profile, and prove import stages and executes nothing; BPTK-015 and BPTK-016 stay excluded and red because persistence and a first playable do not exist. Seventeen runtime checks use disposable input and exercise the real `bptk run <package> --json` surface. They cover static backward compatibility, arithmetic/branch/call/return including `CALL ESP`, 32-bit carry, INC flag preservation, high-byte register access, self-modification, exact instruction budget, x87 structured stop, import/TLS refusal, fault-state rollback, oversized sparse executable and manifest refusal, symlink-manifest refusal, global import accounting, and repeated-state determinism. They protect the partial probe without promoting BPTK-009, whose full FIX-002 instruction, FPU, exception, memory, oracle, corpus, and prerequisite contract remains excluded and red. The exact 34-file tarball is checked separately. Ten BPTK-038 and BPTK-044 extraction checks build faithful installer fixture in the temporary directory and exercise the real `bptk import` surface: an Inno Setup 6.3.0 unicode archive round trip through the CLI, a plan-only import that writes nothing, a stored-chunk extraction, a 16-bit setup-stub refusal, a decompression-bomb refusal at the declared amplification bound, an encrypted-chunk refusal, a checksum-mismatch refusal, a `{app}` escape refusal, an unsupported setup-data-version refusal, and an MSCF cabinet with stored and MSZIP folder. They protect the extractor and the declared bound without promoting corpus-wide correctness, which stays blocked on BPTK-002. BPTK-008 uses a Tier 3 written acceptance plus a live disposable A-J product walk through `bptk run`: preferred and relocated base, named and ordinal import binding, unresolved import reporting, TLS metadata without execution, stack/heap boundary, malformed header/section/import rejection, and deterministic repetition. Temporary input is removed and no baseline, reference map, or evidence JSON is retained. These checks execute only the declared probe subset; they do not execute a game or prove compatibility.
 
 ## Benchmark taxonomy
 
@@ -96,10 +96,10 @@ Commercial title is metadata-only and user-supplied. A title observation can gui
 
 Two denominator must stay distinct:
 
-1. **Roadmap denominator** — frozen at 46 raw candidate: 33 accepted, 8 rejected, and 5 deferred.
+1. **Roadmap denominator** — frozen at 59 raw candidate: 45 accepted, 8 rejected, and 6 deferred.
 2. **Runtime corpus denominator** — not yet frozen; BPTK-002 must define it before any compatibility percentage is published.
 
-Until BPTK-002 passes, the only valid coverage number is roadmap benchmark coverage: **0 / 33 (0%)**.
+Until BPTK-002 passes, the only valid coverage number is roadmap benchmark coverage: **0 / 45 (0%)**.
 
 A future runtime corpus must stratify at least:
 
@@ -175,7 +175,7 @@ A failing compatibility benchmark must identify one boundary:
 - the public contribution policy and least-privilege GitHub Actions repository gate;
 - strict JSON parsing;
 - singular JSON key and directory naming;
-- all 46 candidate identity, origin, unique dedupe key, decision, and accepted, rejected, or deferred target mapping;
+- all 59 candidate identity, origin, unique dedupe key, decision, and accepted, rejected, or deferred target mapping;
 - raw, accepted, rejected, deferred, implemented, and passing count;
 - item and benchmark ID uniqueness;
 - one benchmark per accepted item and no orphan specification;
