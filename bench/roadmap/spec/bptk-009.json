@@ -4,14 +4,25 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "A bounded integer entry probe exists, but FIX-002, full i386 and FPU coverage, complete exception behavior, and prerequisite evidence do not.",
-  "prerequisite": ["BPTK-005", "BPTK-008"],
+  "gate": "active",
+  "exclusion_reason": "The bounded integer and FPU entry probe is implemented and active with shift, rotate, multiply, divide, setcc, string, and a 64-bit precision x87 subset, but the frozen FIX-002 instruction, flag, FPU, exception, self-modification, and memory suite cannot be assembled while BPTK-002 owns no frozen denominator, and full instruction coverage does not exist.",
+  "prerequisite": [
+    "BPTK-005",
+    "BPTK-008"
+  ],
   "promotion_trigger": "Promote when FIX-002 passes the pinned instruction, flag, FPU, exception, self-modification, and memory suite.",
-  "expected_failing_assertion": "The complete i386 microprogram suite cannot execute to its frozen reference machine state.",
+  "expected_failing_assertion": "The complete i386 microprogram suite cannot execute to its frozen reference machine state while BPTK-002 owns no frozen denominator, and instruction outside the bounded subset stop as structured unsupported.",
   "owner_item": "BPTK-009",
-  "active_gate_evidence": "The v86, wemu, Boxedwine, and BottleShip capability is recorded only as upstream evidence.",
-  "fixture": ["FIX-002"],
-  "procedure": ["Run each microprogram with deterministic memory and instruction budget.", "Compare registers, flags, exception, FPU, memory, and trace hash."],
-  "pass_criterion": ["All required instruction cases match the reference state.", "Unsupported instruction produces a stable diagnostic rather than divergence."]
+  "active_gate_evidence": "Twenty-eight runtime check exercise the real bptk run surface and now cover the expanded bounded subset: shift and rotate count and carry, exact 32-bit multiply, structured divide_error, setcc comparison, deterministic rep movsb, deterministic x87 load-add-store double state, and the prior integer, flag, memory, rollback, and determinism coverage.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Run each microprogram with deterministic memory and instruction budget.",
+    "Compare registers, flags, exception, FPU, memory, and trace hash."
+  ],
+  "pass_criterion": [
+    "All required instruction cases match the reference state.",
+    "Unsupported instruction produces a stable diagnostic rather than divergence."
+  ]
 }

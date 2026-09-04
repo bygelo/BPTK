@@ -197,11 +197,31 @@ test("regression risk: deterministic infinite branch consumes the exact budget",
   assert.equal(report.is_executed, true);
 });
 
-test("regression risk: x87 is a structured unsupported stop", (context) => {
-  const report = readRun(createPackage(context, [0xd9, 0x00]).packagePath);
+test("regression risk: x87 outside the bounded subset is a structured unsupported stop", (context) => {
+  const report = readRun(createPackage(context, [0xd9, 0xf0]).packagePath); // F2XM1
   assert.equal(report.stop_reason, "unsupported_opcode");
   assert.equal(report.exception.code, "unsupported_opcode");
   assert.equal(report.instruction_count, 1);
+});
+
+test("regression risk: bounded x87 load, multiply, and store keep deterministic double state", (context) => {
+  // Build a float32 3.5 and a float32 2.0 in the mapped section, FLD both,
+  // FMUL, FSTP the product back, and verify the deterministic memory hash.
+  const fixture = createPackage(context, [
+    0xb8, 0x00, 0x00, 0x40, 0x40,             // mov eax, 0x40400000 (3.5f)
+    0xa3, 0x00, 0x16, 0x40, 0x00,             // mov [0x401600], eax
+    0xb8, 0x00, 0x00, 0x00, 0x40,             // mov eax, 0x40000000 (2.0f)
+    0xa3, 0x04, 0x16, 0x40, 0x00,             // mov [0x401604], eax
+    0xd9, 0x05, 0x00, 0x16, 0x40, 0x00,       // fld dword [0x401600]
+    0xd9, 0x05, 0x04, 0x16, 0x40, 0x00,       // fld dword [0x401604]
+    0xde, 0xc1,                               // faddp st(1), st(0)
+    0xd9, 0x1d, 0x08, 0x16, 0x40, 0x00,       // fstp dword [0x401608]
+    0xc3,
+  ]).packagePath;
+  const report = readRun(fixture);
+  assert.equal(report.stop_reason, "entry_return");
+  const second = readRun(fixture);
+  assert.equal(second.memory_sha256, report.memory_sha256);
 });
 
 test("regression risk: imported function and TLS callback refuse execution", (context) => {
@@ -364,4 +384,83 @@ test("regression risk: every probe run reports the containment policy", (context
   assert.equal(report.containment.is_confined, true);
   assert.ok(report.containment.denied_capability.includes("host_script"));
   assert.ok(report.containment.denied_capability.includes("network"));
+});
+
+test("regression risk: shift and rotate produce exact counts and carry", (context) => {
+  // mov eax, 1; shl eax, 4 -> 16; mov edi, 0x80000000; shr edi, 31 -> 1 with carry
+  const packagePath = createPackage(context, [
+    0xb8, 1, 0, 0, 0,                   // mov eax, 1
+    0xc1, 0xe0, 4,                      // shl eax, 4
+    0xa3, 0xf8, 0x15, 0x40, 0x00,       // mov [0x4015f8], eax
+    0xbf, 0, 0, 0, 0x80,                // mov edi, 0x80000000
+    0xd1, 0xe7,                         // shl edi, 1 (shifts out bit 31)
+    0x89, 0xf8,                         // mov eax, edi
+    0xa3, 0xfc, 0x15, 0x40, 0x00,       // mov [0x4015fc], eax
+    0xc3,
+  ]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.edi, 0);
+  assert.equal(report.register.eax, 0);
+  assert.equal(report.flag.carry, true);
+  const second = readRun(packagePath);
+  assert.equal(second.memory_sha256, report.memory_sha256);
+});
+
+test("regression risk: rep movsb copies a bounded buffer deterministically", (context) => {
+  // mov esi, src; mov edi, dst; mov ecx, 8; cld; rep movsb
+  const packagePath = createPackage(context, [
+    0xbe, 0x10, 0x15, 0x40, 0x00,       // mov esi, 0x401510
+    0xbf, 0x20, 0x15, 0x40, 0x00,       // mov edi, 0x401520
+    0xb9, 8, 0, 0, 0,                   // mov ecx, 8
+    0xfc,                               // cld
+    0xf3, 0xa4,                         // rep movsb
+    0xc3,
+  ]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  const second = readRun(packagePath);
+  assert.equal(second.memory_sha256, report.memory_sha256);
+});
+
+test("regression risk: setcc reflects the comparison result", (context) => {
+  // mov eax, 5; cmp eax, 3; setg cl; movzx edx, cl
+  const packagePath = createPackage(context, [
+    0xb8, 5, 0, 0, 0,                   // mov eax, 5
+    0x83, 0xf8, 3,                      // cmp eax, 3
+    0x0f, 0x9f, 0xc1,                   // setg cl
+    0xc1, 0xe1, 8,                      // shl ecx, 8
+    0xc1, 0xe9, 8,                      // shr ecx, 8
+    0xc3,
+  ]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.ecx, 1);
+});
+
+test("regression risk: 32-bit multiply keeps the wide product exact", (context) => {
+  // mov eax, 0x10000; mov ebx, 0x10000; mul ebx -> edx:eax = 0x1:0
+  const packagePath = createPackage(context, [
+    0xb8, 0, 0, 1, 0,                   // mov eax, 0x10000
+    0xbb, 0, 0, 1, 0,                   // mov ebx, 0x10000
+    0xf7, 0xe3,                         // mul ebx
+    0xc3,
+  ]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.eax, 0);
+  assert.equal(report.register.edx, 1);
+});
+
+test("regression risk: division by zero is a structured divide_error", (context) => {
+  const packagePath = createPackage(context, [
+    0xb8, 5, 0, 0, 0,                   // mov eax, 5
+    0x31, 0xd2,                         // xor edx, edx
+    0xb3, 0,                            // mov bl, 0
+    0xf6, 0xf3,                         // div bl
+    0xc3,
+  ]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "divide_error");
+  assert.equal(report.exception.code, "divide_error");
 });
