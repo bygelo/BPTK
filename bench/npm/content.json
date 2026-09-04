@@ -11,6 +11,7 @@
     "lib/benchmark.mjs",
     "lib/bound.mjs",
     "lib/census.mjs",
+    "lib/clock.mjs",
     "lib/cli.mjs",
     "lib/corpus.mjs",
     "lib/doctor.mjs",

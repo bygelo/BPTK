@@ -291,3 +291,77 @@ test("regression risk: repeated probe keeps register, trace, and memory hashes s
   const second = readRun(packagePath);
   assert.deepEqual({ register: first.register, flag: first.flag, trace_sha256: first.trace_sha256, memory_sha256: first.memory_sha256, stop_reason: first.stop_reason }, { register: second.register, flag: second.flag, trace_sha256: second.trace_sha256, memory_sha256: second.memory_sha256, stop_reason: second.stop_reason });
 });
+
+test("regression risk: RDTSC serves guest time from one deterministic monotonic clock", (context) => {
+  // Two RDTSC read separated by the declared 1000-cycle progression, then a
+  // register subtraction that proves the second read advanced exactly the
+  // declared amount. Writes stay inside the mapped section at 0x15f0.
+  const packagePath = createPackage(context, [
+    0x0f, 0x31,                   // RDTSC -> edx:eax
+    0xa3, 0xf0, 0x15, 0x40, 0x00, // mov [0x4015f0], eax
+    0x0f, 0x31,                   // RDTSC again
+    0x2d, 0xe8, 0x03, 0x00, 0x00, // sub eax, 1000
+    0xa3, 0xf4, 0x15, 0x40, 0x00, // mov [0x4015f4], eax
+    0xa1, 0xf0, 0x15, 0x40, 0x00, // mov eax, [0x4015f0]
+    0x2b, 0x05, 0xf4, 0x15, 0x40, 0x00, // sub eax, [0x4015f4]
+    0xc3,
+  ]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.is_executed, true);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.eax, 0);
+  assert.equal(report.register.edx, 0);
+  assert.equal(report.clock.source, "one_monotonic_clock");
+  assert.equal(report.clock.mode, "virtual_monotonic");
+  const second = readRun(packagePath);
+  assert.equal(second.memory_sha256, report.memory_sha256);
+});
+
+test("regression risk: every derived time source stays on the single monotonic base", async () => {
+  const { createGuestClock } = await import("../lib/clock.mjs");
+  const clock = createGuestClock({ mode: "virtual_monotonic" });
+  clock.advanceVirtualMs(1000);
+  const qpcMs = (clock.qpc() / 10000000) * 1000;
+  const tickMs = clock.tickCount();
+  const vblankMs = (clock.vblankFrameCount() / 60) * 1000;
+  // Every derivation is within one service step of the same guest time.
+  assert.ok(Math.abs(qpcMs - tickMs) <= 2, `qpc ${qpcMs} vs tick ${tickMs}`);
+  assert.ok(Math.abs(vblankMs - tickMs) <= 17, `vblank ${vblankMs} vs tick ${tickMs}`);
+  const before = clock.tickCount();
+  clock.advanceVirtualMs(1);
+  assert.equal(clock.tickCount() - before, 1);
+  clock.advanceVirtualMs(0xffffffff);
+  assert.equal(clock.tickCount(), 1000); // wrapped modulo 2^32
+});
+
+test("regression risk: the clamp bounds guest time during a host stall", async () => {
+  const { clampDelta } = await import("../lib/clock.mjs");
+  assert.equal(clampDelta(-5, 100), 0);
+  assert.equal(clampDelta(30, 100), 30);
+  assert.equal(clampDelta(4000, 100), 100);
+});
+
+test("regression risk: an execution manifest declaring host capability is refused", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-runtime-containment-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const packagePath = join(rootPath, "package");
+  mkdirSync(packagePath);
+  writeFileSync(join(packagePath, "game.exe"), createPe32([0xc3]));
+  writeFileSync(join(packagePath, "bptk.json"), JSON.stringify({
+    schema_version: 1,
+    executable: "game.exe",
+    execution: { profile: "i386_probe_v1", instruction_budget_count: 10, file_system: "opfs" },
+  }));
+  const result = run(["run", packagePath, "--json"]);
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stderr).error_code, "containment_policy_violation");
+});
+
+test("regression risk: every probe run reports the containment policy", (context) => {
+  const packagePath = createPackage(context, [0xc3]).packagePath;
+  const report = readRun(packagePath);
+  assert.equal(report.containment.policy, "i386_probe_v1");
+  assert.equal(report.containment.is_confined, true);
+  assert.ok(report.containment.denied_capability.includes("host_script"));
+  assert.ok(report.containment.denied_capability.includes("network"));
+});

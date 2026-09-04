@@ -16,13 +16,13 @@ All collection key remain singular by repository convention: `item`, `prerequisi
 ## Current state
 
 - Accepted roadmap item: 45
-- Planned and quarantined: 37
-- Implemented: 8
+- Planned and quarantined: 35
+- Implemented: 10
 - Passing: 0
-- Active product benchmark: 8
+- Active product benchmark: 10
 - Active planning gate: `python3 tool/validate.py`
 
-Every specification remains red. Eight product surface are implemented with active acceptance contracts, while unmet prerequisite or matrix evidence prevents passing status. The other 37 remain excluded so the repository can stay green without pretending that future capability passes.
+Every specification remains red. Ten product surface are implemented with active acceptance contracts, while unmet prerequisite or matrix evidence prevents passing status. The other 35 remain excluded so the repository can stay green without pretending that future capability passes.
 
 ## Required specification field
 
@@ -68,4 +68,4 @@ Run from the repository root:
 python3 tool/validate.py
 ```
 
-The expected planning result is a pass reporting 45 accepted item, 8 implemented item, 0 passing item, and 45 red specification with 8 active and 37 excluded.
+The expected planning result is a pass reporting 45 accepted item, 10 implemented item, 0 passing item, and 45 red specification with 10 active and 35 excluded.

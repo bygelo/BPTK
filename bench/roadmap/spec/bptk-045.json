@@ -4,14 +4,24 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No guest execution runtime exists yet, so a containment policy has nothing to confine and no escape attempt has been measured.",
-  "prerequisite": ["BPTK-004"],
+  "gate": "active",
+  "exclusion_reason": "The declared containment policy is implemented and enforced over the probe execution path, but the browser-side policy surfaces (WebAssembly memory confinement with host-script CSP, OPFS storage sandbox, and mediated relay) do not exist yet, and the frozen escape-attempt corpus evidence waits on BPTK-002.",
+  "prerequisite": [
+    "BPTK-004"
+  ],
   "promotion_trigger": "Promote when guest code stays confined to WebAssembly memory, a content-security policy without arbitrary host script, the package OPFS sandbox, and the mediated relay, and every escape attempt is refused.",
-  "expected_failing_assertion": "The containment suite cannot refuse a guest attempt to reach host script, storage outside its sandbox, or unmediated network.",
+  "expected_failing_assertion": "The browser containment surfaces that would confine a real guest to WebAssembly memory, an OPFS sandbox, and a mediated relay do not exist, and the escape-attempt corpus waits on the frozen BPTK-002 denominator.",
   "owner_item": "BPTK-045",
-  "active_gate_evidence": "The product records the required guest containment policy as evidence and executes no guest code outside a confined boundary.",
-  "fixture": ["FIX-002"],
-  "procedure": ["Run a guest fixture that attempts host script, out-of-sandbox storage, and unmediated network access.", "Confirm each attempt is refused while an in-policy guest continues."],
-  "pass_criterion": ["Every out-of-policy host, storage, and network attempt is refused.", "An in-policy guest executes without reaching a host capability."]
+  "active_gate_evidence": "Regression check prove the run surface refuses an execution manifest that declares capability outside the containment policy, every probe run reports the denied host capability set, and guest memory stays confined to the mapped image and bounded stack.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Run a guest fixture that attempts host script, out-of-sandbox storage, and unmediated network access.",
+    "Confirm each attempt is refused while an in-policy guest continues."
+  ],
+  "pass_criterion": [
+    "Every out-of-policy host, storage, and network attempt is refused.",
+    "An in-policy guest executes without reaching a host capability."
+  ]
 }

@@ -4,14 +4,24 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No Win32 high-level emulation exists yet, so no guest time source can be served, and no single-clock behavior has been measured against a busy-wait or double-speed failure.",
-  "prerequisite": ["BPTK-010"],
+  "gate": "active",
+  "exclusion_reason": "The single monotonic clock layer with QPC, RDTSC, tick, timeGetTime, and vertical-blank derivation is implemented and serves the probe RDTSC, but the Win32 HLE surface that would serve the remaining source to a real guest does not exist yet, and the frozen FIX-002 busy-wait and variable-frame corpus evidence is unavailable while BPTK-002 remains red.",
+  "prerequisite": [
+    "BPTK-010"
+  ],
   "promotion_trigger": "Promote when QueryPerformanceCounter, RDTSC, GetTickCount, timeGetTime, and vertical-blank all derive from one monotonic source with the one-millisecond period expectation and clamped delta.",
-  "expected_failing_assertion": "The timing suite cannot keep every guest time source consistent with one monotonic clock under a busy-wait and a variable-frame workload.",
+  "expected_failing_assertion": "The timing suite cannot run a real guest busy-wait and vertical-blank workload without Win32 HLE, and the corpus-wide tolerance measurement waits on the frozen BPTK-002 denominator.",
   "owner_item": "BPTK-039",
-  "active_gate_evidence": "The product records the guest time-source requirement as evidence and exposes no real timestamp counter to the guest.",
-  "fixture": ["FIX-002"],
-  "procedure": ["Drive each guest time source from a single monotonic base with a one-millisecond period and clamped delta.", "Run a busy-wait, a vertical-blank spin, and a variable-frame workload and compare elapsed guest time against the reference."],
-  "pass_criterion": ["Every time source stays consistent with the monotonic base within tolerance.", "The guest neither busy-spins at full utilization nor runs at double speed."]
+  "active_gate_evidence": "A regression check proves guest RDTSC read advance exactly the declared cycle amount from one deterministic monotonic base through the real bptk run surface, and clock check prove one-origin consistency, the one-millisecond tick period, the 32-bit wrap, and the clamped delta.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Drive each guest time source from a single monotonic base with a one-millisecond period and clamped delta.",
+    "Run a busy-wait, a vertical-blank spin, and a variable-frame workload and compare elapsed guest time against the reference."
+  ],
+  "pass_criterion": [
+    "Every time source stays consistent with the monotonic base within tolerance.",
+    "The guest neither busy-spins at full utilization nor runs at double speed."
+  ]
 }
