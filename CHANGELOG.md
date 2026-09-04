@@ -6,6 +6,7 @@ All notable planning and implementation change will be recorded here.
 
 ### Added
 
+- Added the static recompilation fourth lane to `bptk foundation compare` (BPTK-036) with an honest unavailable signal, and a dated no-marketing feasibility note recording the N64Recomp, PSXRecomp, and XenonRecomp prior art, the reusable foundation, and the missing evidence behind the deferral.
 - Expanded the bounded i386 probe (BPTK-009): shift and rotate group with exact count and carry behavior, multiply and divide with exact 64-bit intermediate and structured divide_error, two-operand IMUL, setcc, string operation with bounded REP/REPE/REPNE and CLD/STD direction control, and a 64-bit precision x87 subset covering load, store, integer conversion, arithmetic, compare, and control-word service; everything outside the subset stays a structured unsupported stop.
 - Added the one monotonic guest clock (BPTK-039): QPC, RDTSC, GetTickCount, timeGetTime, and vertical-blank derivation all read one monotonic base with the one-millisecond tick period, the 32-bit wrap, and a clamped delta so a stalled reader neither jumps ahead nor runs at double speed; the probe serves guest RDTSC deterministically from that base through `bptk run`.
 - Added the declared guest containment policy (BPTK-045): the probe confines guest memory to the mapped image and bounded stack, denies host script, file system, network, process, and device capability by absence, reports the policy on every run, and refuses an execution manifest that declares capability outside the policy.
