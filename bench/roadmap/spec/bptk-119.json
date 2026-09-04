@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-119",
+  "item_id": "BPTK-119",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No recording session or ratings surface exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the surface shows only record-backed rating and the stale case greys out.",
+  "expected_failing_assertion": "No ratings surface exists.",
+  "owner_item": "BPTK-119",
+  "active_gate_evidence": "The compatibility surface keeps observing capability without support claim.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Show the record-backed rating fixture.",
+    "Replay the record and verify reproduction.",
+    "Expire a revision and assert the rating greys out."
+  ],
+  "pass_criterion": [
+    "Only record-backed rating shows.",
+    "Stale rating greys out."
+  ]
+}

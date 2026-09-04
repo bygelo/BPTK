@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-115",
+  "item_id": "BPTK-115",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No authoring SDK or first-party source exists.",
+  "prerequisite": [
+    "BPTK-003",
+    "BPTK-116"
+  ],
+  "promotion_trigger": "Promote when the title builds clean, hosts, and its run evidence promotes through the runner.",
+  "expected_failing_assertion": "No first-party title exists.",
+  "owner_item": "BPTK-115",
+  "active_gate_evidence": "The benchmark runner keeps content-addressed promotion that the title run can feed.",
+  "fixture": [
+    "FIX-014"
+  ],
+  "procedure": [
+    "Build the title from clean checkout.",
+    "Host it and reach interactive.",
+    "Record the passing run as capability evidence through the runner."
+  ],
+  "pass_criterion": [
+    "Clean build and hosted play.",
+    "The run evidence promotes through the runner."
+  ]
+}

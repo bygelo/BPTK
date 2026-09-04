@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 134,
-    "accepted": 120,
+    "raw": 143,
+    "accepted": 129,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -2492,6 +2492,216 @@
       "benchmark_id": "BENCH-111",
       "failure_meaning": "Save roams but proprietary content leaves the machine with it.",
       "risk": "A conflict resolver that depends on wall-clock order is nondeterministic across device.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-009",
+        "SRC-010",
+        "SRC-022",
+        "SRC-023"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-112",
+      "title": "Serve the game catalog on a frozen metadata schema",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-107",
+        "BPTK-127"
+      ],
+      "deliverable": "A catalog interface and frozen metadata schema that gate instant-play on rights and capability.",
+      "benchmark_id": "BENCH-112",
+      "failure_meaning": "The library ships entries whose rights or capability are unverified.",
+      "risk": "A schema frozen too loosely admits entries no host can validate.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-113",
+      "title": "Host a redistributable title for instant play",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-105",
+        "BPTK-127"
+      ],
+      "deliverable": "Instant-play hosting over the streamed store with grant-gated publication.",
+      "benchmark_id": "BENCH-113",
+      "failure_meaning": "The library cannot serve the play flow it advertises.",
+      "risk": "A grant that expires between publish and play leaves hosted content unlawfully served.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015",
+        "SRC-022"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-114",
+      "title": "Import a user-owned file into the library",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Bring-your-own import into the library with local-only staging and publication exclusion.",
+      "benchmark_id": "BENCH-114",
+      "failure_meaning": "The library only serves hosted content and ignores the user's own files.",
+      "risk": "A staged entry that leaks into a catalog export publishes unverified content.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-115",
+      "title": "Build a first-party title whose passing run is the evidence",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-003",
+        "BPTK-116"
+      ],
+      "deliverable": "One first-party title with its source, build, and capability evidence tied to the benchmark runner.",
+      "benchmark_id": "BENCH-115",
+      "failure_meaning": "The platform demos with synthetic fixture instead of a real game.",
+      "risk": "A title written against internal behavior no external author has binds the SDK to one codebase.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-006",
+        "SRC-007",
+        "SRC-010",
+        "SRC-011",
+        "SRC-013",
+        "SRC-016"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-116",
+      "title": "Publish the authoring SDK and runtime-target API",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A public authoring SDK with a documented runtime-target API and semver contract across the host set.",
+      "benchmark_id": "BENCH-116",
+      "failure_meaning": "External author cannot target the runtime deliberately.",
+      "risk": "A stability contract without a breaking-change test is prose, not a contract.",
+      "source_evidence": [
+        "SRC-006",
+        "SRC-007",
+        "SRC-010",
+        "SRC-016"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-117",
+      "title": "Accept community submission without asset transfer",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-122"
+      ],
+      "deliverable": "A community submission pipeline that moves report into tracker entry with privacy striping and attestation-gated promotion.",
+      "benchmark_id": "BENCH-117",
+      "failure_meaning": "Community evidence either never arrives or arrives with payload the project cannot hold.",
+      "risk": "A submission with embedded asset stored 'temporarily' becomes permanent.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-118",
+      "title": "Keep the preservation catalog append-only",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-127"
+      ],
+      "deliverable": "A preservation catalog with append-only provenance and a reproducible export.",
+      "benchmark_id": "BENCH-118",
+      "failure_meaning": "Preservation claims lose their chain of custody.",
+      "risk": "An append-only store that allows re-registration of the same key forges history.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-119",
+      "title": "Show ratings only from reproducible replay",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A ratings surface bound to recorded-run evidence with revision pinning and staleness handling.",
+      "benchmark_id": "BENCH-119",
+      "failure_meaning": "The public rating surface drifts from the evidence that justifies it.",
+      "risk": "A greyed rating kept searchable reads as an implicit claim.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-120",
+      "title": "Layer a mod over the read-only base",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Mod overlay support over the storage layer with containment and bound enforcement.",
+      "benchmark_id": "BENCH-120",
+      "failure_meaning": "The platform locks out the modding community entirely.",
+      "risk": "An overlay that escapes the containment boundary turns a mod into an exfiltration path.",
       "source_evidence": [
         "SRC-002",
         "SRC-009",

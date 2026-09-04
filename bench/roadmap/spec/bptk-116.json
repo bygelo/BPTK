@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-116",
+  "item_id": "BPTK-116",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No SDK surface exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the SDK-only game runs in every host shape under the invariant and the semver contract is enforced in CI.",
+  "expected_failing_assertion": "No public SDK exists.",
+  "owner_item": "BPTK-116",
+  "active_gate_evidence": "The source-port diagnosis and host emission keep the surface records an SDK can bind to.",
+  "fixture": [
+    "FIX-017"
+  ],
+  "procedure": [
+    "Build the SDK-only fixture game.",
+    "Run it in every declared host shape and compare the invariant.",
+    "Break the API in a drill and assert the contract check fails."
+  ],
+  "pass_criterion": [
+    "The SDK-only game runs everywhere.",
+    "The semver contract is enforced."
+  ]
+}

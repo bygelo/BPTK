@@ -882,7 +882,8 @@
         "GS-063",
         "GS-084"
       ],
-      "spec": "**GS-068 · Game catalog UI + metadata schema** — every entry validates frozen schema; `instant-play` requires approved redistribution + passing capability profile; no-rights → BYO-only · **T3** · deps GS-063, GS-084."
+      "spec": "**GS-068 · Game catalog UI + metadata schema** — every entry validates frozen schema; `instant-play` requires approved redistribution + passing capability profile; no-rights → BYO-only · **T3** · deps GS-063, GS-084.",
+      "promoted_as": "BPTK-112"
     },
     {
       "gs_id": "GS-069",
@@ -895,7 +896,8 @@
         "GS-061",
         "GS-084"
       ],
-      "spec": "**GS-069 · Instant-play redistributable hosting** — hosted title interactive from cold browser; publish refuses any title without an in-date redistribution grant · **T1** · deps GS-061/066, GS-084."
+      "spec": "**GS-069 · Instant-play redistributable hosting** — hosted title interactive from cold browser; publish refuses any title without an in-date redistribution grant · **T1** · deps GS-061/066, GS-084.",
+      "promoted_as": "BPTK-113"
     },
     {
       "gs_id": "GS-070",
@@ -907,7 +909,8 @@
         "BPTK-007"
       ],
       "dep": [],
-      "spec": "**GS-070 · BYO-file import into the library** — local classify+stage+launch, zero upload of game bytes, local-only entry never published · **T1** · extends BPTK-007/015."
+      "spec": "**GS-070 · BYO-file import into the library** — local classify+stage+launch, zero upload of game bytes, local-only entry never published · **T1** · extends BPTK-007/015.",
+      "promoted_as": "BPTK-114"
     },
     {
       "gs_id": "GS-071",
@@ -920,7 +923,8 @@
         "GS-072",
         "BPTK-003"
       ],
-      "spec": "**GS-071 · First-party BPTK original / tech-demo games** — buildable from clean first-party source, instant-play hosted, and its passing run **is** the benchmark evidence for its capability · **T1** · deps GS-072, BPTK-003. *Real games beat synthetic fixtures.*"
+      "spec": "**GS-071 · First-party BPTK original / tech-demo games** — buildable from clean first-party source, instant-play hosted, and its passing run **is** the benchmark evidence for its capability · **T1** · deps GS-072, BPTK-003. *Real games beat synthetic fixtures.*",
+      "promoted_as": "BPTK-115"
     },
     {
       "gs_id": "GS-072",
@@ -932,7 +936,8 @@
         "BPTK-021"
       ],
       "dep": [],
-      "spec": "**GS-072 · Authoring SDK / runtime-target API** — a new game built only on the public SDK runs in all four hosts under the same save/capability/containment invariants; semver API-stability contract · **T1** · extends BPTK-021/024. *Reconciled (lanes+platform).*"
+      "spec": "**GS-072 · Authoring SDK / runtime-target API** — a new game built only on the public SDK runs in all four hosts under the same save/capability/containment invariants; semver API-stability contract · **T1** · extends BPTK-021/024. *Reconciled (lanes+platform).*",
+      "promoted_as": "BPTK-116"
     },
     {
       "gs_id": "GS-073",
@@ -944,7 +949,8 @@
       "dep": [
         "GS-079"
       ],
-      "spec": "**GS-073 · Community submission pipeline** — accepts profile+provenance (not assets); strips/refuses proprietary/PII; maps to a tracker entry; unattested claim can't promote a rating · **T2** · deps GS-079/080."
+      "spec": "**GS-073 · Community submission pipeline** — accepts profile+provenance (not assets); strips/refuses proprietary/PII; maps to a tracker entry; unattested claim can't promote a rating · **T2** · deps GS-079/080.",
+      "promoted_as": "BPTK-117"
     },
     {
       "gs_id": "GS-074",
@@ -956,7 +962,8 @@
       "dep": [
         "GS-084"
       ],
-      "spec": "**GS-074 · Preservation catalog with provenance** — append-only provenance (source/build-hash/redistribution-basis/attestation); export reproducible, PII-free · **T2** · deps GS-084."
+      "spec": "**GS-074 · Preservation catalog with provenance** — append-only provenance (source/build-hash/redistribution-basis/attestation); export reproducible, PII-free · **T2** · deps GS-084.",
+      "promoted_as": "BPTK-118"
     },
     {
       "gs_id": "GS-075",
@@ -968,7 +975,8 @@
         "BPTK-028"
       ],
       "dep": [],
-      "spec": "**GS-075 · Compatibility-ratings site** — rating shown only when backed by a reproducible BPTK-028 replay pinned to a browser profile + revision; stale ratings grey out · **T1** · extends BPTK-028/030."
+      "spec": "**GS-075 · Compatibility-ratings site** — rating shown only when backed by a reproducible BPTK-028 replay pinned to a browser profile + revision; stale ratings grey out · **T1** · extends BPTK-028/030.",
+      "promoted_as": "BPTK-119"
     },
     {
       "gs_id": "GS-076",
@@ -980,7 +988,8 @@
         "BPTK-015"
       ],
       "dep": [],
-      "spec": "**GS-076 · Modding support** — mod overlay over read-only CoW base (base hash-unchanged), sandboxed to the game's containment, oversized mod refused at the bound · **T2** · extends BPTK-015/045."
+      "spec": "**GS-076 · Modding support** — mod overlay over read-only CoW base (base hash-unchanged), sandboxed to the game's containment, oversized mod refused at the bound · **T2** · extends BPTK-015/045.",
+      "promoted_as": "BPTK-120"
     },
     {
       "gs_id": "GS-078",

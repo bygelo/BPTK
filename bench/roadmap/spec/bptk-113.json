@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-113",
+  "item_id": "BPTK-113",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No streamed store, hosting surface, or grant resolution exists.",
+  "prerequisite": [
+    "BPTK-105",
+    "BPTK-127"
+  ],
+  "promotion_trigger": "Promote when the hosted title reaches interactive from cold start and the expired-grant publication is refused.",
+  "expected_failing_assertion": "No hosting surface exists.",
+  "owner_item": "BPTK-113",
+  "active_gate_evidence": "The legal surface keeps requiring named review and the packager keeps content-addressed identity.",
+  "fixture": [
+    "FIX-015"
+  ],
+  "procedure": [
+    "Publish the hosted title with an in-date grant.",
+    "Load from a cold browser and measure time to interactive.",
+    "Attempt publication with an expired grant and assert refusal."
+  ],
+  "pass_criterion": [
+    "Cold start reaches interactive.",
+    "Expired grant is refused."
+  ]
+}

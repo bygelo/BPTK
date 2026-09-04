@@ -3,7 +3,7 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 67,
+    "product": 76,
     "prior_art": 49,
     "constraint": 14
   },
@@ -1079,6 +1079,78 @@
       "target_id": "BPTK-111",
       "summary": "Synchronize only the save overlay to the cloud",
       "dedupe_key": "gs-067-cloud-save-sync"
+    },
+    {
+      "candidate_id": "CAND-135",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-112",
+      "summary": "Serve the game catalog on a frozen metadata schema",
+      "dedupe_key": "gs-068-catalog-metadata-schema"
+    },
+    {
+      "candidate_id": "CAND-136",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-113",
+      "summary": "Host a redistributable title for instant play",
+      "dedupe_key": "gs-069-instant-play-hosting"
+    },
+    {
+      "candidate_id": "CAND-137",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-114",
+      "summary": "Import a user-owned file into the library",
+      "dedupe_key": "gs-070-byo-import"
+    },
+    {
+      "candidate_id": "CAND-138",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-115",
+      "summary": "Build a first-party title whose passing run is the evidence",
+      "dedupe_key": "gs-071-first-party-title"
+    },
+    {
+      "candidate_id": "CAND-139",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-116",
+      "summary": "Publish the authoring SDK and runtime-target API",
+      "dedupe_key": "gs-072-authoring-sdk"
+    },
+    {
+      "candidate_id": "CAND-140",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-117",
+      "summary": "Accept community submission without asset transfer",
+      "dedupe_key": "gs-073-community-submission-pipeline"
+    },
+    {
+      "candidate_id": "CAND-141",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-118",
+      "summary": "Keep the preservation catalog append-only",
+      "dedupe_key": "gs-074-preservation-catalog"
+    },
+    {
+      "candidate_id": "CAND-142",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-119",
+      "summary": "Show ratings only from reproducible replay",
+      "dedupe_key": "gs-075-ratings-site"
+    },
+    {
+      "candidate_id": "CAND-143",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-120",
+      "summary": "Layer a mod over the read-only base",
+      "dedupe_key": "gs-076-modding-support"
     }
   ]
 }

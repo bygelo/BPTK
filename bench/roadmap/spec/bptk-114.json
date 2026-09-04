@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-114",
+  "item_id": "BPTK-114",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The inspect classification exists but no library staging or launch path exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the user file reaches launch locally with zero upload and the local-only entry stays unpublished.",
+  "expected_failing_assertion": "No library staging exists.",
+  "owner_item": "BPTK-114",
+  "active_gate_evidence": "The inspect surface keeps classification without execution or upload.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Import the user file fixture and stage it locally.",
+    "Assert zero network transfer of game byte.",
+    "Launch from the library and assert the entry is not published."
+  ],
+  "pass_criterion": [
+    "Launch is fully local.",
+    "The entry is never published."
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-117",
+  "item_id": "BPTK-117",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No tracker or submission pipeline exists.",
+  "prerequisite": [
+    "BPTK-122"
+  ],
+  "promotion_trigger": "Promote when a submission maps to a tracker entry with privacy striping and the unattested claim cannot promote.",
+  "expected_failing_assertion": "No submission pipeline exists.",
+  "owner_item": "BPTK-117",
+  "active_gate_evidence": "The report command keeps writing privacy-minimized record suitable for submission.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Submit the fixture report through the pipeline.",
+    "Assert proprietary and personal content is stripped or refused.",
+    "Attempt promotion from an unattested claim and assert refusal."
+  ],
+  "pass_criterion": [
+    "Submission maps to a tracker entry.",
+    "Unattested claim never promotes."
+  ]
+}

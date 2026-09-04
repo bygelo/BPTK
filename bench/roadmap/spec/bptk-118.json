@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-118",
+  "item_id": "BPTK-118",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No provenance catalog exists.",
+  "prerequisite": [
+    "BPTK-127"
+  ],
+  "promotion_trigger": "Promote when the chain refuses mutation, the export reproduces byte-stably, and the personal-data audit holds.",
+  "expected_failing_assertion": "No preservation catalog exists.",
+  "owner_item": "BPTK-118",
+  "active_gate_evidence": "The legal surface keeps the provenance rule recorded for the catalog to bind to.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Append the declared entry set and attempt a mutation.",
+    "Export twice and compare bytes.",
+    "Audit the export for personal data."
+  ],
+  "pass_criterion": [
+    "Mutation is refused.",
+    "Export is reproducible and personal-data-free."
+  ]
+}

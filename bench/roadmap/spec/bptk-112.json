@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-112",
+  "item_id": "BPTK-112",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No catalog surface, embedding host set, or provenance graph resolution exists.",
+  "prerequisite": [
+    "BPTK-107",
+    "BPTK-127"
+  ],
+  "promotion_trigger": "Promote when every entry validates the schema and the instant-play and no-rights gating hold through the catalog surface.",
+  "expected_failing_assertion": "No catalog exists.",
+  "owner_item": "BPTK-112",
+  "active_gate_evidence": "The packaging and legal surface keep identity and rights records that the schema can bind to.",
+  "fixture": [
+    "FIX-017"
+  ],
+  "procedure": [
+    "Validate every declared entry against the frozen schema.",
+    "Assert instant-play only for approved redistribution with passing capability.",
+    "Assert a no-rights entry is bring-your-own only."
+  ],
+  "pass_criterion": [
+    "Every entry validates.",
+    "Instant-play gating holds."
+  ]
+}
