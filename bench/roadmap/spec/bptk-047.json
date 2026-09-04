@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-047",
+  "item_id": "BPTK-047",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The recompiler itself is absent, so no control-flow recovery pass exists to evaluate.",
+  "prerequisite": [
+    "BPTK-046"
+  ],
+  "promotion_trigger": "Promote when every switch and vtable arm of the fixture recompiles bit-exact, unknown target fall back with a declared reason, and code-as-data region is flagged.",
+  "expected_failing_assertion": "No control-flow recovery pass exists; the fixture switch and vtable dispatch cannot recompile.",
+  "owner_item": "BPTK-047",
+  "active_gate_evidence": "The bounded probe suite pins indirect jump and call behavior through the interpreter oracle.",
+  "fixture": [
+    "FIX-002",
+    "doc/research-static-recomp.md"
+  ],
+  "procedure": [
+    "Recover function boundary, jump table, and vtable target from the fixture image.",
+    "Recompile every recovered dispatch arm and compare each against the interpreter oracle.",
+    "Feed an unknown target and a code-as-data region and assert declared fallback and flag, never a crash."
+  ],
+  "pass_criterion": [
+    "Every fixture switch and vtable arm recompiles bit-exact.",
+    "Unknown target fall back with a declared reason and code-as-data region are flagged."
+  ]
+}

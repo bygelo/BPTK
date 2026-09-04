@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-058",
+  "item_id": "BPTK-058",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No MIPS prototype or reference-emu comparison exists.",
+  "prerequisite": [
+    "BPTK-046"
+  ],
+  "promotion_trigger": "Promote when the N64 and PS1 fixture match the reference-emu trace and the PS2 gap is pinned or explicitly deferred.",
+  "expected_failing_assertion": "The inspect surface has no MIPS target.",
+  "owner_item": "BPTK-058",
+  "active_gate_evidence": "The census and inspect surface never claim a console lane.",
+  "fixture": [
+    "doc/research-static-recomp.md"
+  ],
+  "procedure": [
+    "Recompile the MIPS research fixture.",
+    "Compare the trace against the reference emulator.",
+    "Record the PS2 VU/GS gap as pinned or deferred."
+  ],
+  "pass_criterion": [
+    "N64 and PS1 trace match the reference.",
+    "The PS2 gap is pinned or deferred explicitly."
+  ]
+}

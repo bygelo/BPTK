@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-048",
+  "item_id": "BPTK-048",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The recompiler is absent and the bounded probe covers only a static instruction subset, so no recompiled page exists to invalidate.",
+  "prerequisite": [
+    "BPTK-009"
+  ],
+  "promotion_trigger": "Promote when a fixture that rewrites its own executed page produces the freshly decoded behavior and untouched block never re-decode.",
+  "expected_failing_assertion": "No recompiled page invalidation path exists; the probe executes a static bounded subset only.",
+  "owner_item": "BPTK-048",
+  "active_gate_evidence": "The bounded probe suite pins self-modifying access for the interpreted subset through the real run surface.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Run a fixture that rewrites an executed page after a declared trigger.",
+    "Assert the rewritten instruction takes effect on the next execution of the page.",
+    "Assert untouched block stay on the fast path without re-decode."
+  ],
+  "pass_criterion": [
+    "Self-modified page re-decode before the next execution.",
+    "Untouched block never re-decode."
+  ]
+}

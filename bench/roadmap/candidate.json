@@ -3,69 +3,586 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 7,
-    "prior_art": 34,
+    "product": 16,
+    "prior_art": 38,
     "constraint": 14
   },
   "candidate": [
-    {"candidate_id": "CAND-001", "origin": "repository", "decision": "accepted", "target_id": "BPTK-001", "summary": "Approve the outbound license posture and upstream reuse strategy", "dedupe_key": "license-reuse-provenance"},
-    {"candidate_id": "CAND-002", "origin": "repository", "decision": "accepted", "target_id": "BPTK-002", "summary": "Freeze a representative compatibility corpus", "dedupe_key": "compatibility-corpus-denominator"},
-    {"candidate_id": "CAND-003", "origin": "repository", "decision": "accepted", "target_id": "BPTK-003", "summary": "Build a benchmark runner and promotion gate", "dedupe_key": "benchmark-runner-promotion"},
-    {"candidate_id": "CAND-004", "origin": "repository", "decision": "accepted", "target_id": "BPTK-004", "summary": "Approve an untrusted-import threat model", "dedupe_key": "hostile-import-security"},
-    {"candidate_id": "CAND-005", "origin": "product", "decision": "accepted", "target_id": "BPTK-005", "summary": "Prove the unmodified Windows binary lane", "dedupe_key": "binary-runtime-spike"},
-    {"candidate_id": "CAND-006", "origin": "product", "decision": "accepted", "target_id": "BPTK-006", "summary": "Prove the source-assisted porting lane", "dedupe_key": "source-pipeline-spike"},
-    {"candidate_id": "CAND-007", "origin": "product", "decision": "accepted", "target_id": "BPTK-007", "summary": "Import broadly and produce a compatibility report", "dedupe_key": "safe-import-classification"},
-    {"candidate_id": "CAND-008", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-008", "summary": "Load PE32 executable safely", "dedupe_key": "pe32-loader"},
-    {"candidate_id": "CAND-009", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-009", "summary": "Execute the required i386 instruction set", "dedupe_key": "i386-execution"},
-    {"candidate_id": "CAND-010", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-010", "summary": "Implement the Win32 core HLE", "dedupe_key": "win32-core-hle"},
-    {"candidate_id": "CAND-011", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-011", "summary": "Map USER32 window, message, and input behavior", "dedupe_key": "user32-browser-input"},
-    {"candidate_id": "CAND-012", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-012", "summary": "Implement the required GDI slice", "dedupe_key": "gdi-compatibility"},
-    {"candidate_id": "CAND-013", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-013", "summary": "Implement DirectDraw surface and presentation", "dedupe_key": "directdraw-presentation"},
-    {"candidate_id": "CAND-014", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-014", "summary": "Bridge waveOut and DirectSound to WebAudio", "dedupe_key": "legacy-audio-bridge"},
-    {"candidate_id": "CAND-015", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-015", "summary": "Implement file, registry, and OPFS overlay", "dedupe_key": "virtual-storage-overlay"},
-    {"candidate_id": "CAND-016", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-016", "summary": "Import a local package and prove the integrated 2D first playable", "dedupe_key": "p1-package-integration"},
-    {"candidate_id": "CAND-017", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-017", "summary": "Define WebGPU and WebGL2 capability profiles", "dedupe_key": "browser-gpu-profile"},
-    {"candidate_id": "CAND-018", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-018", "summary": "Translate Direct3D 7 and 8 fixed function", "dedupe_key": "d3d78-fixed-function"},
-    {"candidate_id": "CAND-019", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-019", "summary": "Translate Direct3D 9 fixed function", "dedupe_key": "d3d9-fixed-function"},
-    {"candidate_id": "CAND-020", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-020", "summary": "Translate Direct3D 9 shader model 1 through 3", "dedupe_key": "d3d9-shader-translation"},
-    {"candidate_id": "CAND-021", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-021", "summary": "Publish a source-assisted adapter SDK", "dedupe_key": "source-adapter-sdk"},
-    {"candidate_id": "CAND-022", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-022", "summary": "Package, stream, and cache large assets", "dedupe_key": "asset-stream-cache"},
-    {"candidate_id": "CAND-023", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-023", "summary": "Meet a precommitted execution performance budget", "dedupe_key": "runtime-performance-budget"},
-    {"candidate_id": "CAND-024", "origin": "product", "decision": "accepted", "target_id": "BPTK-024", "summary": "Emit plain HTML and React-hosted packages through one contract", "dedupe_key": "framework-neutral-package"},
-    {"candidate_id": "CAND-025", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-025", "summary": "Support the cross-origin-isolated threaded profile", "dedupe_key": "threaded-deployment"},
-    {"candidate_id": "CAND-026", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-026", "summary": "Mediate native networking through browser transports", "dedupe_key": "browser-network-bridge"},
-    {"candidate_id": "CAND-027", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-027", "summary": "Complete controller, fullscreen, touch, and accessible control", "dedupe_key": "control-accessibility"},
-    {"candidate_id": "CAND-028", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-028", "summary": "Build a compatibility catalog and replay artifact", "dedupe_key": "compatibility-evidence-catalog"},
-    {"candidate_id": "CAND-029", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-029", "summary": "Publish an engine-family adapter contract", "dedupe_key": "engine-adapter-contract"},
-    {"candidate_id": "CAND-030", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-030", "summary": "Pass a declared cross-browser and device matrix", "dedupe_key": "browser-device-matrix"},
-    {"candidate_id": "CAND-031", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-031", "summary": "Research x86-64 and Wasm memory64", "dedupe_key": "x86-64-memory64-research"},
-    {"candidate_id": "CAND-032", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-032", "summary": "Research Direct3D 10 and 11 translation", "dedupe_key": "d3d1011-research"},
-    {"candidate_id": "CAND-033", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-033", "summary": "Research Direct3D 12 and Vulkan-era compatibility", "dedupe_key": "d3d12-vulkan-research"},
-    {"candidate_id": "CAND-034", "origin": "product", "decision": "rejected", "target_id": "R-001", "summary": "Promise unrestricted execution for every import", "dedupe_key": "unrestricted-execution-promise"},
-    {"candidate_id": "CAND-035", "origin": "product", "decision": "rejected", "target_id": "R-002", "summary": "Copy Apple implementation, interface, or trade dress", "dedupe_key": "apple-copy"},
-    {"candidate_id": "CAND-036", "origin": "constraint", "decision": "rejected", "target_id": "R-003", "summary": "Bundle commercial games, firmware, ROMs, or proprietary runtime", "dedupe_key": "restricted-content-bundle"},
-    {"candidate_id": "CAND-037", "origin": "constraint", "decision": "rejected", "target_id": "R-004", "summary": "Hide incompatibility behind server-side game streaming", "dedupe_key": "cloud-stream-substitute"},
-    {"candidate_id": "CAND-038", "origin": "constraint", "decision": "rejected", "target_id": "R-005", "summary": "Circumvent DRM or kernel anti-cheat", "dedupe_key": "drm-anticheat-circumvention"},
-    {"candidate_id": "CAND-039", "origin": "prior_art", "decision": "rejected", "target_id": "R-006", "summary": "Make per-title patches the primary architecture", "dedupe_key": "per-title-core-patch"},
-    {"candidate_id": "CAND-040", "origin": "constraint", "decision": "rejected", "target_id": "R-007", "summary": "Run the game loop through React rendering", "dedupe_key": "react-execution-substrate"},
-    {"candidate_id": "CAND-041", "origin": "prior_art", "decision": "rejected", "target_id": "R-008", "summary": "Lead implementation with x86-64 and Direct3D 12", "dedupe_key": "modern-api-first"},
-    {"candidate_id": "CAND-042", "origin": "prior_art", "decision": "deferred", "target_id": "D-001", "summary": "Add full DOS, Win16, and Windows 9x system compatibility", "dedupe_key": "legacy-system-emulation"},
-    {"candidate_id": "CAND-043", "origin": "constraint", "decision": "deferred", "target_id": "D-002", "summary": "Add general .NET, WPF, and desktop application support", "dedupe_key": "managed-desktop-runtime"},
-    {"candidate_id": "CAND-044", "origin": "constraint", "decision": "deferred", "target_id": "D-003", "summary": "Require a privileged browser extension or native helper", "dedupe_key": "privileged-native-helper"},
-    {"candidate_id": "CAND-045", "origin": "constraint", "decision": "deferred", "target_id": "D-004", "summary": "Optimize for mobile before the desktop baseline", "dedupe_key": "mobile-first-performance"},
-    {"candidate_id": "CAND-046", "origin": "product", "decision": "deferred", "target_id": "D-005", "summary": "Offer hosted import processing or cloud conversion", "dedupe_key": "hosted-conversion-service"},
-    {"candidate_id": "CAND-047", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-034", "summary": "Bridge blocking Win32 and synchronous storage over async browser API via JSPI", "dedupe_key": "jspi-blocking-call-bridge"},
-    {"candidate_id": "CAND-048", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-035", "summary": "Adopt a WebAssembly 3.0 execution substrate for the i386 engine", "dedupe_key": "wasm3-execution-substrate"},
-    {"candidate_id": "CAND-049", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-036", "summary": "Evaluate per-title static recompilation to WebAssembly as a fourth lane", "dedupe_key": "static-recompilation-lane"},
-    {"candidate_id": "CAND-050", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-037", "summary": "Classify game middleware and copy protection to route handle, warn, extract, or refuse", "dedupe_key": "middleware-drm-census"},
-    {"candidate_id": "CAND-051", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-038", "summary": "Extract a supported installer to the game payload without executing it", "dedupe_key": "installer-extraction"},
-    {"candidate_id": "CAND-052", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-039", "summary": "Serve every guest time source from one monotonic clock", "dedupe_key": "unified-monotonic-clock"},
-    {"candidate_id": "CAND-053", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-040", "summary": "Play supported full-motion-video middleware in sync with the game", "dedupe_key": "fmv-middleware-playback"},
-    {"candidate_id": "CAND-054", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-041", "summary": "Provide the redistributable runtime a supported game expects", "dedupe_key": "redistributable-dll-kit"},
-    {"candidate_id": "CAND-055", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-042", "summary": "Build a game source tree to the browser with a pinned Emscripten profile", "dedupe_key": "emscripten-source-build-profile"},
-    {"candidate_id": "CAND-056", "origin": "prior_art", "decision": "accepted", "target_id": "BPTK-043", "summary": "Route a supported game to a matching open engine reimplementation", "dedupe_key": "engine-family-detect-route"},
-    {"candidate_id": "CAND-057", "origin": "prior_art", "decision": "deferred", "target_id": "D-006", "summary": "Decompilation-assisted source recovery for the source and recompilation lane", "dedupe_key": "decompilation-source-recovery"},
-    {"candidate_id": "CAND-058", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-044", "summary": "Bound extraction, streaming, and execution against resource exhaustion", "dedupe_key": "resource-exhaustion-bound"},
-    {"candidate_id": "CAND-059", "origin": "constraint", "decision": "accepted", "target_id": "BPTK-045", "summary": "Contain guest execution to a policy that cannot reach host capability", "dedupe_key": "guest-containment-policy"}
+    {
+      "candidate_id": "CAND-001",
+      "origin": "repository",
+      "decision": "accepted",
+      "target_id": "BPTK-001",
+      "summary": "Approve the outbound license posture and upstream reuse strategy",
+      "dedupe_key": "license-reuse-provenance"
+    },
+    {
+      "candidate_id": "CAND-002",
+      "origin": "repository",
+      "decision": "accepted",
+      "target_id": "BPTK-002",
+      "summary": "Freeze a representative compatibility corpus",
+      "dedupe_key": "compatibility-corpus-denominator"
+    },
+    {
+      "candidate_id": "CAND-003",
+      "origin": "repository",
+      "decision": "accepted",
+      "target_id": "BPTK-003",
+      "summary": "Build a benchmark runner and promotion gate",
+      "dedupe_key": "benchmark-runner-promotion"
+    },
+    {
+      "candidate_id": "CAND-004",
+      "origin": "repository",
+      "decision": "accepted",
+      "target_id": "BPTK-004",
+      "summary": "Approve an untrusted-import threat model",
+      "dedupe_key": "hostile-import-security"
+    },
+    {
+      "candidate_id": "CAND-005",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-005",
+      "summary": "Prove the unmodified Windows binary lane",
+      "dedupe_key": "binary-runtime-spike"
+    },
+    {
+      "candidate_id": "CAND-006",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-006",
+      "summary": "Prove the source-assisted porting lane",
+      "dedupe_key": "source-pipeline-spike"
+    },
+    {
+      "candidate_id": "CAND-007",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-007",
+      "summary": "Import broadly and produce a compatibility report",
+      "dedupe_key": "safe-import-classification"
+    },
+    {
+      "candidate_id": "CAND-008",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-008",
+      "summary": "Load PE32 executable safely",
+      "dedupe_key": "pe32-loader"
+    },
+    {
+      "candidate_id": "CAND-009",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-009",
+      "summary": "Execute the required i386 instruction set",
+      "dedupe_key": "i386-execution"
+    },
+    {
+      "candidate_id": "CAND-010",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-010",
+      "summary": "Implement the Win32 core HLE",
+      "dedupe_key": "win32-core-hle"
+    },
+    {
+      "candidate_id": "CAND-011",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-011",
+      "summary": "Map USER32 window, message, and input behavior",
+      "dedupe_key": "user32-browser-input"
+    },
+    {
+      "candidate_id": "CAND-012",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-012",
+      "summary": "Implement the required GDI slice",
+      "dedupe_key": "gdi-compatibility"
+    },
+    {
+      "candidate_id": "CAND-013",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-013",
+      "summary": "Implement DirectDraw surface and presentation",
+      "dedupe_key": "directdraw-presentation"
+    },
+    {
+      "candidate_id": "CAND-014",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-014",
+      "summary": "Bridge waveOut and DirectSound to WebAudio",
+      "dedupe_key": "legacy-audio-bridge"
+    },
+    {
+      "candidate_id": "CAND-015",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-015",
+      "summary": "Implement file, registry, and OPFS overlay",
+      "dedupe_key": "virtual-storage-overlay"
+    },
+    {
+      "candidate_id": "CAND-016",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-016",
+      "summary": "Import a local package and prove the integrated 2D first playable",
+      "dedupe_key": "p1-package-integration"
+    },
+    {
+      "candidate_id": "CAND-017",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-017",
+      "summary": "Define WebGPU and WebGL2 capability profiles",
+      "dedupe_key": "browser-gpu-profile"
+    },
+    {
+      "candidate_id": "CAND-018",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-018",
+      "summary": "Translate Direct3D 7 and 8 fixed function",
+      "dedupe_key": "d3d78-fixed-function"
+    },
+    {
+      "candidate_id": "CAND-019",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-019",
+      "summary": "Translate Direct3D 9 fixed function",
+      "dedupe_key": "d3d9-fixed-function"
+    },
+    {
+      "candidate_id": "CAND-020",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-020",
+      "summary": "Translate Direct3D 9 shader model 1 through 3",
+      "dedupe_key": "d3d9-shader-translation"
+    },
+    {
+      "candidate_id": "CAND-021",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-021",
+      "summary": "Publish a source-assisted adapter SDK",
+      "dedupe_key": "source-adapter-sdk"
+    },
+    {
+      "candidate_id": "CAND-022",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-022",
+      "summary": "Package, stream, and cache large assets",
+      "dedupe_key": "asset-stream-cache"
+    },
+    {
+      "candidate_id": "CAND-023",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-023",
+      "summary": "Meet a precommitted execution performance budget",
+      "dedupe_key": "runtime-performance-budget"
+    },
+    {
+      "candidate_id": "CAND-024",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-024",
+      "summary": "Emit plain HTML and React-hosted packages through one contract",
+      "dedupe_key": "framework-neutral-package"
+    },
+    {
+      "candidate_id": "CAND-025",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-025",
+      "summary": "Support the cross-origin-isolated threaded profile",
+      "dedupe_key": "threaded-deployment"
+    },
+    {
+      "candidate_id": "CAND-026",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-026",
+      "summary": "Mediate native networking through browser transports",
+      "dedupe_key": "browser-network-bridge"
+    },
+    {
+      "candidate_id": "CAND-027",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-027",
+      "summary": "Complete controller, fullscreen, touch, and accessible control",
+      "dedupe_key": "control-accessibility"
+    },
+    {
+      "candidate_id": "CAND-028",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-028",
+      "summary": "Build a compatibility catalog and replay artifact",
+      "dedupe_key": "compatibility-evidence-catalog"
+    },
+    {
+      "candidate_id": "CAND-029",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-029",
+      "summary": "Publish an engine-family adapter contract",
+      "dedupe_key": "engine-adapter-contract"
+    },
+    {
+      "candidate_id": "CAND-030",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-030",
+      "summary": "Pass a declared cross-browser and device matrix",
+      "dedupe_key": "browser-device-matrix"
+    },
+    {
+      "candidate_id": "CAND-031",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-031",
+      "summary": "Research x86-64 and Wasm memory64",
+      "dedupe_key": "x86-64-memory64-research"
+    },
+    {
+      "candidate_id": "CAND-032",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-032",
+      "summary": "Research Direct3D 10 and 11 translation",
+      "dedupe_key": "d3d1011-research"
+    },
+    {
+      "candidate_id": "CAND-033",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-033",
+      "summary": "Research Direct3D 12 and Vulkan-era compatibility",
+      "dedupe_key": "d3d12-vulkan-research"
+    },
+    {
+      "candidate_id": "CAND-034",
+      "origin": "product",
+      "decision": "rejected",
+      "target_id": "R-001",
+      "summary": "Promise unrestricted execution for every import",
+      "dedupe_key": "unrestricted-execution-promise"
+    },
+    {
+      "candidate_id": "CAND-035",
+      "origin": "product",
+      "decision": "rejected",
+      "target_id": "R-002",
+      "summary": "Copy Apple implementation, interface, or trade dress",
+      "dedupe_key": "apple-copy"
+    },
+    {
+      "candidate_id": "CAND-036",
+      "origin": "constraint",
+      "decision": "rejected",
+      "target_id": "R-003",
+      "summary": "Bundle commercial games, firmware, ROMs, or proprietary runtime",
+      "dedupe_key": "restricted-content-bundle"
+    },
+    {
+      "candidate_id": "CAND-037",
+      "origin": "constraint",
+      "decision": "rejected",
+      "target_id": "R-004",
+      "summary": "Hide incompatibility behind server-side game streaming",
+      "dedupe_key": "cloud-stream-substitute"
+    },
+    {
+      "candidate_id": "CAND-038",
+      "origin": "constraint",
+      "decision": "rejected",
+      "target_id": "R-005",
+      "summary": "Circumvent DRM or kernel anti-cheat",
+      "dedupe_key": "drm-anticheat-circumvention"
+    },
+    {
+      "candidate_id": "CAND-039",
+      "origin": "prior_art",
+      "decision": "rejected",
+      "target_id": "R-006",
+      "summary": "Make per-title patches the primary architecture",
+      "dedupe_key": "per-title-core-patch"
+    },
+    {
+      "candidate_id": "CAND-040",
+      "origin": "constraint",
+      "decision": "rejected",
+      "target_id": "R-007",
+      "summary": "Run the game loop through React rendering",
+      "dedupe_key": "react-execution-substrate"
+    },
+    {
+      "candidate_id": "CAND-041",
+      "origin": "prior_art",
+      "decision": "rejected",
+      "target_id": "R-008",
+      "summary": "Lead implementation with x86-64 and Direct3D 12",
+      "dedupe_key": "modern-api-first"
+    },
+    {
+      "candidate_id": "CAND-042",
+      "origin": "prior_art",
+      "decision": "deferred",
+      "target_id": "D-001",
+      "summary": "Add full DOS, Win16, and Windows 9x system compatibility",
+      "dedupe_key": "legacy-system-emulation"
+    },
+    {
+      "candidate_id": "CAND-043",
+      "origin": "constraint",
+      "decision": "deferred",
+      "target_id": "D-002",
+      "summary": "Add general .NET, WPF, and desktop application support",
+      "dedupe_key": "managed-desktop-runtime"
+    },
+    {
+      "candidate_id": "CAND-044",
+      "origin": "constraint",
+      "decision": "deferred",
+      "target_id": "D-003",
+      "summary": "Require a privileged browser extension or native helper",
+      "dedupe_key": "privileged-native-helper"
+    },
+    {
+      "candidate_id": "CAND-045",
+      "origin": "constraint",
+      "decision": "deferred",
+      "target_id": "D-004",
+      "summary": "Optimize for mobile before the desktop baseline",
+      "dedupe_key": "mobile-first-performance"
+    },
+    {
+      "candidate_id": "CAND-046",
+      "origin": "product",
+      "decision": "deferred",
+      "target_id": "D-005",
+      "summary": "Offer hosted import processing or cloud conversion",
+      "dedupe_key": "hosted-conversion-service"
+    },
+    {
+      "candidate_id": "CAND-047",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-034",
+      "summary": "Bridge blocking Win32 and synchronous storage over async browser API via JSPI",
+      "dedupe_key": "jspi-blocking-call-bridge"
+    },
+    {
+      "candidate_id": "CAND-048",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-035",
+      "summary": "Adopt a WebAssembly 3.0 execution substrate for the i386 engine",
+      "dedupe_key": "wasm3-execution-substrate"
+    },
+    {
+      "candidate_id": "CAND-049",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-036",
+      "summary": "Evaluate per-title static recompilation to WebAssembly as a fourth lane",
+      "dedupe_key": "static-recompilation-lane"
+    },
+    {
+      "candidate_id": "CAND-050",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-037",
+      "summary": "Classify game middleware and copy protection to route handle, warn, extract, or refuse",
+      "dedupe_key": "middleware-drm-census"
+    },
+    {
+      "candidate_id": "CAND-051",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-038",
+      "summary": "Extract a supported installer to the game payload without executing it",
+      "dedupe_key": "installer-extraction"
+    },
+    {
+      "candidate_id": "CAND-052",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-039",
+      "summary": "Serve every guest time source from one monotonic clock",
+      "dedupe_key": "unified-monotonic-clock"
+    },
+    {
+      "candidate_id": "CAND-053",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-040",
+      "summary": "Play supported full-motion-video middleware in sync with the game",
+      "dedupe_key": "fmv-middleware-playback"
+    },
+    {
+      "candidate_id": "CAND-054",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-041",
+      "summary": "Provide the redistributable runtime a supported game expects",
+      "dedupe_key": "redistributable-dll-kit"
+    },
+    {
+      "candidate_id": "CAND-055",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-042",
+      "summary": "Build a game source tree to the browser with a pinned Emscripten profile",
+      "dedupe_key": "emscripten-source-build-profile"
+    },
+    {
+      "candidate_id": "CAND-056",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-043",
+      "summary": "Route a supported game to a matching open engine reimplementation",
+      "dedupe_key": "engine-family-detect-route"
+    },
+    {
+      "candidate_id": "CAND-057",
+      "origin": "prior_art",
+      "decision": "deferred",
+      "target_id": "D-006",
+      "summary": "Decompilation-assisted source recovery for the source and recompilation lane",
+      "dedupe_key": "decompilation-source-recovery"
+    },
+    {
+      "candidate_id": "CAND-058",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-044",
+      "summary": "Bound extraction, streaming, and execution against resource exhaustion",
+      "dedupe_key": "resource-exhaustion-bound"
+    },
+    {
+      "candidate_id": "CAND-059",
+      "origin": "constraint",
+      "decision": "accepted",
+      "target_id": "BPTK-045",
+      "summary": "Contain guest execution to a policy that cannot reach host capability",
+      "dedupe_key": "guest-containment-policy"
+    },
+    {
+      "candidate_id": "CAND-060",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-046",
+      "summary": "Recompile PE32 machine code ahead of time to WebAssembly",
+      "dedupe_key": "gs-001-static-x86-wasm-recompiler"
+    },
+    {
+      "candidate_id": "CAND-061",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-047",
+      "summary": "Recover control flow and indirect branch target",
+      "dedupe_key": "gs-002-cfg-indirect-branch-recovery"
+    },
+    {
+      "candidate_id": "CAND-062",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-048",
+      "summary": "Fall back to interpretation for self-modifying code",
+      "dedupe_key": "gs-003-hybrid-smc-fallback"
+    },
+    {
+      "candidate_id": "CAND-063",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-049",
+      "summary": "Research x86-64 recompilation feasibility",
+      "dedupe_key": "gs-004-x86-64-recompilation"
+    },
+    {
+      "candidate_id": "CAND-064",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-050",
+      "summary": "Serve a memory64 guest address space",
+      "dedupe_key": "gs-005-memory64-guest-space"
+    },
+    {
+      "candidate_id": "CAND-065",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-051",
+      "summary": "Run guest thread on a worker pool",
+      "dedupe_key": "gs-006-guest-smp-worker-pool"
+    },
+    {
+      "candidate_id": "CAND-066",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-052",
+      "summary": "Execute packed SIMD and 80-bit x87 exactly",
+      "dedupe_key": "gs-007-simd-x87-vectorization"
+    },
+    {
+      "candidate_id": "CAND-067",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-053",
+      "summary": "Dispatch structured exception and TLS callback",
+      "dedupe_key": "gs-008-seh-vectored-tls-callback"
+    },
+    {
+      "candidate_id": "CAND-068",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-054",
+      "summary": "Satisfy benign anti-debug and timing check",
+      "dedupe_key": "gs-009-benign-anti-debug-satisfaction"
+    },
+    {
+      "candidate_id": "CAND-069",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-055",
+      "summary": "Record and replay a CPU-deterministic run",
+      "dedupe_key": "gs-010-deterministic-record-replay"
+    },
+    {
+      "candidate_id": "CAND-070",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-056",
+      "summary": "Lower guest import call to host emulation",
+      "dedupe_key": "gs-011-guest-host-abi-thunk"
+    },
+    {
+      "candidate_id": "CAND-071",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-057",
+      "summary": "Research the PowerPC console lane",
+      "dedupe_key": "gs-012-powerpc-console-lane"
+    },
+    {
+      "candidate_id": "CAND-072",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-058",
+      "summary": "Research the MIPS console lane and PS2 gap",
+      "dedupe_key": "gs-013-mips-console-ps2-spike"
+    }
   ]
 }

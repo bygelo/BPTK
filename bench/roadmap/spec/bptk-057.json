@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-057",
+  "item_id": "BPTK-057",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No PowerPC prototype exists; only the static-recompilation prior-art note records the Xenon result.",
+  "prerequisite": [
+    "BPTK-046"
+  ],
+  "promotion_trigger": "Promote when a PowerPC research fixture recompiles and matches the reference on the declared subset.",
+  "expected_failing_assertion": "The inspect surface has no PowerPC target and defers.",
+  "owner_item": "BPTK-057",
+  "active_gate_evidence": "The static-recompilation research note keeps the Xenon desktop-only result recorded with its date.",
+  "fixture": [
+    "doc/research-static-recomp.md"
+  ],
+  "procedure": [
+    "Recompile the PowerPC research fixture.",
+    "Compare the declared behavior subset against a reference.",
+    "Record the remaining hardware gap as declared follow-up."
+  ],
+  "pass_criterion": [
+    "The declared subset matches the reference.",
+    "Remaining gap are named, not dropped."
+  ]
+}

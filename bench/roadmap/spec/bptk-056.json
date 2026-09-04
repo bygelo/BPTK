@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-056",
+  "item_id": "BPTK-056",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No recompiler exists and no Win32 HLE receives call, so no boundary exists to lower or measure.",
+  "prerequisite": [
+    "BPTK-010",
+    "BPTK-046"
+  ],
+  "promotion_trigger": "Promote when every declared calling convention reaches host emulation with correct cleanup and the measured crossing cost is under the frozen bar.",
+  "expected_failing_assertion": "Import call is blocked and the import descriptor budget is the only boundary surface that exists.",
+  "owner_item": "BPTK-056",
+  "active_gate_evidence": "The mapper keeps declared import resolution and the import descriptor and thunk budget pinned.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Recompile the fixture that calls host emulation through each declared calling convention.",
+    "Assert argument order, return, and stack cleanup match the reference.",
+    "Measure the boundary crossing cost against the frozen bar."
+  ],
+  "pass_criterion": [
+    "Every declared convention cleans its stack correctly.",
+    "Crossing cost stays under the declared bar."
+  ]
+}

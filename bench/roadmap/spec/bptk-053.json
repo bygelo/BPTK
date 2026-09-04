@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-053",
+  "item_id": "BPTK-053",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The PE32 mapper reports TLS metadata but no callback executes, and the substrate has no exception-delivery surface.",
+  "prerequisite": [
+    "BPTK-035"
+  ],
+  "promotion_trigger": "Promote when the exception fixture unwinds through `__try`/`__except`/`__finally`, delivers access-violation and divide-error, and fires TLS callback before entry.",
+  "expected_failing_assertion": "TLS callback and structured exception behavior are blocked; the probe refuses import call and exception delivery.",
+  "owner_item": "BPTK-053",
+  "active_gate_evidence": "The mapper keeps TLS metadata bounded and the probe suite pins the structured divide_error delivery that exists.",
+  "fixture": [
+    "FIX-002",
+    "FIX-003"
+  ],
+  "procedure": [
+    "Run the exception fixture and trigger each declared fault class.",
+    "Assert unwind, cleanup, and handler ordering match the reference.",
+    "Assert every declared TLS callback runs before guest entry in order."
+  ],
+  "pass_criterion": [
+    "Unwind and handler ordering match the reference.",
+    "TLS callback fire in order before entry."
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-052",
+  "item_id": "BPTK-052",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The probe covers a 64-bit precision x87 subset and no packed SIMD; no strict-fallback comparison exists.",
+  "prerequisite": [
+    "BPTK-035"
+  ],
+  "promotion_trigger": "Promote when the packed and 80-bit fixture matches within the frozen tolerance and the strict fallback matches the primary path.",
+  "expected_failing_assertion": "Packed SIMD is unsupported and the x87 subset stops at 64-bit precision.",
+  "owner_item": "BPTK-052",
+  "active_gate_evidence": "The bounded probe suite pins the existing 64-bit precision x87 subset through the real run surface.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Run the packed SIMD and 80-bit x87 fixture on the primary path.",
+    "Compare against the reference within the frozen tolerance metadata.",
+    "Run the strict-SIMD fallback on the same fixture and compare."
+  ],
+  "pass_criterion": [
+    "Packed and 80-bit behavior matches within the declared tolerance.",
+    "The strict fallback matches the primary path."
+  ]
+}

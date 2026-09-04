@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-046",
+  "item_id": "BPTK-046",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The comparative static-recompilation spike is absent: only the bounded i386 entry probe and the honest foundation-comparison signal exist, so no recompiled module can be produced or measured.",
+  "prerequisite": [
+    "BPTK-036"
+  ],
+  "promotion_trigger": "Promote when the translator emits WebAssembly for the fixture `.text`, the recompiled trace is bit-exact against the interpreter oracle, and the hot path carries no silent fallback.",
+  "expected_failing_assertion": "No recompile lane exists in the run surface; the foundation comparison reports static recompilation as unavailable.",
+  "owner_item": "BPTK-046",
+  "active_gate_evidence": "The foundation comparison keeps the static-recompilation lane present with an honest unavailable signal, and the bounded probe suite keeps the interpreter oracle behavior pinned.",
+  "fixture": [
+    "FIX-002",
+    "doc/research-static-recomp.md"
+  ],
+  "procedure": [
+    "Translate the fixture image `.text` to WebAssembly module ahead of time.",
+    "Execute the recompiled module and the interpreter oracle over the same trace and compare guest register, flag, and memory state at every step.",
+    "Assert that no hot-path instruction falls back to the interpreter without a declared reason."
+  ],
+  "pass_criterion": [
+    "The recompiled trace is bit-exact against the interpreter oracle across the fixture trace.",
+    "No hot-path instruction falls back to the interpreter silently."
+  ]
+}

@@ -2,11 +2,11 @@
   "schema_version": 1,
   "project": "Browser Porting Toolkit",
   "organization": "Maphy Technologies",
-  "checked_at": "2026-09-04",
+  "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 59,
-    "accepted": 45,
+    "raw": 72,
+    "accepted": 58,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -977,6 +977,287 @@
         "SRC-024"
       ],
       "promotion_state": "implemented"
+    },
+    {
+      "item_id": "BPTK-046",
+      "title": "Recompile PE32 machine code ahead of time to WebAssembly",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-036"
+      ],
+      "deliverable": "An ahead-of-time translator that lowers supported i386 `.text` of a mapped PE32 image to WebAssembly module, plus a run lane that executes the emitted module under the declared containment policy with the interpreter oracle as reference.",
+      "benchmark_id": "BENCH-046",
+      "failure_meaning": "Guest execution stays interpreter-bound and the performance thesis of the roadmap stays unproven.",
+      "risk": "A translator optimized for speed over exactness silently diverges from the oracle and corrupts state in an unrelated subsystem.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013",
+        "SRC-032",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-047",
+      "title": "Recover control flow and indirect branch target",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-046"
+      ],
+      "deliverable": "A control-flow recovery pass that reconstructs function boundary, jump table, and vtable target from the mapped image and feeds the recompiler, with declared fallback for unknown target and flagged code-as-data region.",
+      "benchmark_id": "BENCH-047",
+      "failure_meaning": "The recompiler is limited to straight-line code and cannot serve real game dispatch.",
+      "risk": "A recovered target that is actually data produces a corrupt recompiled branch that only fails deep in a game.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013",
+        "SRC-032",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-048",
+      "title": "Fall back to interpretation for self-modifying code",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-009"
+      ],
+      "deliverable": "A hybrid execution policy that detects writes into recompiled page, invalidates and re-decodes the affected block, and keeps untouched block on the recompiled path.",
+      "benchmark_id": "BENCH-048",
+      "failure_meaning": "Game that patch their own code or emit code at runtime execute stale instruction and crash or corrupt.",
+      "risk": "An overly broad invalidation erases the performance advantage; an overly narrow one executes stale code.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-049",
+      "title": "Research x86-64 recompilation feasibility",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-031",
+        "BPTK-050"
+      ],
+      "deliverable": "A bounded feasibility report plus a prototype that recompiles a 64-bit research fixture and compares 64-bit GPR, RIP-relative, and SSE-default behavior against an x64 reference.",
+      "benchmark_id": "BENCH-049",
+      "failure_meaning": "The modern-PC lane stays a deferral without evidence for or against 64-bit recompilation.",
+      "risk": "A 64-bit prototype that ignores exception and address-space difference overstates feasibility.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-004",
+        "SRC-005",
+        "SRC-013",
+        "SRC-019",
+        "SRC-029",
+        "SRC-031"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-050",
+      "title": "Serve a memory64 guest address space",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-035"
+      ],
+      "deliverable": "A memory64-backed guest address space for the execution substrate with declared trap behavior for out-of-bounds access.",
+      "benchmark_id": "BENCH-050",
+      "failure_meaning": "Guest code that relies on large or sparse address space cannot run, or wraps into unrelated memory.",
+      "risk": "A browser without memory64 support needs a declared fallback or an honest block.",
+      "source_evidence": [
+        "SRC-029",
+        "SRC-031"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-051",
+      "title": "Run guest thread on a worker pool",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-025"
+      ],
+      "deliverable": "A guest-thread layer that maps guest thread onto a worker pool over SharedArrayBuffer with deterministic lock, atomic, and scheduling behavior under the declared containment policy.",
+      "benchmark_id": "BENCH-051",
+      "failure_meaning": "Threaded game cannot run or deadlock nondeterministically.",
+      "risk": "Worker scheduling leaks into guest-visible behavior and breaks determinism that record and replay depends on.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-018",
+        "SRC-019",
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-052",
+      "title": "Execute packed SIMD and 80-bit x87 exactly",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-035"
+      ],
+      "deliverable": "A SIMD and x87 execution layer covering the declared packed and 80-bit subset with declared tolerance, plus a strict fallback path for host without the assumed feature.",
+      "benchmark_id": "BENCH-052",
+      "failure_meaning": "Game math that depends on packed or extended-precision behavior diverges silently.",
+      "risk": "A tolerance chosen after seeing results hides real divergence.",
+      "source_evidence": [
+        "SRC-029",
+        "SRC-031"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-053",
+      "title": "Dispatch structured exception and TLS callback",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-035"
+      ],
+      "deliverable": "An exception and callback layer that serves structured and vectored exception behavior over the substrate exception mechanism and runs TLS callback in declared order before guest entry.",
+      "benchmark_id": "BENCH-053",
+      "failure_meaning": "Game that rely on exception-based control flow or TLS initialization crash or skip initialization.",
+      "risk": "Exception delivery that skips cleanup corrupts guest state silently.",
+      "source_evidence": [
+        "SRC-029",
+        "SRC-031"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-054",
+      "title": "Satisfy benign anti-debug and timing check",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-037"
+      ],
+      "deliverable": "A guard-satisfaction layer that answers benign debugger-presence and timing query with declared values and keeps the census refusal for protection intact.",
+      "benchmark_id": "BENCH-054",
+      "failure_meaning": "Benignly protected title stay blocked or, worse, protection gets bypassed.",
+      "risk": "The same mechanism that satisfies a benign check can be tuned into a protection bypass.",
+      "source_evidence": [
+        "SRC-033",
+        "SRC-034"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-055",
+      "title": "Record and replay a CPU-deterministic run",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-039",
+        "BPTK-051"
+      ],
+      "deliverable": "A record-and-replay layer that captures the declared nondeterminism source and replays them to an identical guest state hash locally and on a second machine.",
+      "benchmark_id": "BENCH-055",
+      "failure_meaning": "Compatibility evidence and divergence diagnosis lose their reproducibility foundation.",
+      "risk": "A replay that misses one nondeterminism source hashes identically today and diverges tomorrow.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-018",
+        "SRC-019",
+        "SRC-024",
+        "SRC-035"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-056",
+      "title": "Lower guest import call to host emulation",
+      "tier": "P1",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-010",
+        "BPTK-046"
+      ],
+      "deliverable": "An ABI lowering pass that turns recompiled import call into direct host-emulation call with per-calling-convention stack cleanup and a measured boundary cost.",
+      "benchmark_id": "BENCH-056",
+      "failure_meaning": "Recompiled code cannot reach Win32 emulation and the recompiler stays a laboratory artifact.",
+      "risk": "A boundary cost above the declared bar erases the recompiler performance advantage.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013",
+        "SRC-032",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-057",
+      "title": "Research the PowerPC console lane",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-046"
+      ],
+      "deliverable": "A bounded feasibility report plus a prototype that recompiles a PowerPC research fixture and compares behavior against a reference, with the Xenon desktop-only prior-art result recorded.",
+      "benchmark_id": "BENCH-057",
+      "failure_meaning": "The console lane stays a name without evidence for or against it.",
+      "risk": "Console-specific hardware assumption leak into a prototype that then overstates feasibility.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013",
+        "SRC-032",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-058",
+      "title": "Research the MIPS console lane and PS2 gap",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-046"
+      ],
+      "deliverable": "A bounded spike that recompiles MIPS research fixture against a reference emulator trace and records the PS2 VU/GS gap as pinned or deferred.",
+      "benchmark_id": "BENCH-058",
+      "failure_meaning": "The older console lane stays unevaluated.",
+      "risk": "A partial MIPS result is generalized into a support claim.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-012",
+        "SRC-013",
+        "SRC-032",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
     }
   ]
 }

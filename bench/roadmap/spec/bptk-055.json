@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-055",
+  "item_id": "BPTK-055",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No guest loop executes, so no run can be recorded or replayed.",
+  "prerequisite": [
+    "BPTK-039",
+    "BPTK-051"
+  ],
+  "promotion_trigger": "Promote when two replay of the recorded fixture and a replay on a second machine produce the identical state hash.",
+  "expected_failing_assertion": "The report surface writes no session and no replay exists to compare.",
+  "owner_item": "BPTK-055",
+  "active_gate_evidence": "The report command keeps consent recording privacy-minimized and off by default.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Record the fixture run with every declared nondeterminism source pinned.",
+    "Replay twice locally and once on a second machine.",
+    "Compare the guest state hash at every declared checkpoint."
+  ],
+  "pass_criterion": [
+    "All replay hash-match at every checkpoint.",
+    "No pinned source is read from the host environment."
+  ]
+}

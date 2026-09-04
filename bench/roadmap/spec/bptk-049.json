@@ -1,0 +1,30 @@
+{
+  "benchmark_id": "BENCH-049",
+  "item_id": "BPTK-049",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No x86-64 CPU, exception, address-space, or migration prototype exists; the inspect surface only observes architecture and live browser memory64 support.",
+  "prerequisite": [
+    "BPTK-031",
+    "BPTK-050"
+  ],
+  "promotion_trigger": "Promote when a 64-bit research fixture recompiles and matches the x64 reference on register, RIP-relative, and SSE-default behavior.",
+  "expected_failing_assertion": "The x86-64 research surface defers with no prototype evidence.",
+  "owner_item": "BPTK-049",
+  "active_gate_evidence": "The inspect surface keeps reporting observed architecture and live memory64 support without claiming a 64-bit execution path.",
+  "fixture": [
+    "FIX-024",
+    "doc/research-2026-wasm-native.md"
+  ],
+  "procedure": [
+    "Recompile the 64-bit research fixture to WebAssembly.",
+    "Compare register, RIP-relative addressing, and SSE-default behavior against an x64 reference.",
+    "Record the remaining exception and address-space gap as declared follow-up."
+  ],
+  "pass_criterion": [
+    "The fixture trace matches the x64 reference on the declared behavior.",
+    "Remaining gap are named, not dropped."
+  ]
+}

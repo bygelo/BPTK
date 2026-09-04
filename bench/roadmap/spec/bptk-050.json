@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "BENCH-050",
+  "item_id": "BPTK-050",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The execution substrate is a bounded integer probe over a 4 GB-class image; no memory64 backing exists.",
+  "prerequisite": [
+    "BPTK-035"
+  ],
+  "promotion_trigger": "Promote when the substrate serves guest address above 4 GB correctly and traps out-of-bounds access on the research fixture.",
+  "expected_failing_assertion": "No guest address space above the mapped image exists and no memory64 backing is served.",
+  "owner_item": "BPTK-050",
+  "active_gate_evidence": "The probe keeps guest memory confined to the mapped image and bounded stack under the declared containment policy.",
+  "fixture": [
+    "FIX-024"
+  ],
+  "procedure": [
+    "Run the addressing research fixture with a declared memory64 backing.",
+    "Assert correct addressing above 4 GB and a structured trap for out-of-bounds access."
+  ],
+  "pass_criterion": [
+    "Addressing above 4 GB is correct.",
+    "Out-of-bounds access traps and never wraps."
+  ]
+}

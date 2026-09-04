@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-051",
+  "item_id": "BPTK-051",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No worker-backed guest runtime exists; the thread command validates selection without a worker.",
+  "prerequisite": [
+    "BPTK-025"
+  ],
+  "promotion_trigger": "Promote when the contention fixture is deterministic under the declared worker count with no lost wakeup across repeated run.",
+  "expected_failing_assertion": "The run surface has no worker pool and the contention fixture cannot execute.",
+  "owner_item": "BPTK-051",
+  "active_gate_evidence": "The thread command keeps selecting or refusing a thread configuration honestly without claiming a runtime.",
+  "fixture": [
+    "FIX-018"
+  ],
+  "procedure": [
+    "Run the lock and atomic-contention fixture under the declared worker count.",
+    "Repeat the run and compare guest-visible state for determinism.",
+    "Assert every waiter wakes exactly once."
+  ],
+  "pass_criterion": [
+    "Guest-visible state is deterministic across repeated run.",
+    "No wakeup is lost."
+  ]
+}

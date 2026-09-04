@@ -21,7 +21,8 @@
         "BPTK-036"
       ],
       "dep": [],
-      "spec": "**GS-001 · Static x86-PE→WASM recompiler** — AOT `.text` → WASM; bit-exact vs the BPTK-009 interpreter oracle across the trace, no silent interpreter fallback on hot path · **T1** · extends BPTK-036/005. *Reconciled (exec+lanes).* The unoccupied niche."
+      "spec": "**GS-001 · Static x86-PE→WASM recompiler** — AOT `.text` → WASM; bit-exact vs the BPTK-009 interpreter oracle across the trace, no silent interpreter fallback on hot path · **T1** · extends BPTK-036/005. *Reconciled (exec+lanes).* The unoccupied niche.",
+      "promoted_as": "BPTK-046"
     },
     {
       "gs_id": "GS-002",
@@ -33,7 +34,8 @@
       "dep": [
         "GS-001"
       ],
-      "spec": "**GS-002 · CFG + indirect-branch recovery** — function/jump-table/vtable recovery; every switch/vtable arm bit-exact, unknown target → fallback not crash, code-as-data flagged · **T1** · deps GS-001."
+      "spec": "**GS-002 · CFG + indirect-branch recovery** — function/jump-table/vtable recovery; every switch/vtable arm bit-exact, unknown target → fallback not crash, code-as-data flagged · **T1** · deps GS-001.",
+      "promoted_as": "BPTK-047"
     },
     {
       "gs_id": "GS-003",
@@ -45,7 +47,8 @@
         "BPTK-009"
       ],
       "dep": [],
-      "spec": "**GS-003 · Hybrid interpreter fallback for SMC/dynamic code** — self-modifying page detected + re-decoded; untouched blocks stay fast-path · **T1** · extends BPTK-009."
+      "spec": "**GS-003 · Hybrid interpreter fallback for SMC/dynamic code** — self-modifying page detected + re-decoded; untouched blocks stay fast-path · **T1** · extends BPTK-009.",
+      "promoted_as": "BPTK-048"
     },
     {
       "gs_id": "GS-004",
@@ -59,7 +62,8 @@
       "dep": [
         "GS-005"
       ],
-      "spec": "**GS-004 · x86-64 (AMD64) recompilation** — 64-bit GPR/RIP-relative/SSE-default matches x64 reference · **T2** · extends BPTK-031 · deps GS-005. **[P4]**"
+      "spec": "**GS-004 · x86-64 (AMD64) recompilation** — 64-bit GPR/RIP-relative/SSE-default matches x64 reference · **T2** · extends BPTK-031 · deps GS-005. **[P4]**",
+      "promoted_as": "BPTK-049"
     },
     {
       "gs_id": "GS-005",
@@ -71,7 +75,8 @@
         "BPTK-035"
       ],
       "dep": [],
-      "spec": "**GS-005 · memory64 guest address space** — >4 GB addressing correct, OOB traps not wraps · **T2** · extends BPTK-035."
+      "spec": "**GS-005 · memory64 guest address space** — >4 GB addressing correct, OOB traps not wraps · **T2** · extends BPTK-035.",
+      "promoted_as": "BPTK-050"
     },
     {
       "gs_id": "GS-006",
@@ -83,7 +88,8 @@
         "BPTK-025"
       ],
       "dep": [],
-      "spec": "**GS-006 · Guest SMP / multithreading** — worker pool over SAB; lock/atomic-contention fixture deterministic under N workers, no lost wakeup · **T1** · extends BPTK-025. *Reconciled (exec+runtime).*"
+      "spec": "**GS-006 · Guest SMP / multithreading** — worker pool over SAB; lock/atomic-contention fixture deterministic under N workers, no lost wakeup · **T1** · extends BPTK-025. *Reconciled (exec+runtime).*",
+      "promoted_as": "BPTK-051"
     },
     {
       "gs_id": "GS-007",
@@ -95,7 +101,8 @@
         "BPTK-035"
       ],
       "dep": [],
-      "spec": "**GS-007 · SSE/SSE2/AVX + x87 vectorization** — packed SIMD + 80-bit x87 bit-exact within IEEE tolerance; strict-SIMD fallback matches · **T1** · extends BPTK-035."
+      "spec": "**GS-007 · SSE/SSE2/AVX + x87 vectorization** — packed SIMD + 80-bit x87 bit-exact within IEEE tolerance; strict-SIMD fallback matches · **T1** · extends BPTK-035.",
+      "promoted_as": "BPTK-052"
     },
     {
       "gs_id": "GS-008",
@@ -107,7 +114,8 @@
         "BPTK-035"
       ],
       "dep": [],
-      "spec": "**GS-008 · SEH, vectored exceptions, TLS callbacks** — `__try/__except`/`__finally` + AV/#DE via exnref; TLS callback fires before entry · **T1** · extends BPTK-035."
+      "spec": "**GS-008 · SEH, vectored exceptions, TLS callbacks** — `__try/__except`/`__finally` + AV/#DE via exnref; TLS callback fires before entry · **T1** · extends BPTK-035.",
+      "promoted_as": "BPTK-053"
     },
     {
       "gs_id": "GS-009",
@@ -119,7 +127,8 @@
       "dep": [
         "BPTK-037"
       ],
-      "spec": "**GS-009 · Benign anti-debug / timing-check satisfaction** — `IsDebuggerPresent`/RDTSC-delta guards pass; **DRM/anti-cheat refused, never bypassed** · **T2** · deps BPTK-037/039."
+      "spec": "**GS-009 · Benign anti-debug / timing-check satisfaction** — `IsDebuggerPresent`/RDTSC-delta guards pass; **DRM/anti-cheat refused, never bypassed** · **T2** · deps BPTK-037/039.",
+      "promoted_as": "BPTK-054"
     },
     {
       "gs_id": "GS-010",
@@ -132,7 +141,8 @@
         "BPTK-039",
         "GS-006"
       ],
-      "spec": "**GS-010 · CPU-deterministic record & replay** — pinned RNG/input/clock/schedule → identical state hash across two runs + a second machine · **T1** · deps BPTK-039, GS-006. *Reconciled (exec+correctness).*"
+      "spec": "**GS-010 · CPU-deterministic record & replay** — pinned RNG/input/clock/schedule → identical state hash across two runs + a second machine · **T1** · deps BPTK-039, GS-006. *Reconciled (exec+correctness).*",
+      "promoted_as": "BPTK-055"
     },
     {
       "gs_id": "GS-011",
@@ -145,7 +155,8 @@
         "GS-001",
         "BPTK-010"
       ],
-      "spec": "**GS-011 · Guest↔host ABI / import-thunk lowering** — recompiled stdcall/cdecl/thiscall calls reach HLE directly with correct stack cleanup, under the GS-075 boundary-cost bar · **T1** · deps GS-001, BPTK-010."
+      "spec": "**GS-011 · Guest↔host ABI / import-thunk lowering** — recompiled stdcall/cdecl/thiscall calls reach HLE directly with correct stack cleanup, under the GS-075 boundary-cost bar · **T1** · deps GS-001, BPTK-010.",
+      "promoted_as": "BPTK-056"
     },
     {
       "gs_id": "GS-012",
@@ -157,7 +168,8 @@
       "dep": [
         "GS-001"
       ],
-      "spec": "**GS-012 · Console lane — PowerPC (Xbox 360 / GC / Wii)** — PPC/VMX128 bit-exact vs reference · **T2** · deps GS-001. *(Xenon proven desktop-only 2025.)* **[P4]**"
+      "spec": "**GS-012 · Console lane — PowerPC (Xbox 360 / GC / Wii)** — PPC/VMX128 bit-exact vs reference · **T2** · deps GS-001. *(Xenon proven desktop-only 2025.)* **[P4]**",
+      "promoted_as": "BPTK-057"
     },
     {
       "gs_id": "GS-013",
@@ -169,7 +181,8 @@
       "dep": [
         "GS-001"
       ],
-      "spec": "**GS-013 · Console lane — MIPS (N64/PS1) + PS2 spike** — N64/PS1 match reference-emu trace; PS2 VU/GS gap pinned or deferred · **T3** · deps GS-001/002. **[P4]**"
+      "spec": "**GS-013 · Console lane — MIPS (N64/PS1) + PS2 spike** — N64/PS1 match reference-emu trace; PS2 VU/GS gap pinned or deferred · **T3** · deps GS-001/002. **[P4]**",
+      "promoted_as": "BPTK-058"
     },
     {
       "gs_id": "GS-018",

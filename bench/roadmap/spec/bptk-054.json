@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-054",
+  "item_id": "BPTK-054",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No Win32 HLE answers debugger-presence query and the clock layer serves only the probe RDTSC.",
+  "prerequisite": [
+    "BPTK-037"
+  ],
+  "promotion_trigger": "Promote when the benign fixture passes its guard and the labelled protection corpus is still refused with the protection named.",
+  "expected_failing_assertion": "No debugger-presence answer exists and the RDTSC-delta guard cannot be evaluated for a real guest.",
+  "owner_item": "BPTK-054",
+  "active_gate_evidence": "The census keeps routing protection evidence to refuse and the clock layer keeps one monotonic source.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Run the benign fixture whose guard checks debugger presence and RDTSC delta.",
+    "Assert the guard passes with declared value.",
+    "Run the protection corpus and assert every entry is still refused with zero bypass artifact."
+  ],
+  "pass_criterion": [
+    "Benign guard pass with declared value.",
+    "Protection is refused and never bypassed."
+  ]
+}
