@@ -1,0 +1,31 @@
+{
+  "benchmark_id": "BENCH-127",
+  "item_id": "BPTK-127",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "BPTK-001 approval remains open and no graph resolution exists in the legal surface.",
+  "prerequisite": [
+    "BPTK-001"
+  ],
+  "promotion_trigger": "Promote when every component and title resolves in the graph and the refusal cases fail closed through the legal surface.",
+  "expected_failing_assertion": "The legal command reports open approval and no graph resolution exists.",
+  "owner_item": "BPTK-127",
+  "active_gate_evidence": "The legal command keeps requiring named review and the third-party inventory stays reconciled.",
+  "fixture": [
+    "LICENSE",
+    "NOTICE",
+    "doc/legal-boundary.md",
+    "doc/third-party.md"
+  ],
+  "procedure": [
+    "Resolve every declared component and title in the graph.",
+    "Assert publish refusal for an unlicensed, an incompatible, and an expired node.",
+    "Assert the resolution is reproducible from the recorded provenance."
+  ],
+  "pass_criterion": [
+    "Every node resolves.",
+    "All three refusal cases fail closed."
+  ]
+}

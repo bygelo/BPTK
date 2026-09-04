@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 89,
-    "accepted": 75,
+    "raw": 97,
+    "accepted": 83,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -1567,6 +1567,160 @@
         "SRC-006",
         "SRC-010",
         "SRC-022"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-121",
+      "title": "Keep a clonable, non-stale repository with a reproducible release",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A release process and CI gate that keeps a clean clone green, fails a stale default branch at the declared window, and reproduces a release artifact from its tag.",
+      "benchmark_id": "BENCH-121",
+      "failure_meaning": "The known seven-week-stale-branch defect reproduces and every claim loses its verifiable baseline.",
+      "risk": "A freshness window set loosely enough to survive neglect hides the exact failure it exists to catch.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-122",
+      "title": "Run a public issue and compatibility tracker",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "Public issue and compatibility tracker templates that reject a bare report and a triage-freshness service level for accepted report.",
+      "benchmark_id": "BENCH-122",
+      "failure_meaning": "The known empty-tracker defect reproduces and compatibility knowledge stays private.",
+      "risk": "A template that accepts a bare report accumulates unusable entries that poison triage.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-123",
+      "title": "Publish the compatibility database export",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-028"
+      ],
+      "deliverable": "A published compatibility database export with byte-stable format and refusal of unbacked or personal-data row.",
+      "benchmark_id": "BENCH-123",
+      "failure_meaning": "Published compatibility claim has no evidence backing or leaks personal data.",
+      "risk": "An export that drifts byte-wise between revision breaks every downstream consumer silently.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-124",
+      "title": "Enforce the test-first and ratcheting coverage bar",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A gate rule that links every runtime surface to a benchmark and ratchets coverage on runtime module against a frozen floor.",
+      "benchmark_id": "BENCH-124",
+      "failure_meaning": "The known roughly-ten-percent-test defect reproduces on every new surface.",
+      "risk": "A floor set below the current state lets coverage decay while the gate stays green.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-125",
+      "title": "Remove the single-maintainer bus factor",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "A maintainer record, code-owner rule, two-signer release requirement, and a documented recovery drill.",
+      "benchmark_id": "BENCH-125",
+      "failure_meaning": "The known bus-factor-one defect reproduces and the project dies with its maintainer.",
+      "risk": "A recovery path that exists only in prose is untestable and therefore absent when needed.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-126",
+      "title": "Accept human and agent contribution through one gate",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-122"
+      ],
+      "deliverable": "A contributor pipeline where agent and human authorship is disclosed and the full gate applies identically.",
+      "benchmark_id": "BENCH-126",
+      "failure_meaning": "Agent contribution bypasses the evidence bar or hides authorship.",
+      "risk": "A disclosure rule without enforcement decays into convention.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-127",
+      "title": "Resolve the license, reuse, and provenance graph",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-001"
+      ],
+      "deliverable": "A license, reuse, and provenance graph that binds every component and hosted title to its decision record and fails closed on an unlicensed, incompatible, or expired node.",
+      "benchmark_id": "BENCH-127",
+      "failure_meaning": "Publication decisions rest on ad-hoc review instead of a resolvable graph.",
+      "risk": "A graph that trusts a stale node publishes under an expired grant.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-004",
+        "SRC-005",
+        "SRC-006",
+        "SRC-008",
+        "SRC-009",
+        "SRC-012",
+        "SRC-013",
+        "SRC-014",
+        "SRC-015"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-128",
+      "title": "Govern breaking change and analytics honestly",
+      "tier": "P3",
+      "kind": "evidence",
+      "prerequisite": [
+        "BPTK-028",
+        "BPTK-125"
+      ],
+      "deliverable": "A governance rule binding breaking change to a merged decision record and a byte-level audit that analytics stay aggregate and opt-in, with community space recorded.",
+      "benchmark_id": "BENCH-128",
+      "failure_meaning": "Breaking change ship silently and analytics trust cannot be verified.",
+      "risk": "An analytics audit that samples instead of auditing byte flow misses a leak.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013",
+        "SRC-033"
       ],
       "promotion_state": "planned"
     }

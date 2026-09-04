@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-125",
+  "item_id": "BPTK-125",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The maintainer set is one person and no two-signer or recovery mechanism exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the code-owner rule blocks self-approval, the release tag requires two signer, and the recovery drill runs successfully.",
+  "expected_failing_assertion": "No code-owner rule, signer requirement, or recovery drill exists.",
+  "owner_item": "BPTK-125",
+  "active_gate_evidence": "The contribution policy records the review expectation and the roadmap workflow pins immutable action.",
+  "fixture": [
+    "FIX-000"
+  ],
+  "procedure": [
+    "Attempt a self-approved merge and assert the code-owner rule blocks it.",
+    "Tag a release with one signer and assert refusal.",
+    "Run the documented recovery drill end to end."
+  ],
+  "pass_criterion": [
+    "Self-approval is blocked.",
+    "One-signer release is refused and the recovery drill succeeds."
+  ]
+}

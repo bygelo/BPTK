@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-122",
+  "item_id": "BPTK-122",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No public tracker or template exists in the planning repository.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the templates reject a bare report and the triage-freshness level is published and measured.",
+  "expected_failing_assertion": "No tracker template exists to enforce.",
+  "owner_item": "BPTK-122",
+  "active_gate_evidence": "The report command keeps writing a privacy-minimized, revision-pinned local report that a tracker entry can reference.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Submit a bare report and assert rejection.",
+    "Submit a report with environment, revision, and repro hash and assert acceptance.",
+    "Measure triage freshness against the published level."
+  ],
+  "pass_criterion": [
+    "Bare report is rejected.",
+    "Complete report is accepted and triaged within the level."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-124",
+  "item_id": "BPTK-124",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The gate has no coverage ratchet and no surface-to-benchmark linkage rule yet.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the gate rejects a benchmark-less runtime surface and a coverage drop below the floor in a drill.",
+  "expected_failing_assertion": "No coverage ratchet exists in the gate.",
+  "owner_item": "BPTK-124",
+  "active_gate_evidence": "The gate already fails on roadmap-package inconsistency, status drift, and package-surface change.",
+  "fixture": [
+    "FIX-000"
+  ],
+  "procedure": [
+    "Land a drill runtime surface without a benchmark and assert the gate fails.",
+    "Drop runtime-module coverage below the floor and assert the gate fails.",
+    "Restore both and assert the gate passes."
+  ],
+  "pass_criterion": [
+    "Benchmark-less surface fails the gate.",
+    "Coverage below the floor fails the gate."
+  ]
+}

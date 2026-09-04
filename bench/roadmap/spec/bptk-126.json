@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-126",
+  "item_id": "BPTK-126",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No agent-contribution disclosure rule or unified pipeline exists.",
+  "prerequisite": [
+    "BPTK-122"
+  ],
+  "promotion_trigger": "Promote when an agent PR and a human PR pass through the identical gate with disclosure recorded.",
+  "expected_failing_assertion": "No authorship-disclosure rule exists in the contribution path.",
+  "owner_item": "BPTK-126",
+  "active_gate_evidence": "The contribution policy and the roadmap workflow apply one gate to every push and pull request.",
+  "fixture": [
+    "FIX-000"
+  ],
+  "procedure": [
+    "Open a drill agent PR without disclosure and assert refusal.",
+    "Open the same PR with disclosure and assert the full gate applies.",
+    "Open a human PR and assert the identical gate path."
+  ],
+  "pass_criterion": [
+    "Undisclosed agent PR is refused.",
+    "Both PR class pass the identical gate."
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-123",
+  "item_id": "BPTK-123",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No compatibility session exists to publish and BPTK-028 recording remains red.",
+  "prerequisite": [
+    "BPTK-028"
+  ],
+  "promotion_trigger": "Promote when the export is byte-stable across regeneration and every row resolves to evidence with no unbacked or personal-data row.",
+  "expected_failing_assertion": "No database export exists.",
+  "owner_item": "BPTK-123",
+  "active_gate_evidence": "The report command keeps consent recording minimized and off by default.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Generate the export twice from the same evidence and compare bytes.",
+    "Assert every row carries the declared evidence field.",
+    "Attempt an unbacked and a personal-data row and assert refusal."
+  ],
+  "pass_criterion": [
+    "Export is byte-stable.",
+    "No unbacked or personal row is accepted."
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "benchmark_id": "BENCH-128",
+  "item_id": "BPTK-128",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No decision-record rule or analytics surface exists.",
+  "prerequisite": [
+    "BPTK-028",
+    "BPTK-125"
+  ],
+  "promotion_trigger": "Promote when a breaking-change drill is refused without a merged record and the byte audit proves the analytics property.",
+  "expected_failing_assertion": "No governance rule or analytics surface exists.",
+  "owner_item": "BPTK-128",
+  "active_gate_evidence": "The report command keeps local recording off by default and the changelog records every user-visible change.",
+  "fixture": [
+    "FIX-021",
+    "CHANGELOG.md"
+  ],
+  "procedure": [
+    "Merge a breaking change without a decision record in a drill and assert refusal.",
+    "Audit analytics byte flow for aggregate, opt-in, and personal-data-free property.",
+    "Record the community space and code-of-conduct location."
+  ],
+  "pass_criterion": [
+    "Breaking change is refused without a record.",
+    "The byte audit proves the analytics property."
+  ]
+}

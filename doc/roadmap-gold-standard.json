@@ -954,7 +954,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-078 · Clonable, non-stale repo + release process** — clean clone builds+gates in CI every push; **freshness gate fails if default branch older than a declared window**; releases reproducible from tag · **T1**. *vs 7-week-stale branch.*"
+      "spec": "**GS-078 · Clonable, non-stale repo + release process** — clean clone builds+gates in CI every push; **freshness gate fails if default branch older than a declared window**; releases reproducible from tag · **T1**. *vs 7-week-stale branch.*",
+      "promoted_as": "BPTK-121"
     },
     {
       "gs_id": "GS-079",
@@ -964,7 +965,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-079 · Public issue + compatibility tracker** — templates enforce env+revision+repro-hash, bare reports rejected; triage-freshness SLA · **T3**. *vs empty tracker.*"
+      "spec": "**GS-079 · Public issue + compatibility tracker** — templates enforce env+revision+repro-hash, bare reports rejected; triage-freshness SLA · **T3**. *vs empty tracker.*",
+      "promoted_as": "BPTK-122"
     },
     {
       "gs_id": "GS-080",
@@ -976,7 +978,8 @@
       "dep": [
         "BPTK-028"
       ],
-      "spec": "**GS-080 · Public compatibility database** — every row: title/build-hash + env + browser + revision + evidence; export byte-stable; no unbacked or PII rows · **T2** · deps BPTK-028. *Reconciled (→GS-040).*"
+      "spec": "**GS-080 · Public compatibility database** — every row: title/build-hash + env + browser + revision + evidence; export byte-stable; no unbacked or PII rows · **T2** · deps BPTK-028. *Reconciled (→GS-040).*",
+      "promoted_as": "BPTK-123"
     },
     {
       "gs_id": "GS-081",
@@ -988,7 +991,8 @@
         "BPTK-003"
       ],
       "dep": [],
-      "spec": "**GS-081 · Test-first + ratcheting coverage bar** — merge fails if a runtime surface lands without a linked benchmark or coverage on runtime modules drops below the floor · **T1** · extends BPTK-003. *vs ~10% tests.*"
+      "spec": "**GS-081 · Test-first + ratcheting coverage bar** — merge fails if a runtime surface lands without a linked benchmark or coverage on runtime modules drops below the floor · **T1** · extends BPTK-003. *vs ~10% tests.*",
+      "promoted_as": "BPTK-124"
     },
     {
       "gs_id": "GS-082",
@@ -998,7 +1002,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-082 · Multi-maintainer / kill bus-factor-1** — CODEOWNER review ≠ author; release needs ≥2 signers; `MAINTAINERS.md` + recovery path (mechanism testable before a 2nd human exists) · **T2**. *vs bus-factor-1.*"
+      "spec": "**GS-082 · Multi-maintainer / kill bus-factor-1** — CODEOWNER review ≠ author; release needs ≥2 signers; `MAINTAINERS.md` + recovery path (mechanism testable before a 2nd human exists) · **T2**. *vs bus-factor-1.*",
+      "promoted_as": "BPTK-125"
     },
     {
       "gs_id": "GS-083",
@@ -1010,7 +1015,8 @@
       "dep": [
         "GS-079"
       ],
-      "spec": "**GS-083 · Human + AI-agent contributor pipeline** — human and agent PRs accepted only through the same benchmark+coverage+authorship-disclosure gate · **T3** · deps GS-079/081/082."
+      "spec": "**GS-083 · Human + AI-agent contributor pipeline** — human and agent PRs accepted only through the same benchmark+coverage+authorship-disclosure gate · **T3** · deps GS-079/081/082.",
+      "promoted_as": "BPTK-126"
     },
     {
       "gs_id": "GS-084",
@@ -1022,7 +1028,8 @@
         "BPTK-001"
       ],
       "dep": [],
-      "spec": "**GS-084 · License / reuse / provenance graph** — resolves every component→license + every hosted title→redistribution basis; publish/host/bundle refused on unlicensed/incompatible/expired node · **T1** · extends BPTK-001. *Reconciled (lanes SBOM + ecosystem); load-bearing for GS-069/074.*"
+      "spec": "**GS-084 · License / reuse / provenance graph** — resolves every component→license + every hosted title→redistribution basis; publish/host/bundle refused on unlicensed/incompatible/expired node · **T1** · extends BPTK-001. *Reconciled (lanes SBOM + ecosystem); load-bearing for GS-069/074.*",
+      "promoted_as": "BPTK-127"
     },
     {
       "gs_id": "GS-085",
@@ -1035,7 +1042,8 @@
         "GS-082",
         "BPTK-028"
       ],
-      "spec": "**GS-085 · Governance/RFC + telemetry-free analytics + community** — breaking change to SDK/`.bptk`/CLI needs a merged RFC; analytics aggregate/opt-in/PII-free (byte-audited); code of conduct + community space · **T2** · deps GS-082/BPTK-028."
+      "spec": "**GS-085 · Governance/RFC + telemetry-free analytics + community** — breaking change to SDK/`.bptk`/CLI needs a merged RFC; analytics aggregate/opt-in/PII-free (byte-audited); code of conduct + community space · **T2** · deps GS-082/BPTK-028.",
+      "promoted_as": "BPTK-128"
     },
     {
       "gs_id": "GS-101",

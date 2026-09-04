@@ -3,8 +3,8 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 30,
-    "prior_art": 41,
+    "product": 34,
+    "prior_art": 45,
     "constraint": 14
   },
   "candidate": [
@@ -719,6 +719,70 @@
       "target_id": "BPTK-075",
       "summary": "Cache compiled pipeline by content address",
       "dedupe_key": "gs-034-content-addressed-pipeline-cache"
+    },
+    {
+      "candidate_id": "CAND-090",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-121",
+      "summary": "Keep a clonable, non-stale repository with a reproducible release",
+      "dedupe_key": "gs-078-clonable-nonstale-repo"
+    },
+    {
+      "candidate_id": "CAND-091",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-122",
+      "summary": "Run a public issue and compatibility tracker",
+      "dedupe_key": "gs-079-public-issue-tracker"
+    },
+    {
+      "candidate_id": "CAND-092",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-123",
+      "summary": "Publish the compatibility database export",
+      "dedupe_key": "gs-080-public-compatibility-database"
+    },
+    {
+      "candidate_id": "CAND-093",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-124",
+      "summary": "Enforce the test-first and ratcheting coverage bar",
+      "dedupe_key": "gs-081-ratcheting-coverage-bar"
+    },
+    {
+      "candidate_id": "CAND-094",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-125",
+      "summary": "Remove the single-maintainer bus factor",
+      "dedupe_key": "gs-082-multi-maintainer-bus-factor"
+    },
+    {
+      "candidate_id": "CAND-095",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-126",
+      "summary": "Accept human and agent contribution through one gate",
+      "dedupe_key": "gs-083-human-agent-contributor-pipeline"
+    },
+    {
+      "candidate_id": "CAND-096",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-127",
+      "summary": "Resolve the license, reuse, and provenance graph",
+      "dedupe_key": "gs-084-license-provenance-graph"
+    },
+    {
+      "candidate_id": "CAND-097",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-128",
+      "summary": "Govern breaking change and analytics honestly",
+      "dedupe_key": "gs-085-governance-rfc-analytics"
     }
   ]
 }

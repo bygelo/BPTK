@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-121",
+  "item_id": "BPTK-121",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The repository gates green today, but no freshness window or tag-reproducibility check exists yet.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the freshness gate enforces the declared window in CI and a tagged release rebuilds reproducibly from a clean clone.",
+  "expected_failing_assertion": "No freshness gate exists and no tagged release has been rebuilt reproducibly.",
+  "owner_item": "BPTK-121",
+  "active_gate_evidence": "The roadmap workflow runs the full gate with immutable action on every push and pull request.",
+  "fixture": [
+    "FIX-000"
+  ],
+  "procedure": [
+    "Clone the repository fresh and run the gate.",
+    "Age the default branch past the declared window in a drill and assert the freshness gate fails.",
+    "Rebuild a tagged release from a clean clone and compare the artifact."
+  ],
+  "pass_criterion": [
+    "Clean clone passes the gate.",
+    "Over-age branch fails the freshness gate and the release rebuild matches."
+  ]
+}
