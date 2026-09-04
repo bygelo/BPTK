@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-095",
+  "item_id": "BPTK-095",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No lane chain exists; the run surface reports the missing runtime only.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the fallback chain hops on the declared precondition failure with recorded reason and terminates bounded.",
+  "expected_failing_assertion": "No fallback chain exists.",
+  "owner_item": "BPTK-095",
+  "active_gate_evidence": "The graphics doctor keeps reason-bound blocking, which is the same recorded-reason discipline.",
+  "fixture": [
+    "FIX-010"
+  ],
+  "procedure": [
+    "Fail the primary precondition on the fixture and assert the declared next lane.",
+    "Assert the hop reason is recorded.",
+    "Exhaust the chain and assert the bounded no-lane result."
+  ],
+  "pass_criterion": [
+    "Fallback hops with recorded reason.",
+    "The chain ends bounded."
+  ]
+}

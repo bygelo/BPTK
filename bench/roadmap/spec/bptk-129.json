@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-129",
+  "item_id": "BPTK-129",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No lane-tagged bundle record or rating exists to render.",
+  "prerequisite": [
+    "BPTK-078",
+    "BPTK-089"
+  ],
+  "promotion_trigger": "Promote when every declared surface renders the record-derived label and the unsupported-set case can never read playable.",
+  "expected_failing_assertion": "No lane label or unsupported set exists.",
+  "owner_item": "BPTK-129",
+  "active_gate_evidence": "The compatibility and status surfaces keep reporting observed state without support claim.",
+  "fixture": [
+    "FIX-021"
+  ],
+  "procedure": [
+    "Render the label from the bundle record on each declared surface.",
+    "Assert the label matches the recorded lane.",
+    "Assert an unsupported-set title can never read playable."
+  ],
+  "pass_criterion": [
+    "Labels render from the record.",
+    "Unsupported-set title never reads playable."
+  ]
+}

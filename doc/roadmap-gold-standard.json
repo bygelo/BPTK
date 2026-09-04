@@ -570,7 +570,8 @@
         "BPTK-007"
       ],
       "dep": [],
-      "spec": "**GS-043 · Diagnose-and-route front door** — ranked lane decision + confidence over the 8-lane taxonomy on a mixed corpus; mislabel = hard fail; no exec, no upload · **T1** · extends BPTK-007/037."
+      "spec": "**GS-043 · Diagnose-and-route front door** — ranked lane decision + confidence over the 8-lane taxonomy on a mixed corpus; mislabel = hard fail; no exec, no upload · **T1** · extends BPTK-007/037.",
+      "promoted_as": "BPTK-088"
     },
     {
       "gs_id": "GS-044",
@@ -582,7 +583,8 @@
         "BPTK-024"
       ],
       "dep": [],
-      "spec": "**GS-044 · Universal `.bptk` bundle format** — lane-tagged envelope: decision + content-addressed payload + capability manifest + provenance; schema-pinned, lane≠payload refused; one host loads every lane · **T1** · extends BPTK-024. *Reconciled (lanes+platform).*"
+      "spec": "**GS-044 · Universal `.bptk` bundle format** — lane-tagged envelope: decision + content-addressed payload + capability manifest + provenance; schema-pinned, lane≠payload refused; one host loads every lane · **T1** · extends BPTK-024. *Reconciled (lanes+platform).*",
+      "promoted_as": "BPTK-089"
     },
     {
       "gs_id": "GS-045",
@@ -594,7 +596,8 @@
         "BPTK-006"
       ],
       "dep": [],
-      "spec": "**GS-045 · Source lane: build-system autodetect + patch-set** — CMake/autotools/Make/Meson detected, pinned Emscripten patch-set, reproducible in a clean env · **T3** · extends BPTK-006/021."
+      "spec": "**GS-045 · Source lane: build-system autodetect + patch-set** — CMake/autotools/Make/Meson detected, pinned Emscripten patch-set, reproducible in a clean env · **T3** · extends BPTK-006/021.",
+      "promoted_as": "BPTK-090"
     },
     {
       "gs_id": "GS-046",
@@ -606,7 +609,8 @@
         "BPTK-029"
       ],
       "dep": [],
-      "spec": "**GS-046 · Engine lane: open-reimplementation runtime host** — matched title runs on its Wasm-built open engine (Xash/vkQuake/ScummVM…), assets from OPFS, zero engine/asset commingling, no-rights blocked · **T1** · extends BPTK-029/043. **[mid]**"
+      "spec": "**GS-046 · Engine lane: open-reimplementation runtime host** — matched title runs on its Wasm-built open engine (Xash/vkQuake/ScummVM…), assets from OPFS, zero engine/asset commingling, no-rights blocked · **T1** · extends BPTK-029/043. **[mid]**",
+      "promoted_as": "BPTK-091"
     },
     {
       "gs_id": "GS-047",
@@ -618,7 +622,8 @@
         "BPTK-031"
       ],
       "dep": [],
-      "spec": "**GS-047 · Modern-PC lane: x86-64 + D3D10/11/12/Vulkan→WebGPU** — composed decision + prototype of one hard mapping (D3D11 binding→WGSL / Vulkan descriptor model) · **T3** · extends BPTK-031/032/033. **[P4]**"
+      "spec": "**GS-047 · Modern-PC lane: x86-64 + D3D10/11/12/Vulkan→WebGPU** — composed decision + prototype of one hard mapping (D3D11 binding→WGSL / Vulkan descriptor model) · **T3** · extends BPTK-031/032/033. **[P4]**",
+      "promoted_as": "BPTK-092"
     },
     {
       "gs_id": "GS-048",
@@ -630,7 +635,8 @@
       "dep": [
         "GS-043"
       ],
-      "spec": "**GS-048 · Modern web-native ingest (Unity/Godot/Unreal)** — an already-web-native export boots in the BPTK host under the capability manifest; disallowed-capability blocked · **T1** · deps GS-043/044. **[near-term — highest leverage, fastest demo].**"
+      "spec": "**GS-048 · Modern web-native ingest (Unity/Godot/Unreal)** — an already-web-native export boots in the BPTK host under the capability manifest; disallowed-capability blocked · **T1** · deps GS-043/044. **[near-term — highest leverage, fastest demo].**",
+      "promoted_as": "BPTK-093"
     },
     {
       "gs_id": "GS-049",
@@ -640,7 +646,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-049 · DOS / Win16 / Win9x lane via embedded emulator** — pre-Win32 inputs routed to a sandboxed DOSBox/86Box-class emulator; PE32 not mis-routed · **T3**."
+      "spec": "**GS-049 · DOS / Win16 / Win9x lane via embedded emulator** — pre-Win32 inputs routed to a sandboxed DOSBox/86Box-class emulator; PE32 not mis-routed · **T3**.",
+      "promoted_as": "BPTK-094"
     },
     {
       "gs_id": "GS-050",
@@ -652,7 +659,8 @@
         "BPTK-017"
       ],
       "dep": [],
-      "spec": "**GS-050 · Cross-lane fallback + confidence chain** — primary-precondition failure → declared next lane with recorded reason; no-viable → bounded `no-lane` · **T1** · extends BPTK-017."
+      "spec": "**GS-050 · Cross-lane fallback + confidence chain** — primary-precondition failure → declared next lane with recorded reason; no-viable → bounded `no-lane` · **T1** · extends BPTK-017.",
+      "promoted_as": "BPTK-095"
     },
     {
       "gs_id": "GS-052",
@@ -1077,7 +1085,8 @@
         "GS-044",
         "GS-038"
       ],
-      "spec": "**GS-101 · Lane / accuracy honesty badge + documented unsupported set** — every title and program surfaces its execution lane (*AOT-recompiled* / *interpreted-JIT* / *emulated* / *web-native*) and accuracy caveats, and the project publishes a machine-readable **unsupported set** (kernel anti-cheat, DRM classes, unproven APIs) so no capability is implied that isn't measured. Benchmark: every catalog/run surface renders the correct lane+accuracy label from the bundle's recorded lane (GS-044), and a title in the unsupported set can never be marked playable · **T2** · deps GS-044, GS-038. *Truthfulness as a feature — the anti-\"we run Valorant\" gate.*"
+      "spec": "**GS-101 · Lane / accuracy honesty badge + documented unsupported set** — every title and program surfaces its execution lane (*AOT-recompiled* / *interpreted-JIT* / *emulated* / *web-native*) and accuracy caveats, and the project publishes a machine-readable **unsupported set** (kernel anti-cheat, DRM classes, unproven APIs) so no capability is implied that isn't measured. Benchmark: every catalog/run surface renders the correct lane+accuracy label from the bundle's recorded lane (GS-044), and a title in the unsupported set can never be marked playable · **T2** · deps GS-044, GS-038. *Truthfulness as a feature — the anti-\"we run Valorant\" gate.*",
+      "promoted_as": "BPTK-129"
     },
     {
       "gs_id": "GS-086",

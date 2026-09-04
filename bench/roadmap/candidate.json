@@ -3,8 +3,8 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 53,
-    "prior_art": 47,
+    "product": 60,
+    "prior_art": 49,
     "constraint": 14
   },
   "candidate": [
@@ -951,6 +951,78 @@
       "target_id": "BPTK-104",
       "summary": "Pace the frame clock to the vertical blank",
       "dedupe_key": "gs-060-frame-pacing-vblank"
+    },
+    {
+      "candidate_id": "CAND-119",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-088",
+      "summary": "Diagnose and route input across the lane taxonomy",
+      "dedupe_key": "gs-043-diagnose-route-front-door"
+    },
+    {
+      "candidate_id": "CAND-120",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-089",
+      "summary": "Define the universal bundle envelope",
+      "dedupe_key": "gs-044-universal-bundle-envelope"
+    },
+    {
+      "candidate_id": "CAND-121",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-090",
+      "summary": "Autodetect the source build system and pin the patch set",
+      "dedupe_key": "gs-045-source-build-autodetect"
+    },
+    {
+      "candidate_id": "CAND-122",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-091",
+      "summary": "Host a matched title on its open engine reimplementation",
+      "dedupe_key": "gs-046-engine-lane-runtime-host"
+    },
+    {
+      "candidate_id": "CAND-123",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-092",
+      "summary": "Research the modern-PC lane mapping",
+      "dedupe_key": "gs-047-modern-pc-lane-research"
+    },
+    {
+      "candidate_id": "CAND-124",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-093",
+      "summary": "Boot an already-web-native export in the host",
+      "dedupe_key": "gs-048-web-native-ingest"
+    },
+    {
+      "candidate_id": "CAND-125",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-094",
+      "summary": "Route pre-Win32 input to an embedded emulator lane",
+      "dedupe_key": "gs-049-dos-win16-emulator-lane"
+    },
+    {
+      "candidate_id": "CAND-126",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-095",
+      "summary": "Fall back across lane with a recorded reason",
+      "dedupe_key": "gs-050-cross-lane-fallback"
+    },
+    {
+      "candidate_id": "CAND-127",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-129",
+      "summary": "Label the execution lane and accuracy on every surface",
+      "dedupe_key": "gs-101-lane-accuracy-honesty-badge"
     }
   ]
 }

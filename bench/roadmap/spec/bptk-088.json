@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-088",
+  "item_id": "BPTK-088",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The inspector classifies input form and census but not the full lane taxonomy ranking.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the mixed-corpus routing fixture is labeled correctly with confidence and the mislabel case fails hard.",
+  "expected_failing_assertion": "No lane ranking exists in the inspect surface.",
+  "owner_item": "BPTK-088",
+  "active_gate_evidence": "The inspect surface keeps classification and census routing without execution or upload.",
+  "fixture": [
+    "FIX-001"
+  ],
+  "procedure": [
+    "Route each mixed-corpus input through the front door.",
+    "Compare the ranked decision against the labeled truth.",
+    "Assert no execution or upload occurs during routing."
+  ],
+  "pass_criterion": [
+    "Every corpus input routes correctly.",
+    "A mislabel fails hard."
+  ]
+}

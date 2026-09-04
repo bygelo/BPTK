@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-090",
+  "item_id": "BPTK-090",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The port surface reports the missing toolchain and adapter without a scaffold.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when each declared build system is detected and the pinned patch set builds reproducibly from clean checkout.",
+  "expected_failing_assertion": "No build-system detection exists.",
+  "owner_item": "BPTK-090",
+  "active_gate_evidence": "The port surface keeps reporting the missing Emscripten and adapter step honestly.",
+  "fixture": [
+    "FIX-014"
+  ],
+  "procedure": [
+    "Detect each declared build system on its fixture tree.",
+    "Build through the pinned patch set.",
+    "Rebuild in a clean environment and compare the result."
+  ],
+  "pass_criterion": [
+    "Every declared system is detected.",
+    "The build is reproducible from clean checkout."
+  ]
+}

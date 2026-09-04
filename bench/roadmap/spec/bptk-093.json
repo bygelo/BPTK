@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-093",
+  "item_id": "BPTK-093",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The ingest path classifies web-native input but the host does not run it.",
+  "prerequisite": [
+    "BPTK-088"
+  ],
+  "promotion_trigger": "Promote when a declared web-native export boots in the host and the disallowed-capability case is blocked at boot.",
+  "expected_failing_assertion": "No web-native boot path exists.",
+  "owner_item": "BPTK-093",
+  "active_gate_evidence": "The ingest path keeps classifying and census-routing without executing.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Ingest and boot the declared web-native export.",
+    "Assert capability use stays inside the manifest.",
+    "Trigger a disallowed capability and assert the block."
+  ],
+  "pass_criterion": [
+    "The export boots in the host.",
+    "Disallowed capability is blocked."
+  ]
+}

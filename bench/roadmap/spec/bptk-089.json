@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "BENCH-089",
+  "item_id": "BPTK-089",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The packager emits the asset-and-host package only, with no lane-tagged envelope.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every lane round-trips through the envelope and the mismatch case is refused.",
+  "expected_failing_assertion": "No lane-tagged envelope exists.",
+  "owner_item": "BPTK-089",
+  "active_gate_evidence": "The packager keeps one content-addressed package identity across host emission.",
+  "fixture": [
+    "FIX-009",
+    "FIX-017"
+  ],
+  "procedure": [
+    "Round-trip each lane through the envelope.",
+    "Validate the schema pin and the capability manifest per lane.",
+    "Mismatch a lane against its payload and assert refusal."
+  ],
+  "pass_criterion": [
+    "Every lane round-trips.",
+    "Lane-payload mismatch is refused."
+  ]
+}

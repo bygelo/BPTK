@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 118,
-    "accepted": 104,
+    "raw": 127,
+    "accepted": 113,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -2168,6 +2168,198 @@
       "risk": "A scheduler that paces the wall clock instead of the guest clock runs the game fast or slow on fast host.",
       "source_evidence": [
         "SRC-035"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-088",
+      "title": "Diagnose and route input across the lane taxonomy",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A diagnose-and-route front door that ranks every lane over the taxonomy with confidence and fails hard on mislabel.",
+      "benchmark_id": "BENCH-088",
+      "failure_meaning": "The workbench routes title by guesswork instead of ranked evidence.",
+      "risk": "A confidence score tuned on the routing corpus itself overfits and mislabels the next input.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-089",
+      "title": "Define the universal bundle envelope",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A universal bundle format with lane tag, capability manifest, and provenance, and one host loader that consumes every lane.",
+      "benchmark_id": "BENCH-089",
+      "failure_meaning": "Each lane invents its own container and the platform cannot host them uniformly.",
+      "risk": "A schema pin without version negotiation freezes out future lane.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-006",
+        "SRC-009",
+        "SRC-010",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-090",
+      "title": "Autodetect the source build system and pin the patch set",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Build-system autodetection with a pinned Emscripten patch set and clean-environment reproducibility.",
+      "benchmark_id": "BENCH-090",
+      "failure_meaning": "The source lane stays manual per project.",
+      "risk": "An autodetector that guesses wrong builds a broken artifact silently.",
+      "source_evidence": [
+        "SRC-006",
+        "SRC-007",
+        "SRC-010",
+        "SRC-016",
+        "SRC-017",
+        "SRC-018"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-091",
+      "title": "Host a matched title on its open engine reimplementation",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "The engine lane runtime host that pairs the matched Wasm engine build with user-owned asset held separate under the rights boundary.",
+      "benchmark_id": "BENCH-091",
+      "failure_meaning": "The engine lane stays a census label with no runnable path.",
+      "risk": "A host that bundles a default asset set for convenience violates the rights boundary.",
+      "source_evidence": [
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-092",
+      "title": "Research the modern-PC lane mapping",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "A bounded modern-PC lane report with a prototype of the declared hard mapping.",
+      "benchmark_id": "BENCH-092",
+      "failure_meaning": "The modern lane stays a deferral without a mapped gap.",
+      "risk": "A prototype of the easiest mapping overstates the whole lane.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-004",
+        "SRC-005",
+        "SRC-013",
+        "SRC-019"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-093",
+      "title": "Boot an already-web-native export in the host",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-088"
+      ],
+      "deliverable": "Web-native ingest into the host with capability-manifest enforcement from first boot.",
+      "benchmark_id": "BENCH-093",
+      "failure_meaning": "The fastest demo lane stays closed and the workbench misses its highest-leverage input class.",
+      "risk": "A manifest that the host trusts without verification is a spoofing surface.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-008",
+        "SRC-009",
+        "SRC-010",
+        "SRC-011"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-094",
+      "title": "Route pre-Win32 input to an embedded emulator lane",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "An emulator lane boundary for pre-Win32 input with sandbox confinement and routing that keeps PE32 out.",
+      "benchmark_id": "BENCH-094",
+      "failure_meaning": "DOS and Win16 title are refused at the front door forever.",
+      "risk": "An emulator lane without host-FS confinement becomes the containment hole.",
+      "source_evidence": [
+        "SRC-004",
+        "SRC-005"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-095",
+      "title": "Fall back across lane with a recorded reason",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A cross-lane fallback chain with per-hop recorded reason and a bounded terminal no-lane state.",
+      "benchmark_id": "BENCH-095",
+      "failure_meaning": "A title dies at the first failed precondition even when another lane would carry it.",
+      "risk": "A fallback chain without a terminal bound retries forever or masks the original cause.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014",
+        "SRC-015",
+        "SRC-016",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-129",
+      "title": "Label the execution lane and accuracy on every surface",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-078",
+        "BPTK-089"
+      ],
+      "deliverable": "A lane and accuracy label rendered from the bundle record on every surface, backed by a machine-readable unsupported set.",
+      "benchmark_id": "BENCH-129",
+      "failure_meaning": "Users cannot tell recompiled from interpreted from emulated, and unsupported claim become possible.",
+      "risk": "A label read from configuration instead of the bundle record drifts from reality.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-003",
+        "SRC-006",
+        "SRC-009",
+        "SRC-010",
+        "SRC-016",
+        "SRC-018",
+        "SRC-019",
+        "SRC-020",
+        "SRC-021",
+        "SRC-022",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026",
+        "SRC-027",
+        "SRC-028"
       ],
       "promotion_state": "planned"
     }

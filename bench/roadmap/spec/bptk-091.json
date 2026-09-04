@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-091",
+  "item_id": "BPTK-091",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No approved adapter or Wasm engine build exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the matched title runs on its Wasm engine with separated asset and the no-rights case is blocked.",
+  "expected_failing_assertion": "No engine runtime host exists.",
+  "owner_item": "BPTK-091",
+  "active_gate_evidence": "The engine census keeps routing to named reimplementation without bundling code.",
+  "fixture": [
+    "FIX-022"
+  ],
+  "procedure": [
+    "Run the matched title on its Wasm engine build.",
+    "Assert asset load from storage with zero commingling.",
+    "Attempt a no-rights asset and assert the block."
+  ],
+  "pass_criterion": [
+    "The title runs on its engine.",
+    "Asset stay separated and no-rights is blocked."
+  ]
+}

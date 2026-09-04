@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-094",
+  "item_id": "BPTK-094",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The census refuses DOS and 16-bit input with identity and no emulator lane exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when pre-Win32 fixture route to the lane and the PE32 fixture never does.",
+  "expected_failing_assertion": "The front door refuses pre-Win32 input with no lane target.",
+  "owner_item": "BPTK-094",
+  "active_gate_evidence": "The ingest path keeps refusing DOS, 16-bit, and archive input with structured reason.",
+  "fixture": [
+    "FIX-001"
+  ],
+  "procedure": [
+    "Route the DOS and Win16 fixture to the emulator lane.",
+    "Assert the PE32 fixture stays on its own lane.",
+    "Assert the emulator lane cannot reach host file system beyond the bundle."
+  ],
+  "pass_criterion": [
+    "Pre-Win32 routes to the lane.",
+    "PE32 is never mis-routed and the lane stays confined."
+  ]
+}

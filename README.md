@@ -117,12 +117,12 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 
 ## Current state
 
-- Roadmap candidate frozen: **118**
-- Accepted item with benchmark specification: **104**
+- Roadmap candidate frozen: **127**
+- Accepted item with benchmark specification: **113**
 - Rejected candidate: **8**
 - Deferred candidate: **6**
 - Implemented item: **11**
-- Passing roadmap benchmark: **0 / 104 (0%)**
+- Passing roadmap benchmark: **0 / 113 (0%)**
 - Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis and research, live self-check, toolchain comparison, PE32 mapping and declared import resolution, an opt-in deterministic i386 entry probe, bounded installer extraction, declared resource bound, middleware and engine census routing, ephemeral Chrome capability probing, asset packaging, host emission, local policy diagnosis, safe import diagnosis, and local reporting; a new registry release has not been made from this branch
 
 Start with [ROADMAP.md](https://github.com/bygelo/BPTK/blob/main/ROADMAP.md), then read the [architecture](https://github.com/bygelo/BPTK/blob/main/doc/ARCHITECTURE.md), [source audit](https://github.com/bygelo/BPTK/blob/main/doc/source-audit.md), [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md), [third-party inventory](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md), [test contract](https://github.com/bygelo/BPTK/blob/main/doc/TESTING.md), [release procedure](https://github.com/bygelo/BPTK/blob/main/doc/RELEASE.md), and [contribution guide](https://github.com/bygelo/BPTK/blob/main/CONTRIBUTING.md).

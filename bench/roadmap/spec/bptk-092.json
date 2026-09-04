@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-092",
+  "item_id": "BPTK-092",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No modern-API translator prototype exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the composed decision exists and one declared hard mapping is prototyped with measured result.",
+  "expected_failing_assertion": "The modern surface defers with no prototype.",
+  "owner_item": "BPTK-092",
+  "active_gate_evidence": "The modern scan keeps reporting signal with live observation and no path claim.",
+  "fixture": [
+    "FIX-026"
+  ],
+  "procedure": [
+    "Prototype the declared hard mapping on the research fixture.",
+    "Measure the result against the reference.",
+    "Record the composed lane decision with evidence."
+  ],
+  "pass_criterion": [
+    "The hard mapping is prototyped with measured result.",
+    "The composed decision is evidence-backed."
+  ]
+}
