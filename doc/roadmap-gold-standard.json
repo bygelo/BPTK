@@ -789,7 +789,8 @@
         "BPTK-022"
       ],
       "dep": [],
-      "spec": "**GS-061 · Compressed content-addressed streaming** — per-chunk zstd/brotli; bytes-to-interactive ≤55% of uncompressed `.wgb`; each chunk hash-verified · **T1** · extends BPTK-022. *Beats uncompressed `.wgb`.*"
+      "spec": "**GS-061 · Compressed content-addressed streaming** — per-chunk zstd/brotli; bytes-to-interactive ≤55% of uncompressed `.wgb`; each chunk hash-verified · **T1** · extends BPTK-022. *Beats uncompressed `.wgb`.*",
+      "promoted_as": "BPTK-105"
     },
     {
       "gs_id": "GS-062",
@@ -801,7 +802,8 @@
       "dep": [
         "GS-061"
       ],
-      "spec": "**GS-062 · Range/block streaming + prefetch + async guest I/O** — reaches interactive with payload partly unfetched; sync guest read of absent block serviced without frame stall (via BPTK-034) · **T1** · deps GS-061."
+      "spec": "**GS-062 · Range/block streaming + prefetch + async guest I/O** — reaches interactive with payload partly unfetched; sync guest read of absent block serviced without frame stall (via BPTK-034) · **T1** · deps GS-061.",
+      "promoted_as": "BPTK-106"
     },
     {
       "gs_id": "GS-063",
@@ -813,7 +815,8 @@
         "BPTK-024"
       ],
       "dep": [],
-      "spec": "**GS-063 · Embedding SDK: HTML / React / Web Component / iframe** — all four hosts → identical runtime artifact; remount leaks zero worker/audio/GPU; iframe sandboxed · **T1** · extends BPTK-024."
+      "spec": "**GS-063 · Embedding SDK: HTML / React / Web Component / iframe** — all four hosts → identical runtime artifact; remount leaks zero worker/audio/GPU; iframe sandboxed · **T1** · extends BPTK-024.",
+      "promoted_as": "BPTK-107"
     },
     {
       "gs_id": "GS-064",
@@ -825,7 +828,8 @@
         "BPTK-022"
       ],
       "dep": [],
-      "spec": "**GS-064 · PWA / offline install** — interactive offline after one run; SW serves only hash-verified chunks; updates invalidate exactly changed chunks · **T2** · extends BPTK-022."
+      "spec": "**GS-064 · PWA / offline install** — interactive offline after one run; SW serves only hash-verified chunks; updates invalidate exactly changed chunks · **T2** · extends BPTK-022.",
+      "promoted_as": "BPTK-108"
     },
     {
       "gs_id": "GS-065",
@@ -837,7 +841,8 @@
         "BPTK-025"
       ],
       "dep": [],
-      "spec": "**GS-065 · Hosting-constraint automation (COOP/COEP)** — emitted headers yield `crossOriginIsolated`; absent-isolation → single-thread bundle, never a broken SAB build · **T1** · extends BPTK-025."
+      "spec": "**GS-065 · Hosting-constraint automation (COOP/COEP)** — emitted headers yield `crossOriginIsolated`; absent-isolation → single-thread bundle, never a broken SAB build · **T1** · extends BPTK-025.",
+      "promoted_as": "BPTK-109"
     },
     {
       "gs_id": "GS-066",
@@ -850,7 +855,8 @@
         "GS-061",
         "BPTK-041"
       ],
-      "spec": "**GS-066 · Cross-title CDN asset dedup** — shared redistributables stored/served once; cross-title cache-hit zero re-download; never merge differing hashes · **T2** · deps GS-061, BPTK-041."
+      "spec": "**GS-066 · Cross-title CDN asset dedup** — shared redistributables stored/served once; cross-title cache-hit zero re-download; never merge differing hashes · **T2** · deps GS-061, BPTK-041.",
+      "promoted_as": "BPTK-110"
     },
     {
       "gs_id": "GS-067",
@@ -862,7 +868,8 @@
         "BPTK-015"
       ],
       "dep": [],
-      "spec": "**GS-067 · Cloud save sync** — only the overlay diff uploads, base/hash-matching files never transmitted; deterministic conflict resolution · **T1** · extends BPTK-015."
+      "spec": "**GS-067 · Cloud save sync** — only the overlay diff uploads, base/hash-matching files never transmitted; deterministic conflict resolution · **T1** · extends BPTK-015.",
+      "promoted_as": "BPTK-111"
     },
     {
       "gs_id": "GS-068",

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-108",
+  "item_id": "BPTK-108",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No service worker or offline runtime behavior exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the offline run reaches interactive from hash-verified chunk and the update invalidates exactly the changed set.",
+  "expected_failing_assertion": "No offline install exists.",
+  "owner_item": "BPTK-108",
+  "active_gate_evidence": "The packaging surface keeps content-addressed chunk that make precise invalidation representable.",
+  "fixture": [
+    "FIX-015"
+  ],
+  "procedure": [
+    "Run once online and install.",
+    "Go offline and reach interactive.",
+    "Update one chunk and assert only it invalidates."
+  ],
+  "pass_criterion": [
+    "Offline run reaches interactive.",
+    "Only changed chunk invalidate."
+  ]
+}

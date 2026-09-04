@@ -7,7 +7,7 @@ The separate [`bench/npm/content.json`](../npm/content.json) file freezes the bo
 ## Layout
 
 - `manifest.json` — canonical accepted item, dependency, source evidence, state, and denominator.
-- `candidate.json` — all 127 raw candidate with origin, dedupe key, decision, and accepted, rejected, or deferred target.
+- `candidate.json` — all 134 raw candidate with origin, dedupe key, decision, and accepted, rejected, or deferred target.
 - `spec/` — exactly one prewritten benchmark specification per accepted item.
 - `fixture/catalog.json` — metadata for planned synthetic or redistributable fixture; no executable fixture is present yet.
 
@@ -15,14 +15,14 @@ All collection key remain singular by repository convention: `item`, `prerequisi
 
 ## Current state
 
-- Accepted roadmap item: 113
-- Planned and quarantined: 102
+- Accepted roadmap item: 120
+- Planned and quarantined: 109
 - Implemented: 11
 - Passing: 0
 - Active product benchmark: 11
 - Active planning gate: `python3 tool/validate.py`
 
-Every specification remains red. Eleven product surface are implemented with active acceptance contracts, while unmet prerequisite or matrix evidence prevents passing status. The other 102 remain excluded so the repository can stay green without pretending that future capability passes.
+Every specification remains red. Eleven product surface are implemented with active acceptance contracts, while unmet prerequisite or matrix evidence prevents passing status. The other 109 remain excluded so the repository can stay green without pretending that future capability passes.
 
 ## Required specification field
 

@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-110",
+  "item_id": "BPTK-110",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The redistributable kit resolution and the compressed store are both absent.",
+  "prerequisite": [
+    "BPTK-041",
+    "BPTK-105"
+  ],
+  "promotion_trigger": "Promote when the shared payload is stored once, the second title hits the cache, and the differing-hash case never merges.",
+  "expected_failing_assertion": "No cross-title store exists.",
+  "owner_item": "BPTK-110",
+  "active_gate_evidence": "The packager keeps hash-keyed chunk identity per package.",
+  "fixture": [
+    "FIX-015"
+  ],
+  "procedure": [
+    "Publish two title sharing a redistributable payload.",
+    "Assert one stored copy and a cache hit for the second.",
+    "Attempt to merge a differing hash and assert refusal."
+  ],
+  "pass_criterion": [
+    "Shared payload stored once.",
+    "Differing hash are never merged."
+  ]
+}

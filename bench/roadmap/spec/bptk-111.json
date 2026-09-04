@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-111",
+  "item_id": "BPTK-111",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The copy-on-write overlay does not exist yet to diff.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the sync uploads exactly the overlay diff with the base-exclusion proof and resolves conflicts deterministically.",
+  "expected_failing_assertion": "No overlay or sync exists.",
+  "owner_item": "BPTK-111",
+  "active_gate_evidence": "The save boundary keeps the base read-only with no overlay created and path-shaped profile refused.",
+  "fixture": [
+    "FIX-008"
+  ],
+  "procedure": [
+    "Sync the save fixture and capture the transmitted set.",
+    "Assert the base and hash-matching file are absent from the set.",
+    "Resolve a planted conflict on two device and compare results."
+  ],
+  "pass_criterion": [
+    "Only the overlay diff uploads.",
+    "Conflict resolution is deterministic."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-105",
+  "item_id": "BPTK-105",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "Asset packaging emits uncompressed chunk and no browser streaming runtime exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the streamed package meets the declared bytes-to-interactive fraction with every chunk hash-verified.",
+  "expected_failing_assertion": "No compressed streaming exists; the package integrity timing covers uncompressed chunk only.",
+  "owner_item": "BPTK-105",
+  "active_gate_evidence": "The packager keeps content-addressed chunk with atomic commit and one package identity.",
+  "fixture": [
+    "FIX-015"
+  ],
+  "procedure": [
+    "Package the fixture with per-chunk compression declared.",
+    "Measure bytes-to-interactive against the declared fraction.",
+    "Verify every chunk hash before use."
+  ],
+  "pass_criterion": [
+    "Bytes-to-interactive meets the declared fraction.",
+    "Every chunk hash verifies."
+  ]
+}

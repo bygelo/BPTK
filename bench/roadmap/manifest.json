@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 127,
-    "accepted": 113,
+    "raw": 134,
+    "accepted": 120,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -2360,6 +2360,144 @@
         "SRC-026",
         "SRC-027",
         "SRC-028"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-105",
+      "title": "Stream content-addressed chunk compressed",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Compressed per-chunk streaming over the content-addressed package with hash verification per chunk.",
+      "benchmark_id": "BENCH-105",
+      "failure_meaning": "Large title pay the full uncompressed transfer cost on every publish.",
+      "risk": "A compression level chosen for the benchmark budget that degrades cold-start beyond it.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-010",
+        "SRC-022"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-106",
+      "title": "Stream by range with prefetch and asynchronous guest read",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-105"
+      ],
+      "deliverable": "Range-based streaming with prefetch and an asynchronous guest input-output service for absent block.",
+      "benchmark_id": "BENCH-106",
+      "failure_meaning": "Streaming only helps before launch and stalls once the game reads beyond the fetched set.",
+      "risk": "A prefetch policy tuned to the fixture order fails on real access pattern.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-010",
+        "SRC-022"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-107",
+      "title": "Embed one package in every host shape",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "An embedding SDK covering the four host shape with one runtime contract and leak-free remount.",
+      "benchmark_id": "BENCH-107",
+      "failure_meaning": "Every embedding integration becomes a per-host port.",
+      "risk": "A host adapter that quietly owns the game loop changes runtime behavior per host.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-006",
+        "SRC-009",
+        "SRC-010",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-108",
+      "title": "Install the package for offline play",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Offline install with a hash-verified service and precise chunk invalidation on update.",
+      "benchmark_id": "BENCH-108",
+      "failure_meaning": "The package dies without connectivity after first use.",
+      "risk": "An offline service that serves stale chunk after update is worse than no offline support.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-010",
+        "SRC-022"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-109",
+      "title": "Emit the hosting constraint for cross-origin isolation",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Hosting-constraint automation that emits the isolation header set and selects the bundle per measured isolation.",
+      "benchmark_id": "BENCH-109",
+      "failure_meaning": "Every self-hosted deployment breaks threaded bundle silently.",
+      "risk": "A header emitted in the wrong phase appears isolated in the lab and not in production.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-018",
+        "SRC-019",
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-110",
+      "title": "Deduplicate shared asset across title on the content network",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-041",
+        "BPTK-105"
+      ],
+      "deliverable": "Cross-title asset deduplication over the content-addressed store with hash-safe identity.",
+      "benchmark_id": "BENCH-110",
+      "failure_meaning": "Every title re-ships the same redistributable payload.",
+      "risk": "A dedup keyed by name instead of hash merges different payload version.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-010",
+        "SRC-022",
+        "SRC-038"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-111",
+      "title": "Synchronize only the save overlay to the cloud",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Cloud save synchronization over the overlay with a base-exclusion proof and deterministic conflict resolution.",
+      "benchmark_id": "BENCH-111",
+      "failure_meaning": "Save roams but proprietary content leaves the machine with it.",
+      "risk": "A conflict resolver that depends on wall-clock order is nondeterministic across device.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-009",
+        "SRC-010",
+        "SRC-022",
+        "SRC-023"
       ],
       "promotion_state": "planned"
     }

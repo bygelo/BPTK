@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-106",
+  "item_id": "BPTK-106",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No streaming runtime or guest input-output service exists.",
+  "prerequisite": [
+    "BPTK-105"
+  ],
+  "promotion_trigger": "Promote when the fixture reaches interactive partly unfetched with no frame stall on absent-block read.",
+  "expected_failing_assertion": "No range streaming exists.",
+  "owner_item": "BPTK-106",
+  "active_gate_evidence": "The packaging timing surface keeps chunk integrity measurement without a runtime claim.",
+  "fixture": [
+    "FIX-015"
+  ],
+  "procedure": [
+    "Start the fixture with a declared unfetched set.",
+    "Measure time to interactive.",
+    "Read an absent block synchronously from the guest and measure the frame impact."
+  ],
+  "pass_criterion": [
+    "Interactive is reached partly unfetched.",
+    "Absent-block read causes no frame stall."
+  ]
+}

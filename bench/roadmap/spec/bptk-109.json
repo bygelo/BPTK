@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-109",
+  "item_id": "BPTK-109",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The thread command selects configuration but no header emission or isolation-measured selection exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the emitted constraint yields isolation on the declared host and the absent-isolation case selects the single-thread bundle.",
+  "expected_failing_assertion": "No header emission exists.",
+  "owner_item": "BPTK-109",
+  "active_gate_evidence": "The thread command keeps atomic configuration with honest isolation observation.",
+  "fixture": [
+    "FIX-018"
+  ],
+  "procedure": [
+    "Emit the constraint and measure crossOriginIsolated on the declared host.",
+    "Serve without the constraint and assert the single-thread selection.",
+    "Assert no shared-memory build is ever served unisolated."
+  ],
+  "pass_criterion": [
+    "Constraint yields isolation.",
+    "Absent isolation selects the single-thread bundle."
+  ]
+}

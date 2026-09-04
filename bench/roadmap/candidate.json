@@ -3,7 +3,7 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 60,
+    "product": 67,
     "prior_art": 49,
     "constraint": 14
   },
@@ -1023,6 +1023,62 @@
       "target_id": "BPTK-129",
       "summary": "Label the execution lane and accuracy on every surface",
       "dedupe_key": "gs-101-lane-accuracy-honesty-badge"
+    },
+    {
+      "candidate_id": "CAND-128",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-105",
+      "summary": "Stream content-addressed chunk compressed",
+      "dedupe_key": "gs-061-compressed-streaming"
+    },
+    {
+      "candidate_id": "CAND-129",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-106",
+      "summary": "Stream by range with prefetch and asynchronous guest read",
+      "dedupe_key": "gs-062-range-streaming-prefetch"
+    },
+    {
+      "candidate_id": "CAND-130",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-107",
+      "summary": "Embed one package in every host shape",
+      "dedupe_key": "gs-063-embedding-sdk"
+    },
+    {
+      "candidate_id": "CAND-131",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-108",
+      "summary": "Install the package for offline play",
+      "dedupe_key": "gs-064-pwa-offline-install"
+    },
+    {
+      "candidate_id": "CAND-132",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-109",
+      "summary": "Emit the hosting constraint for cross-origin isolation",
+      "dedupe_key": "gs-065-hosting-constraint-automation"
+    },
+    {
+      "candidate_id": "CAND-133",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-110",
+      "summary": "Deduplicate shared asset across title on the content network",
+      "dedupe_key": "gs-066-cross-title-asset-dedup"
+    },
+    {
+      "candidate_id": "CAND-134",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-111",
+      "summary": "Synchronize only the save overlay to the cloud",
+      "dedupe_key": "gs-067-cloud-save-sync"
     }
   ]
 }
