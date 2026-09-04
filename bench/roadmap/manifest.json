@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 143,
-    "accepted": 129,
+    "raw": 149,
+    "accepted": 135,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -2708,6 +2708,122 @@
         "SRC-010",
         "SRC-022",
         "SRC-023"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-130",
+      "title": "Confine every lane behind its own profile",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Per-lane confinement profile enforced at the runtime boundary with structured escape reporting.",
+      "benchmark_id": "BENCH-130",
+      "failure_meaning": "Lane diversity becomes a containment gap diversity.",
+      "risk": "A profile that one lane enforces and its fallback lane omits leaves the weaker path open.",
+      "source_evidence": [
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-131",
+      "title": "Bound resource exhaustion across lane",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Cross-lane resource-bound enforcement with per-lane budget and fail-closed behavior.",
+      "benchmark_id": "BENCH-131",
+      "failure_meaning": "Any new lane reintroduces the exhaustion class the declared bound layer closed.",
+      "risk": "A bound enforced at one layer but not its async callback misses the deferred flood.",
+      "source_evidence": [
+        "SRC-041"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-132",
+      "title": "Refuse copy protection by name",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "Detect-and-refuse for the protection corpus with named reason and an artifact-free guarantee.",
+      "benchmark_id": "BENCH-132",
+      "failure_meaning": "The project becomes a circumvention distributor.",
+      "risk": "A refusal that still writes a diagnostic dump of the protection state is itself a bypass artifact.",
+      "source_evidence": [
+        "SRC-033",
+        "SRC-034"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-133",
+      "title": "Scan untrusted input for known threat",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A local bounded threat scan that runs before any execution and quarantines flagged script.",
+      "benchmark_id": "BENCH-133",
+      "failure_meaning": "Imported hostile input gets a direct path to execution.",
+      "risk": "A scan signature list that ages out silently becomes a false-clean guarantee.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-009",
+        "SRC-019",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-134",
+      "title": "Enforce the capability manifest with consent",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-089"
+      ],
+      "deliverable": "Capability-manifest enforcement with surfaced denial and least-privilege defaults.",
+      "benchmark_id": "BENCH-134",
+      "failure_meaning": "The bundle trust model has no enforcement and users cannot see what a title claims.",
+      "risk": "A surfaced denial that still allows the side effect is worse than a silent block.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-006",
+        "SRC-009",
+        "SRC-010",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-135",
+      "title": "Grade untrusted input into legal trust tier",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A trust-tier boundary that binds input class to allowed surface with no silent upgrade path.",
+      "benchmark_id": "BENCH-135",
+      "failure_meaning": "The arbitrary-executable promise has no legal or security boundary users can reason about.",
+      "risk": "A tier heuristic that reclassifies under load or retry is the silent upgrade.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-009",
+        "SRC-019",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026"
       ],
       "promotion_state": "planned"
     }

@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-134",
+  "item_id": "BPTK-134",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The probe containment policy denies host capability by absence but no manifest-driven enforcement exists.",
+  "prerequisite": [
+    "BPTK-089"
+  ],
+  "promotion_trigger": "Promote when undeclared use is denied with surfaced reason and the defaults hold on every lane.",
+  "expected_failing_assertion": "No capability manifest enforcement exists.",
+  "owner_item": "BPTK-134",
+  "active_gate_evidence": "The containment policy keeps refusing an execution manifest that declares capability outside it.",
+  "fixture": [
+    "FIX-017"
+  ],
+  "procedure": [
+    "Run the fixture inside its manifest and assert success.",
+    "Trigger each undeclared capability and assert denial with surfaced reason.",
+    "Assert default network denial and storage scope."
+  ],
+  "pass_criterion": [
+    "Undeclared use is denied and surfaced.",
+    "Least-privilege defaults hold."
+  ]
+}

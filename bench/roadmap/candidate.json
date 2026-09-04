@@ -3,7 +3,7 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 76,
+    "product": 82,
     "prior_art": 49,
     "constraint": 14
   },
@@ -1151,6 +1151,54 @@
       "target_id": "BPTK-120",
       "summary": "Layer a mod over the read-only base",
       "dedupe_key": "gs-076-modding-support"
+    },
+    {
+      "candidate_id": "CAND-144",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-130",
+      "summary": "Confine every lane behind its own profile",
+      "dedupe_key": "gs-086-per-lane-containment"
+    },
+    {
+      "candidate_id": "CAND-145",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-131",
+      "summary": "Bound resource exhaustion across lane",
+      "dedupe_key": "gs-087-cross-lane-resource-bounds"
+    },
+    {
+      "candidate_id": "CAND-146",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-132",
+      "summary": "Refuse copy protection by name",
+      "dedupe_key": "gs-088-drm-detect-refuse"
+    },
+    {
+      "candidate_id": "CAND-147",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-133",
+      "summary": "Scan untrusted input for known threat",
+      "dedupe_key": "gs-089-malware-threat-scan"
+    },
+    {
+      "candidate_id": "CAND-148",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-134",
+      "summary": "Enforce the capability manifest with consent",
+      "dedupe_key": "gs-090-capability-manifest-consent"
+    },
+    {
+      "candidate_id": "CAND-149",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-135",
+      "summary": "Grade untrusted input into legal trust tier",
+      "dedupe_key": "gs-091-trust-tier-boundary"
     }
   ]
 }

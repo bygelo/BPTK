@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-132",
+  "item_id": "BPTK-132",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The census routes SafeDisc evidence to refuse but the full labelled protection corpus is unavailable while BPTK-002 stays red.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every corpus entry refuses with the protection named and the artifact scan is empty.",
+  "expected_failing_assertion": "The labelled protection corpus is unavailable.",
+  "owner_item": "BPTK-132",
+  "active_gate_evidence": "The census keeps routing protection evidence to refuse without executing the input.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Route every labelled protection fixture through the surface.",
+    "Assert refusal with the protection named.",
+    "Scan all output for unwrap or patch artifact and assert emptiness."
+  ],
+  "pass_criterion": [
+    "Every entry refuses named.",
+    "Zero bypass artifact exists."
+  ]
+}

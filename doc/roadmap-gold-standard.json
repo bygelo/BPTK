@@ -1114,7 +1114,8 @@
         "BPTK-045"
       ],
       "dep": [],
-      "spec": "**GS-086 · Per-lane guest containment** — every lane its own confinement profile; web-native can't reach `window.parent`, emulator can't open host FS beyond bundle; any escape fails · **T1** · extends BPTK-045."
+      "spec": "**GS-086 · Per-lane guest containment** — every lane its own confinement profile; web-native can't reach `window.parent`, emulator can't open host FS beyond bundle; any escape fails · **T1** · extends BPTK-045.",
+      "promoted_as": "BPTK-130"
     },
     {
       "gs_id": "GS-087",
@@ -1126,7 +1127,8 @@
         "BPTK-044"
       ],
       "dep": [],
-      "spec": "**GS-087 · Cross-lane resource-exhaustion bounds** — decompression-bomb / unbounded-stream / OPFS-quota / GPU-flood / worker-flood each fail closed; recomp+emulator enforce instruction/time budget · **T1** · extends BPTK-044."
+      "spec": "**GS-087 · Cross-lane resource-exhaustion bounds** — decompression-bomb / unbounded-stream / OPFS-quota / GPU-flood / worker-flood each fail closed; recomp+emulator enforce instruction/time budget · **T1** · extends BPTK-044.",
+      "promoted_as": "BPTK-131"
     },
     {
       "gs_id": "GS-088",
@@ -1138,7 +1140,8 @@
         "BPTK-037"
       ],
       "dep": [],
-      "spec": "**GS-088 · DRM / copy-protection detect-and-REFUSE** — labelled protection corpus routed to `refuse` with the protection named; **zero unwrap/patch artifact emitted for any protected input** · **T1** · extends BPTK-037."
+      "spec": "**GS-088 · DRM / copy-protection detect-and-REFUSE** — labelled protection corpus routed to `refuse` with the protection named; **zero unwrap/patch artifact emitted for any protected input** · **T1** · extends BPTK-037.",
+      "promoted_as": "BPTK-132"
     },
     {
       "gs_id": "GS-089",
@@ -1150,7 +1153,8 @@
         "BPTK-004"
       ],
       "dep": [],
-      "spec": "**GS-089 · Malware / threat scan of untrusted input** — benign corpus passes, EICAR/known-bad flagged pre-exec, flagged web-native script quarantined; local-only, bounded · **T1** · extends BPTK-004."
+      "spec": "**GS-089 · Malware / threat scan of untrusted input** — benign corpus passes, EICAR/known-bad flagged pre-exec, flagged web-native script quarantined; local-only, bounded · **T1** · extends BPTK-004.",
+      "promoted_as": "BPTK-133"
     },
     {
       "gs_id": "GS-090",
@@ -1162,7 +1166,8 @@
       "dep": [
         "GS-044"
       ],
-      "spec": "**GS-090 · Capability-based permission manifest + consent** — bundle declares least-privilege set; undeclared-capability use denied + surfaced; default deny-network / OPFS-scoped · **T1** · deps GS-044/086."
+      "spec": "**GS-090 · Capability-based permission manifest + consent** — bundle declares least-privilege set; undeclared-capability use denied + surfaced; default deny-network / OPFS-scoped · **T1** · deps GS-044/086.",
+      "promoted_as": "BPTK-134"
     },
     {
       "gs_id": "GS-091",
@@ -1174,7 +1179,8 @@
         "BPTK-004"
       ],
       "dep": [],
-      "spec": "**GS-091 · Trust-tier legal boundary for arbitrary executables** — attested→full lanes; unknown-untrusted→scan+inspect only, no net/persistence; DRM/anti-cheat/illegal→refused; tier can't silently upgrade · **T3** · extends BPTK-004/001."
+      "spec": "**GS-091 · Trust-tier legal boundary for arbitrary executables** — attested→full lanes; unknown-untrusted→scan+inspect only, no net/persistence; DRM/anti-cheat/illegal→refused; tier can't silently upgrade · **T3** · extends BPTK-004/001.",
+      "promoted_as": "BPTK-135"
     },
     {
       "gs_id": "GS-092",

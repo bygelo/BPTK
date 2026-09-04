@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "BENCH-131",
+  "item_id": "BPTK-131",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The declared bound layer covers extraction and the probe instruction budget; the other lane surfaces are absent.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every declared flood fixture fails closed per lane and the budget enforcement holds where code runs.",
+  "expected_failing_assertion": "The GPU, worker, and storage-quota lane surface do not exist yet.",
+  "owner_item": "BPTK-131",
+  "active_gate_evidence": "The declared bound layer keeps refusing the decompression-bomb fixture and the probe keeps its instruction budget.",
+  "fixture": [
+    "FIX-009",
+    "FIX-015"
+  ],
+  "procedure": [
+    "Run each declared flood fixture against its lane.",
+    "Assert fail-closed with the bound named.",
+    "Assert instruction and time budget enforcement on the code-executing lane."
+  ],
+  "pass_criterion": [
+    "Every flood fixture fails closed.",
+    "Budget enforcement holds on executing lane."
+  ]
+}

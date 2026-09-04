@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-133",
+  "item_id": "BPTK-133",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The security command performs bounded analysis but no threat-signature scan exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the benign corpus passes, the known-bad set is flagged pre-execution, and quarantine holds within the bound.",
+  "expected_failing_assertion": "No threat scan exists in the inspect path.",
+  "owner_item": "BPTK-133",
+  "active_gate_evidence": "The security command keeps hostile-code control within its declared boundary and local-first posture.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Scan the benign corpus and assert pass.",
+    "Scan the known-bad set and assert pre-execution flag.",
+    "Quarantine flagged script and assert no execution path reaches it."
+  ],
+  "pass_criterion": [
+    "Benign passes and known-bad is flagged.",
+    "Quarantine holds within the bound."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-135",
+  "item_id": "BPTK-135",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The security surface reports review control but no tier model exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every tier boundary holds including the no-upgrade property under retry.",
+  "expected_failing_assertion": "No trust tier exists in the security surface.",
+  "owner_item": "BPTK-135",
+  "active_gate_evidence": "The security command keeps its review boundary and the census keeps protection refusal.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Grade each tier fixture and assert its allowed surface.",
+    "Assert the unknown tier cannot reach network or persistence.",
+    "Retry and re-grade to assert no silent upgrade."
+  ],
+  "pass_criterion": [
+    "Tier boundaries hold.",
+    "No silent upgrade occurs."
+  ]
+}

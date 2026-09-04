@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-130",
+  "item_id": "BPTK-130",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The probe-path containment policy exists but the other lane surfaces are absent.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every lane enforces its declared profile and each escape attempt fails named.",
+  "expected_failing_assertion": "Only the probe path has a containment policy; no other lane exists to confine.",
+  "owner_item": "BPTK-130",
+  "active_gate_evidence": "The declared containment policy keeps guest memory inside the mapped image and refuses undeclared capability on the probe path.",
+  "fixture": [
+    "FIX-009"
+  ],
+  "procedure": [
+    "Run each lane fixture and probe its declared boundary.",
+    "Assert a web-native export cannot reach the parent document.",
+    "Assert an emulator lane cannot open host storage beyond the bundle."
+  ],
+  "pass_criterion": [
+    "Every lane enforces its profile.",
+    "Escape attempts fail with the escape named."
+  ]
+}
