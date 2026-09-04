@@ -10,6 +10,7 @@
     "data/status.json",
     "lib/benchmark.mjs",
     "lib/bound.mjs",
+    "lib/census.mjs",
     "lib/cli.mjs",
     "lib/corpus.mjs",
     "lib/doctor.mjs",

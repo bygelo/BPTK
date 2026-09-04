@@ -6,6 +6,7 @@ All notable planning and implementation change will be recorded here.
 
 ### Added
 
+- Added the static middleware, copy-protection, and engine census (BPTK-037 and BPTK-043): `bptk inspect` routes middleware import and SafeDisc loader evidence into handle, warn, extract, or refuse, and fingerprints id Tech 1, id Tech 2, Build, SCUMM, Sierra AGI, and Sierra SCI assets to their named open reimplementation without bundling engine or game code. Proprietary Indeo and WMV codec evidence refuses like the video posture.
 - Added `bptk import <input>` installer extraction (BPTK-038): the bounded extractor unpacks the pinned Inno Setup 6 unicode family and an MSCF cabinet with stored or MSZIP folder to a declared output directory, refuses a 16-bit setup stub, an encrypted or BZip2 or LZMA chunk, a checksum mismatch, and a payload path escape, and never executes installer code. Plan-only import reports the payload without writing.
 - Added the declared resource-bound layer (BPTK-044): one frozen bound caps decompressed output, amplification ratio, entry count, nesting depth, and compressed chunk read for extraction, and the probe enforces the declared instruction budget; a decompression bomb is refused before its output is allocated.
 - Added `legal`, `corpus status`, `security`, and `inspect` as bounded local-analysis commands.

@@ -4,14 +4,24 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No engine-family census exists and the engine adapter contract is incomplete, so a supported game cannot be routed to a matching open reimplementation.",
-  "prerequisite": ["BPTK-029"],
+  "gate": "active",
+  "exclusion_reason": "The engine-family census fingerprint and route are implemented and active, but the labelled corpus that would prove corpus-wide routing is unavailable while BPTK-002 remains red and the adapter contract that would consume the route is still BPTK-029 planned work.",
+  "prerequisite": [
+    "BPTK-029"
+  ],
   "promotion_trigger": "Promote when a labelled corpus routes each supported game to the correct open engine reimplementation or reports no match, with no engine or game code bundled.",
-  "expected_failing_assertion": "The engine-family census cannot route a labelled sample to the correct open reimplementation or a correct no-match.",
+  "expected_failing_assertion": "The labelled engine corpus cannot be assembled while BPTK-002 owns no frozen denominator, and no adapter contract exists to accept the routed family.",
   "owner_item": "BPTK-043",
-  "active_gate_evidence": "The product records a known engine-family signature and the matching open reimplementation as evidence and returns a routing decision without bundling code.",
-  "fixture": ["FIX-002"],
-  "procedure": ["Fingerprint a supported game engine from executable and asset signal.", "Route each labelled sample to a matching open reimplementation or report no match and compare against the reference label."],
-  "pass_criterion": ["Every labelled sample routes to the correct open engine reimplementation or a correct no-match.", "No engine or game code is bundled and no unsupported engine is claimed as portable."]
+  "active_gate_evidence": "The census routes Build, id Tech 1, id Tech 2, SCUMM, Sierra AGI, and Sierra SCI asset evidence to their named open reimplementation through the real bptk inspect surface, bundles no engine code, and reports an honest no-match.",
+  "fixture": [
+    "FIX-002"
+  ],
+  "procedure": [
+    "Fingerprint a supported game engine from executable and asset signal.",
+    "Route each labelled sample to a matching open reimplementation or report no match and compare against the reference label."
+  ],
+  "pass_criterion": [
+    "Every labelled sample routes to the correct open engine reimplementation or a correct no-match.",
+    "No engine or game code is bundled and no unsupported engine is claimed as portable."
+  ]
 }
