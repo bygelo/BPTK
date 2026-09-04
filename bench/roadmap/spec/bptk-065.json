@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-065",
+  "item_id": "BPTK-065",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No translator exists whose support could bound the advertisement.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the advertisement is derived from measured translator support and the inflated-advertisement case fails by construction.",
+  "expected_failing_assertion": "The graphics doctor reports browser capability only and no translator bound exists.",
+  "owner_item": "BPTK-065",
+  "active_gate_evidence": "The doctor keeps reason-bound blocking with observed capability and no support claim.",
+  "fixture": [
+    "FIX-010"
+  ],
+  "procedure": [
+    "Derive the advertised shader model from the compiled translator table.",
+    "Compare the advertisement against measured support on the fixture corpus.",
+    "Mutate the advertisement above support and assert the check fails."
+  ],
+  "pass_criterion": [
+    "Advertisement never exceeds measured support.",
+    "The inflated advertisement fails by construction."
+  ]
+}

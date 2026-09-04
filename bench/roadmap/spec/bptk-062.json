@@ -1,0 +1,25 @@
+{
+  "benchmark_id": "BENCH-062",
+  "item_id": "BPTK-062",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No OpenGL or Glide translation path exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the GL and Glide combiner fixture render within the frozen tolerance through the unified representation.",
+  "expected_failing_assertion": "No GL or Glide frontend exists.",
+  "owner_item": "BPTK-062",
+  "active_gate_evidence": "The graphics probes report browser capability only.",
+  "fixture": [
+    "FIX-013"
+  ],
+  "procedure": [
+    "Translate the GL and Glide combiner fixture to the unified representation.",
+    "Render on the live adapter and compare against the reference within the frozen tolerance."
+  ],
+  "pass_criterion": [
+    "Both fixture render within tolerance.",
+    "No frontend-specific emitter exists outside the audit."
+  ]
+}

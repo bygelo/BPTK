@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "BENCH-074",
+  "item_id": "BPTK-074",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No shader translator exists to contain.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the declared hostile-bytecode corpus is refused within the frozen bound with zero escape.",
+  "expected_failing_assertion": "No translator surface exists to fuzz.",
+  "owner_item": "BPTK-074",
+  "active_gate_evidence": "The declared resource-bound layer keeps extraction and execution bounded and the importer refuses unclassified input.",
+  "fixture": [
+    "FIX-013",
+    "FIX-009"
+  ],
+  "procedure": [
+    "Fuzz the declared bytecode classes against the translator surface.",
+    "Assert refusal within the frozen time and memory bound.",
+    "Assert zero out-of-bounds or crash escape across the corpus."
+  ],
+  "pass_criterion": [
+    "Every hostile input is refused in bound.",
+    "Zero escape reaches the host."
+  ]
+}

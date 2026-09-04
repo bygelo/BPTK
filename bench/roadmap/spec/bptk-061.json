@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-061",
+  "item_id": "BPTK-061",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No shader translator or compiler exists for the corpus.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the declared corpus produces byte-identical output through the unified path and no standalone emitter remains.",
+  "expected_failing_assertion": "No Direct3D 9 shader translation exists.",
+  "owner_item": "BPTK-061",
+  "active_gate_evidence": "The roadmap keeps BPTK-020 red and the graphics probes report no translator.",
+  "fixture": [
+    "FIX-013"
+  ],
+  "procedure": [
+    "Translate each corpus bytecode through the unified frontend.",
+    "Compare the emitted output byte-for-byte across the declared corpus.",
+    "Assert no standalone emitter remains in the tree."
+  ],
+  "pass_criterion": [
+    "Corpus output is byte-identical.",
+    "The standalone emitter is deleted."
+  ]
+}

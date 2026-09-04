@@ -1,0 +1,25 @@
+{
+  "benchmark_id": "BENCH-067",
+  "item_id": "BPTK-067",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No unified representation or backend exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when every declared fixture renders on the live adapter through the primary backend.",
+  "expected_failing_assertion": "No WebGPU rendering path exists.",
+  "owner_item": "BPTK-067",
+  "active_gate_evidence": "The graphics doctor observes live WebGPU availability without a runtime claim.",
+  "fixture": [
+    "FIX-010"
+  ],
+  "procedure": [
+    "Render each declared fixture through the primary backend on the live adapter.",
+    "Compare each frame against the test-time reference within the frozen tolerance."
+  ],
+  "pass_criterion": [
+    "Every declared fixture renders.",
+    "Every frame is within tolerance."
+  ]
+}

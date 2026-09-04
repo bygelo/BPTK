@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-072",
+  "item_id": "BPTK-072",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No console framebuffer prototype exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the report and prototype resolve a research tile fixture on the declared adapter set.",
+  "expected_failing_assertion": "The console research surface defers with no prototype.",
+  "owner_item": "BPTK-072",
+  "active_gate_evidence": "The modern-API scan keeps reporting signal without a framebuffer claim.",
+  "fixture": [
+    "FIX-026"
+  ],
+  "procedure": [
+    "Prototype the tile resolve over the research fixture.",
+    "Measure on the declared adapter set.",
+    "Record the feasibility verdict with evidence."
+  ],
+  "pass_criterion": [
+    "The prototype resolves the tile fixture.",
+    "The verdict is evidence-backed."
+  ]
+}

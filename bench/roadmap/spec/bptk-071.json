@@ -1,0 +1,25 @@
+{
+  "benchmark_id": "BENCH-071",
+  "item_id": "BPTK-071",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No rendering surface exists to resolve into.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the 4x edge fixture resolves within tolerance and the unsupported-count case reports its declared fallback.",
+  "expected_failing_assertion": "No multisample or format-conversion path exists.",
+  "owner_item": "BPTK-071",
+  "active_gate_evidence": "The graphics probes report adapter capability without a rendering claim.",
+  "fixture": [
+    "FIX-010"
+  ],
+  "procedure": [
+    "Render the 4x edge fixture and compare the resolve against the reference within tolerance.",
+    "Request an unsupported sample count and assert the declared fallback with its report."
+  ],
+  "pass_criterion": [
+    "4x resolve is within tolerance.",
+    "Unsupported count falls back only as declared and reported."
+  ]
+}

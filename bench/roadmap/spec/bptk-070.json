@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-070",
+  "item_id": "BPTK-070",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No browser frame or present path exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when mid-gray gamma, dirty-rect region, and present pacing all meet the frozen tolerance and budget.",
+  "expected_failing_assertion": "No presentation surface exists.",
+  "owner_item": "BPTK-070",
+  "active_gate_evidence": "The graphics probes observe adapter capability without a present path.",
+  "fixture": [
+    "FIX-006"
+  ],
+  "procedure": [
+    "Present the gamma fixture and compare mid-gray against the reference within the declared delta-E.",
+    "Present with a declared dirty rect and assert only that region changes.",
+    "Measure present pacing against the declared budget."
+  ],
+  "pass_criterion": [
+    "Mid-gray gamma is within delta-E.",
+    "Dirty rect updates only its region and pacing stays in budget."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "BENCH-060",
+  "item_id": "BPTK-060",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No DXBC or DXIL reader exists and the modern-API scan only reports signal presence.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the prototype reader consumes the research fixture and emits a complete named-opcode coverage table.",
+  "expected_failing_assertion": "The d3d11 research surface defers with no reader prototype.",
+  "owner_item": "BPTK-060",
+  "active_gate_evidence": "The modern-API scan keeps reporting DXGI, D3D11, and DXBC signal with live WebGPU observation.",
+  "fixture": [
+    "FIX-025",
+    "doc/research-2026-wasm-native.md"
+  ],
+  "procedure": [
+    "Run the prototype reader over the DXBC and DXIL research fixture.",
+    "Emit the opcode coverage table with unsupported opcode named.",
+    "Record the reuse decision for the prior-art chain."
+  ],
+  "pass_criterion": [
+    "Every opcode is covered or named unsupported.",
+    "The prior-art reuse decision is recorded."
+  ]
+}

@@ -3,8 +3,8 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 16,
-    "prior_art": 38,
+    "product": 30,
+    "prior_art": 41,
     "constraint": 14
   },
   "candidate": [
@@ -583,6 +583,142 @@
       "target_id": "BPTK-058",
       "summary": "Research the MIPS console lane and PS2 gap",
       "dedupe_key": "gs-013-mips-console-ps2-spike"
+    },
+    {
+      "candidate_id": "CAND-073",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-059",
+      "summary": "Lower every shader frontend to one unified intermediate representation",
+      "dedupe_key": "gs-018-one-unified-shader-ir"
+    },
+    {
+      "candidate_id": "CAND-074",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-060",
+      "summary": "Research the DXBC and DXIL frontend",
+      "dedupe_key": "gs-019-dxbc-dxil-frontend"
+    },
+    {
+      "candidate_id": "CAND-075",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-061",
+      "summary": "Lower Direct3D 9 shader-model 1 through 3 to the unified representation",
+      "dedupe_key": "gs-020-d3d9-sm1-3-frontend"
+    },
+    {
+      "candidate_id": "CAND-076",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-062",
+      "summary": "Research the OpenGL and Glide shader frontend",
+      "dedupe_key": "gs-021-glsl-arb-glide-frontend"
+    },
+    {
+      "candidate_id": "CAND-077",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-063",
+      "summary": "Compile the fixed-function pipeline once",
+      "dedupe_key": "gs-022-fixed-function-compiled-once"
+    },
+    {
+      "candidate_id": "CAND-078",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-064",
+      "summary": "Verify texgen, projective, and shadow-cookie correctness",
+      "dedupe_key": "gs-023-texgen-projective-shadow-cookie"
+    },
+    {
+      "candidate_id": "CAND-079",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-065",
+      "summary": "Report capability honestly against translator support",
+      "dedupe_key": "gs-024-honest-capability-reporting"
+    },
+    {
+      "candidate_id": "CAND-080",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-066",
+      "summary": "Regress rendered frames against a reference computed at test time",
+      "dedupe_key": "gs-025-frame-diff-generated-reference"
+    },
+    {
+      "candidate_id": "CAND-081",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-067",
+      "summary": "Serve the WebGPU primary backend from the unified representation",
+      "dedupe_key": "gs-026-webgpu-primary-backend"
+    },
+    {
+      "candidate_id": "CAND-082",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-068",
+      "summary": "Serve the WebGL2 fallback from the unified representation",
+      "dedupe_key": "gs-027-webgl2-fallback"
+    },
+    {
+      "candidate_id": "CAND-083",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-069",
+      "summary": "Serve the WebGPU compatibility-mode backend",
+      "dedupe_key": "gs-028-webgpu-compatibility-backend"
+    },
+    {
+      "candidate_id": "CAND-084",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-070",
+      "summary": "Present frames with correct gamma, dirty rect, and pacing",
+      "dedupe_key": "gs-029-presentation-swapchain-gamma"
+    },
+    {
+      "candidate_id": "CAND-085",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-071",
+      "summary": "Resolve multisample and convert surface format",
+      "dedupe_key": "gs-030-msaa-resolve-format-conversion"
+    },
+    {
+      "candidate_id": "CAND-086",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-072",
+      "summary": "Research console framebuffer and embedded-memory resolve",
+      "dedupe_key": "gs-031-edram-tiling-research"
+    },
+    {
+      "candidate_id": "CAND-087",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-073",
+      "summary": "Research compute and modern shader support",
+      "dedupe_key": "gs-032-compute-uav-research"
+    },
+    {
+      "candidate_id": "CAND-088",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-074",
+      "summary": "Contain hostile shader bytecode in the translator",
+      "dedupe_key": "gs-033-shader-hostile-bytecode-containment"
+    },
+    {
+      "candidate_id": "CAND-089",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-075",
+      "summary": "Cache compiled pipeline by content address",
+      "dedupe_key": "gs-034-content-addressed-pipeline-cache"
     }
   ]
 }

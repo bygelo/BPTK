@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 72,
-    "accepted": 58,
+    "raw": 89,
+    "accepted": 75,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -1256,6 +1256,317 @@
         "SRC-013",
         "SRC-032",
         "SRC-033"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-059",
+      "title": "Lower every shader frontend to one unified intermediate representation",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A unified shader intermediate representation with a single WGSL emitter, plus a static audit that fails when a second emitter appears in the tree.",
+      "benchmark_id": "BENCH-059",
+      "failure_meaning": "The known three-emitter drift reproduces and identical game state renders differently per frontend.",
+      "risk": "An emitter added for convenience outside the audit scope silently reintroduces the drift.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-014",
+        "SRC-015",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-060",
+      "title": "Research the DXBC and DXIL frontend",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "A bounded research report plus a prototype reader over the DXVK, dxil-spirv, SPIR-V, and Tint prior-art chain that names unsupported opcode explicitly.",
+      "benchmark_id": "BENCH-060",
+      "failure_meaning": "The modern shader lane stays unevaluated or quietly drops instruction.",
+      "risk": "A dropped opcode renders wrong output that looks plausible.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-013",
+        "SRC-014",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-061",
+      "title": "Lower Direct3D 9 shader-model 1 through 3 to the unified representation",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A Direct3D 9 shader-model frontend over the unified representation that replaces any standalone emitter for the declared corpus.",
+      "benchmark_id": "BENCH-061",
+      "failure_meaning": "Shader-model content renders through a divergent path and the unified-representation promise is void.",
+      "risk": "Byte-identical output is relaxed for one opcode and the drift begins again.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-014",
+        "SRC-015",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-062",
+      "title": "Research the OpenGL and Glide shader frontend",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "An OpenGL, ARB assembly, and Glide frontend over the unified representation serving the declared combiner subset.",
+      "benchmark_id": "BENCH-062",
+      "failure_meaning": "GL-era and Glide-era title lack a translation path.",
+      "risk": "A combiner approximation outside the declared tolerance silently shifts color or blending.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-014"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-063",
+      "title": "Compile the fixed-function pipeline once",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "One fixed-function pipeline generator covering the declared light, texture-stage-operation, fog, and alpha matrix, consumed by every fixed-function frontend.",
+      "benchmark_id": "BENCH-063",
+      "failure_meaning": "Fixed-function content renders per-API instead of per-state and compatibility evidence splits.",
+      "risk": "A generator parameter tuned for one API shifts another API's output.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-064",
+      "title": "Verify texgen, projective, and shadow-cookie correctness",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-063"
+      ],
+      "deliverable": "Texgen, projective mapping, and shadow-cookie correctness over the fixed-function generator, with the named projection-divide regression covered fail-closed.",
+      "benchmark_id": "BENCH-064",
+      "failure_meaning": "The named silent-wrong-shadow bug class reproduces.",
+      "risk": "A tolerance wide enough to pass a missing divide hides the exact named bug.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-065",
+      "title": "Report capability honestly against translator support",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A capability report bound to measured translator support, with a by-construction failure when advertisement exceeds support.",
+      "benchmark_id": "BENCH-065",
+      "failure_meaning": "The known advertise-more-than-implemented defect reproduces at the product surface.",
+      "risk": "The report reads support from configuration instead of the compiled translator.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014",
+        "SRC-015",
+        "SRC-016",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-066",
+      "title": "Regress rendered frames against a reference computed at test time",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A frame-diff regression check that computes its reference at test time over the declared metric set and retains no baseline artifact.",
+      "benchmark_id": "BENCH-066",
+      "failure_meaning": "Silent rendering drift ships because no frame comparison guards the pipeline.",
+      "risk": "A reference generated from the implementation under test compares against itself and sees nothing.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-011",
+        "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-067",
+      "title": "Serve the WebGPU primary backend from the unified representation",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "The primary representation-to-WGSL backend serving the full declared fixture set on a live adapter.",
+      "benchmark_id": "BENCH-067",
+      "failure_meaning": "The primary GPU path cannot carry the compatibility corpus.",
+      "risk": "A backend validated only on synthetic happy-path fixture misses real state combination.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-068",
+      "title": "Serve the WebGL2 fallback from the unified representation",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A representation-to-GLSL-ES fallback backend with the declared tolerance floor and named blocking above it.",
+      "benchmark_id": "BENCH-068",
+      "failure_meaning": "Host without WebGPU get no honest path or a silent wrong one.",
+      "risk": "The looser tolerance drifts into hiding real divergence.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014",
+        "SRC-015",
+        "SRC-016",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-069",
+      "title": "Serve the WebGPU compatibility-mode backend",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A compatibility-mode backend targeting the declared feature level with emit-time subset enforcement.",
+      "benchmark_id": "BENCH-069",
+      "failure_meaning": "Older GPU class stay locked out of the primary path.",
+      "risk": "Subset enforcement that reads the wrong feature level passes out-of-subset output.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-070",
+      "title": "Present frames with correct gamma, dirty rect, and pacing",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A presentation layer covering swapchain, gamma, dirty-rect, and present pacing semantics over the browser surface.",
+      "benchmark_id": "BENCH-070",
+      "failure_meaning": "Every rendered frame is subtly wrong or slower than budget.",
+      "risk": "Gamma measured only at endpoints misses the mid-gray error.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-071",
+      "title": "Resolve multisample and convert surface format",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A multisample resolve and format-conversion layer with declared fallback and reporting for unsupported sample count.",
+      "benchmark_id": "BENCH-071",
+      "failure_meaning": "Multisampled title render aliased or wrong-format without explanation.",
+      "risk": "A silent fallback to one sample is indistinguishable from a correct resolve in a green suite.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-007",
+        "SRC-014"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-072",
+      "title": "Research console framebuffer and embedded-memory resolve",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "A bounded feasibility report with a prototype of the embedded-memory tile-resolve-to-WebGPU mapping.",
+      "benchmark_id": "BENCH-072",
+      "failure_meaning": "The console framebuffer lane stays unevaluated.",
+      "risk": "A prototype measured only on desktop GPU overstates portable feasibility.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-013",
+        "SRC-014",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-073",
+      "title": "Research compute and modern shader support",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "A bounded research report with a compute prototype and the declared above-limit blocking matrix.",
+      "benchmark_id": "BENCH-073",
+      "failure_meaning": "Modern compute content stays unevaluated.",
+      "risk": "A bit-identical claim measured on one adapter set overstates portability.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-013",
+        "SRC-014",
+        "SRC-020"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-074",
+      "title": "Contain hostile shader bytecode in the translator",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A translator containment layer that bounds time and memory for hostile bytecode and fails closed with a structured reason.",
+      "benchmark_id": "BENCH-074",
+      "failure_meaning": "The DarthShader bug class reaches the runtime through imported shader bytecode.",
+      "risk": "A bound measured on a small fuzz set misses the deeper recursion or expansion case.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-009",
+        "SRC-019",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-075",
+      "title": "Cache compiled pipeline by content address",
+      "tier": "P2",
+      "kind": "runtime",
+      "prerequisite": [],
+      "deliverable": "A content-addressed pipeline and shader cache integrated with packaging, with precise invalidation on input change.",
+      "benchmark_id": "BENCH-075",
+      "failure_meaning": "Every launch pays full compile cost or, worse, serves stale pipeline.",
+      "risk": "An under-hashed key reuses stale pipeline after a game update.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-006",
+        "SRC-010",
+        "SRC-022"
       ],
       "promotion_state": "planned"
     }

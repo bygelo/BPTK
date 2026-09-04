@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-068",
+  "item_id": "BPTK-068",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No unified representation or WebGPU backend exists to fall back from.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when within-floor fixture match the WebGPU output within the declared looser tolerance and above-floor content is named-blocked.",
+  "expected_failing_assertion": "No WebGL2 fallback path exists.",
+  "owner_item": "BPTK-068",
+  "active_gate_evidence": "The graphics doctor reports the degraded isolation state and observed WebGL2 support.",
+  "fixture": [
+    "FIX-010"
+  ],
+  "procedure": [
+    "Render each within-floor fixture through the fallback backend.",
+    "Compare against the primary backend output within the declared tolerance.",
+    "Assert above-floor content is blocked with the missing feature named."
+  ],
+  "pass_criterion": [
+    "Within-floor output matches within tolerance.",
+    "Above-floor content is named-blocked."
+  ]
+}

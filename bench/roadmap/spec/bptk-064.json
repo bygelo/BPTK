@@ -1,0 +1,28 @@
+{
+  "benchmark_id": "BENCH-064",
+  "item_id": "BPTK-064",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No fixed-function generator exists to extend.",
+  "prerequisite": [
+    "BPTK-063"
+  ],
+  "promotion_trigger": "Promote when the cookie and shadow fixture render within tolerance and the projection-divide mutation fails closed.",
+  "expected_failing_assertion": "No texgen or shadow path exists.",
+  "owner_item": "BPTK-064",
+  "active_gate_evidence": "The graphics probes and roadmap keep the fixed-function benchmarks red.",
+  "fixture": [
+    "FIX-012"
+  ],
+  "procedure": [
+    "Render the spotlight-cookie and planar-shadow fixture.",
+    "Compare against the reference within the frozen tolerance.",
+    "Mutate the projection divide out of the path and assert the check fails."
+  ],
+  "pass_criterion": [
+    "Cookie and shadow render within tolerance.",
+    "The projection-divide mutation is caught."
+  ]
+}

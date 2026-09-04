@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-073",
+  "item_id": "BPTK-073",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No compute prototype exists.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the compute fixture is bit-identical on the declared adapter set and above-limit content is named-blocked.",
+  "expected_failing_assertion": "The modern research surface defers with no compute prototype.",
+  "owner_item": "BPTK-073",
+  "active_gate_evidence": "The modern-API scan keeps reporting signal with live WebGPU observation.",
+  "fixture": [
+    "FIX-026"
+  ],
+  "procedure": [
+    "Run the compute research fixture on the declared adapter set.",
+    "Assert bit-identical output.",
+    "Assert above-limit content is named-blocked."
+  ],
+  "pass_criterion": [
+    "Compute output is bit-identical on the declared set.",
+    "Above-limit content is named-blocked."
+  ]
+}

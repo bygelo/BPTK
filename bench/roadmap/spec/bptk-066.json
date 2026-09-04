@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-066",
+  "item_id": "BPTK-066",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No rendered frame exists; the performance profile measures package integrity only.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the frame diff computes its reference at test time, distinguishes the declared metric set, and retains no committed baseline.",
+  "expected_failing_assertion": "No rendered frame or frame comparison exists.",
+  "owner_item": "BPTK-066",
+  "active_gate_evidence": "The benchmark runner keeps promotion content-addressed with no retained result.",
+  "fixture": [
+    "FIX-016"
+  ],
+  "procedure": [
+    "Render the fixture and compute the reference at test time from the declared generator.",
+    "Compare with the declared metric set and threshold metadata.",
+    "Assert no baseline artifact is committed or retained."
+  ],
+  "pass_criterion": [
+    "Known rendering mutation is caught by the metric set.",
+    "No committed baseline exists."
+  ]
+}

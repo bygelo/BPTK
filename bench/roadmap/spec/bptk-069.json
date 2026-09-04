@@ -1,0 +1,25 @@
+{
+  "benchmark_id": "BENCH-069",
+  "item_id": "BPTK-069",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No backend exists and the browser probe reports feature availability only.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the declared subset renders on the compatibility-mode feature level and out-of-subset emission fails at emit.",
+  "expected_failing_assertion": "No compatibility-mode backend exists.",
+  "owner_item": "BPTK-069",
+  "active_gate_evidence": "The graphics doctor reports observed feature availability without a runtime claim.",
+  "fixture": [
+    "FIX-010"
+  ],
+  "procedure": [
+    "Render the declared subset with the compatibility feature level requested.",
+    "Assert out-of-subset emission is caught at emit time."
+  ],
+  "pass_criterion": [
+    "The subset renders on the compatibility level.",
+    "Out-of-subset emission is caught at emit."
+  ]
+}

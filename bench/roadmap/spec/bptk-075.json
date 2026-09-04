@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-075",
+  "item_id": "BPTK-075",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No compiled pipeline exists to cache.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the warm-cache run stays under the declared compile-frame budget and every mutated input invalidates its exact key.",
+  "expected_failing_assertion": "No pipeline cache exists.",
+  "owner_item": "BPTK-075",
+  "active_gate_evidence": "The asset packager keeps content-addressed chunk and atomic commit.",
+  "fixture": [
+    "FIX-015"
+  ],
+  "procedure": [
+    "Run the fixture cold and record compile frame.",
+    "Run warm and assert zero compile frame over the budget.",
+    "Mutate each declared input and assert exactly its key invalidates."
+  ],
+  "pass_criterion": [
+    "Warm cache stays under the compile budget.",
+    "Invalidation is precise per input."
+  ]
+}

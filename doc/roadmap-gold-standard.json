@@ -194,7 +194,8 @@
         "BPTK-020"
       ],
       "dep": [],
-      "spec": "**GS-018 · One unified shader IR** — every frontend lowers to one IR, one WGSL backend; **static audit proves exactly one emitter** · **T1** · extends BPTK-020. *Kills the three-emitter drift.*"
+      "spec": "**GS-018 · One unified shader IR** — every frontend lowers to one IR, one WGSL backend; **static audit proves exactly one emitter** · **T1** · extends BPTK-020. *Kills the three-emitter drift.*",
+      "promoted_as": "BPTK-059"
     },
     {
       "gs_id": "GS-019",
@@ -206,7 +207,8 @@
         "BPTK-032"
       ],
       "dep": [],
-      "spec": "**GS-019 · DXBC/DXIL frontend → IR** — reuse DXVK/dxil-spirv→SPIR-V→Tint reader; unsupported opcodes named not dropped · **T3** · extends BPTK-032. **[P4]**"
+      "spec": "**GS-019 · DXBC/DXIL frontend → IR** — reuse DXVK/dxil-spirv→SPIR-V→Tint reader; unsupported opcodes named not dropped · **T3** · extends BPTK-032. **[P4]**",
+      "promoted_as": "BPTK-060"
     },
     {
       "gs_id": "GS-020",
@@ -218,7 +220,8 @@
         "BPTK-020"
       ],
       "dep": [],
-      "spec": "**GS-020 · D3D9 SM1–3 → IR** — BPTK-020 corpus emits byte-identical IR-WGSL; standalone SM emitter deleted · **T1** · extends BPTK-020."
+      "spec": "**GS-020 · D3D9 SM1–3 → IR** — BPTK-020 corpus emits byte-identical IR-WGSL; standalone SM emitter deleted · **T1** · extends BPTK-020.",
+      "promoted_as": "BPTK-061"
     },
     {
       "gs_id": "GS-021",
@@ -228,7 +231,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-021 · GLSL / ARB / Glide frontend → IR** — GL + two-TMU Glide combiner render within tolerance via IR · **T3**."
+      "spec": "**GS-021 · GLSL / ARB / Glide frontend → IR** — GL + two-TMU Glide combiner render within tolerance via IR · **T3**.",
+      "promoted_as": "BPTK-062"
     },
     {
       "gs_id": "GS-022",
@@ -240,7 +244,8 @@
         "BPTK-018"
       ],
       "dep": [],
-      "spec": "**GS-022 · Fixed-function pipeline compiled once** — N-light × M-stage-op × fog/alpha matrix from ONE generator; D3D7/8/9/GL identical-state → identical IR · **T1** · extends BPTK-018/019."
+      "spec": "**GS-022 · Fixed-function pipeline compiled once** — N-light × M-stage-op × fog/alpha matrix from ONE generator; D3D7/8/9/GL identical-state → identical IR · **T1** · extends BPTK-018/019.",
+      "promoted_as": "BPTK-063"
     },
     {
       "gs_id": "GS-023",
@@ -252,7 +257,8 @@
       "dep": [
         "GS-022"
       ],
-      "spec": "**GS-023 · FFP texgen / projective / shadow-cookie correctness** — spotlight-cookie + planar-shadow fixture within tolerance; dropped projection divide fails closed · **T1** · deps GS-022. *The named silent-wrong-shadow bug.*"
+      "spec": "**GS-023 · FFP texgen / projective / shadow-cookie correctness** — spotlight-cookie + planar-shadow fixture within tolerance; dropped projection divide fails closed · **T1** · deps GS-022. *The named silent-wrong-shadow bug.*",
+      "promoted_as": "BPTK-064"
     },
     {
       "gs_id": "GS-024",
@@ -264,7 +270,8 @@
         "BPTK-017"
       ],
       "dep": [],
-      "spec": "**GS-024 · Honest capability reporting** — advertised D3DCAPS shader-model ≤ real translator support; **advertising SM3 with an SM1.x frontend is red by construction** · **T1** · extends BPTK-017."
+      "spec": "**GS-024 · Honest capability reporting** — advertised D3DCAPS shader-model ≤ real translator support; **advertising SM3 with an SM1.x frontend is red by construction** · **T1** · extends BPTK-017.",
+      "promoted_as": "BPTK-065"
     },
     {
       "gs_id": "GS-025",
@@ -276,7 +283,8 @@
         "BPTK-003"
       ],
       "dep": [],
-      "spec": "**GS-025 · Frame-diff regression (generated references)** — ΔE + SSIM vs a reference **computed at test time** (no committed golden — respects `doc/TESTING.md`) · **T1** · extends BPTK-003. *Reconciled (graphics+correctness); resolves the committed-baseline conflict.*"
+      "spec": "**GS-025 · Frame-diff regression (generated references)** — ΔE + SSIM vs a reference **computed at test time** (no committed golden — respects `doc/TESTING.md`) · **T1** · extends BPTK-003. *Reconciled (graphics+correctness); resolves the committed-baseline conflict.*",
+      "promoted_as": "BPTK-066"
     },
     {
       "gs_id": "GS-026",
@@ -286,7 +294,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-026 · WebGPU primary backend (IR→WGSL)** — all FFP+SM1-3 fixtures render on a live adapter · **T1**."
+      "spec": "**GS-026 · WebGPU primary backend (IR→WGSL)** — all FFP+SM1-3 fixtures render on a live adapter · **T1**.",
+      "promoted_as": "BPTK-067"
     },
     {
       "gs_id": "GS-027",
@@ -298,7 +307,8 @@
         "BPTK-017"
       ],
       "dep": [],
-      "spec": "**GS-027 · WebGL2 GLSL-ES fallback** — same IR → GLSL ES 3.0; within-floor fixtures match WebGPU within looser tolerance, above-floor named-blocked · **T2** · extends BPTK-017."
+      "spec": "**GS-027 · WebGL2 GLSL-ES fallback** — same IR → GLSL ES 3.0; within-floor fixtures match WebGPU within looser tolerance, above-floor named-blocked · **T2** · extends BPTK-017.",
+      "promoted_as": "BPTK-068"
     },
     {
       "gs_id": "GS-028",
@@ -308,7 +318,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-028 · WebGPU compatibility-mode backend** — Chrome 146 `featureLevel:\"compatibility\"` → GLES3.1/D3D11-class GPUs; out-of-subset WGSL caught at emit · **T2**."
+      "spec": "**GS-028 · WebGPU compatibility-mode backend** — Chrome 146 `featureLevel:\"compatibility\"` → GLES3.1/D3D11-class GPUs; out-of-subset WGSL caught at emit · **T2**.",
+      "promoted_as": "BPTK-069"
     },
     {
       "gs_id": "GS-029",
@@ -320,7 +331,8 @@
         "BPTK-013"
       ],
       "dep": [],
-      "spec": "**GS-029 · Presentation / swapchain / gamma / dirty-rect** — sRGB gamma correct (mid-gray ΔE), dirty-rect region-only, present pacing in budget · **T1** · extends BPTK-013."
+      "spec": "**GS-029 · Presentation / swapchain / gamma / dirty-rect** — sRGB gamma correct (mid-gray ΔE), dirty-rect region-only, present pacing in budget · **T1** · extends BPTK-013.",
+      "promoted_as": "BPTK-070"
     },
     {
       "gs_id": "GS-030",
@@ -330,7 +342,8 @@
       "phase": "near",
       "extend": [],
       "dep": [],
-      "spec": "**GS-030 · MSAA / multisample resolve / format conversion** — 4× edge resolves within tolerance; unsupported count → declared fallback, reported · **T2**."
+      "spec": "**GS-030 · MSAA / multisample resolve / format conversion** — 4× edge resolves within tolerance; unsupported count → declared fallback, reported · **T2**.",
+      "promoted_as": "BPTK-071"
     },
     {
       "gs_id": "GS-031",
@@ -342,7 +355,8 @@
         "BPTK-032"
       ],
       "dep": [],
-      "spec": "**GS-031 · EDRAM / tiling / console framebuffer (research)** — feasibility report + prototype of EDRAM-tile-resolve→WebGPU · **T3** · extends BPTK-032/033. **[P4]**"
+      "spec": "**GS-031 · EDRAM / tiling / console framebuffer (research)** — feasibility report + prototype of EDRAM-tile-resolve→WebGPU · **T3** · extends BPTK-032/033. **[P4]**",
+      "promoted_as": "BPTK-072"
     },
     {
       "gs_id": "GS-032",
@@ -352,7 +366,8 @@
       "phase": "P4",
       "extend": [],
       "dep": [],
-      "spec": "**GS-032 · Compute / UAV-SSBO / modern shaders** — compute fixture bit-identical on live WebGPU; above-limit named-blocked (WebGPU/compat-only) · **T3**. **[P4]**"
+      "spec": "**GS-032 · Compute / UAV-SSBO / modern shaders** — compute fixture bit-identical on live WebGPU; above-limit named-blocked (WebGPU/compat-only) · **T3**. **[P4]**",
+      "promoted_as": "BPTK-073"
     },
     {
       "gs_id": "GS-033",
@@ -364,7 +379,8 @@
         "BPTK-004"
       ],
       "dep": [],
-      "spec": "**GS-033 · Shader-translator hostile-bytecode containment** — malformed/fuzzed DXBC/DXIL/SM/GLSL refused in time+memory bound, zero OOB/crash (DarthShader class) · **T1** · extends BPTK-004/044."
+      "spec": "**GS-033 · Shader-translator hostile-bytecode containment** — malformed/fuzzed DXBC/DXIL/SM/GLSL refused in time+memory bound, zero OOB/crash (DarthShader class) · **T1** · extends BPTK-004/044.",
+      "promoted_as": "BPTK-074"
     },
     {
       "gs_id": "GS-034",
@@ -376,7 +392,8 @@
         "BPTK-022"
       ],
       "dep": [],
-      "spec": "**GS-034 · Content-addressed pipeline/shader cache** — warm cache → zero cold-compile frames over budget; content-hash keys invalidate precisely · **T2** · extends BPTK-022."
+      "spec": "**GS-034 · Content-addressed pipeline/shader cache** — warm cache → zero cold-compile frames over budget; content-hash keys invalidate precisely · **T2** · extends BPTK-022.",
+      "promoted_as": "BPTK-075"
     },
     {
       "gs_id": "GS-036",
