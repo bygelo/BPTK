@@ -5,8 +5,8 @@
   "checked_at": "2026-09-05",
   "planning_state": "product-analysis",
   "count": {
-    "raw": 156,
-    "accepted": 142,
+    "raw": 159,
+    "accepted": 145,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,
@@ -2951,6 +2951,74 @@
         "SRC-002",
         "SRC-003",
         "SRC-013"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-143",
+      "title": "Inject accessibility at the runtime level",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-097",
+        "BPTK-116"
+      ],
+      "deliverable": "Runtime-level accessibility injection covering the declared feature set, available independently of the original title.",
+      "benchmark_id": "BENCH-143",
+      "failure_meaning": "Accessibility depends on each original title shipping it.",
+      "risk": "An injection that alters timing-sensitive game state breaks the title it was meant to open up.",
+      "source_evidence": [
+        "SRC-002",
+        "SRC-003",
+        "SRC-006",
+        "SRC-007",
+        "SRC-009",
+        "SRC-010",
+        "SRC-016"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-144",
+      "title": "Meet the shell accessibility conformance bar",
+      "tier": "P3",
+      "kind": "runtime",
+      "prerequisite": [
+        "BPTK-107"
+      ],
+      "deliverable": "Shell conformance at the declared level across library, launcher, and overlay, with automated and manual audit.",
+      "benchmark_id": "BENCH-144",
+      "failure_meaning": "The platform shell excludes the players who need it most.",
+      "risk": "An automated audit alone misses the assistive-technology cases that matter.",
+      "source_evidence": [
+        "SRC-001",
+        "SRC-002",
+        "SRC-006",
+        "SRC-009",
+        "SRC-010",
+        "SRC-020",
+        "SRC-023",
+        "SRC-024",
+        "SRC-025",
+        "SRC-026",
+        "SRC-027",
+        "SRC-028"
+      ],
+      "promotion_state": "planned"
+    },
+    {
+      "item_id": "BPTK-145",
+      "title": "Research revival of a dead live service",
+      "tier": "P4",
+      "kind": "evidence",
+      "prerequisite": [],
+      "deliverable": "A bounded research report with a capture-hook prototype and a local service stub for one shutdown service.",
+      "benchmark_id": "BENCH-145",
+      "failure_meaning": "Preservation stops at the client and every server-backed title stays dead.",
+      "risk": "A stub that reaches the live internet instead of staying local crosses into unauthorized service operation.",
+      "source_evidence": [
+        "SRC-017",
+        "SRC-033"
       ],
       "promotion_state": "planned"
     }

@@ -1272,7 +1272,8 @@
         "GS-053",
         "GS-072"
       ],
-      "spec": "**GS-099 · Runtime-level accessibility injection** — remappable input, stick deadzone/inversion, gyro-as-mouse, subtitle/caption injection, colorblind palettes, UI scale, reduced-flash, hold-to-press, extra save slots — **available even when the original game has none** (the Zelda64Recomp / Steam Deck bar). Benchmark: each feature verifiably alters the running title against a fixture · **T2** · deps GS-053, GS-072."
+      "spec": "**GS-099 · Runtime-level accessibility injection** — remappable input, stick deadzone/inversion, gyro-as-mouse, subtitle/caption injection, colorblind palettes, UI scale, reduced-flash, hold-to-press, extra save slots — **available even when the original game has none** (the Zelda64Recomp / Steam Deck bar). Benchmark: each feature verifiably alters the running title against a fixture · **T2** · deps GS-053, GS-072.",
+      "promoted_as": "BPTK-143"
     },
     {
       "gs_id": "GS-100",
@@ -1286,7 +1287,8 @@
       "dep": [
         "GS-063"
       ],
-      "spec": "**GS-100 · Shell WCAG 2.2 conformance** — library, launcher, and overlays meet WCAG 2.2 AA (keyboard, focus, contrast, target size, motion, status). Benchmark: automated + manual audit passes; extends BPTK-027 · **T2** · deps GS-063/068. Grounded in the [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/) and [WCAG 2.2](https://www.w3.org/TR/WCAG22/)."
+      "spec": "**GS-100 · Shell WCAG 2.2 conformance** — library, launcher, and overlays meet WCAG 2.2 AA (keyboard, focus, contrast, target size, motion, status). Benchmark: automated + manual audit passes; extends BPTK-027 · **T2** · deps GS-063/068. Grounded in the [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/) and [WCAG 2.2](https://www.w3.org/TR/WCAG22/).",
+      "promoted_as": "BPTK-144"
     },
     {
       "gs_id": "GS-102",
@@ -1296,7 +1298,8 @@
       "phase": "P4",
       "extend": [],
       "dep": [],
-      "spec": "**GS-102 · Live-service revival: server reimpl + \"server-dead → local stub\"** — packet-capture hooks + a local server stub so an always-online title survives its shutdown (preservation's actual enemy per VGHF) · **T3** · extends GS-055. **[P4]**"
+      "spec": "**GS-102 · Live-service revival: server reimpl + \"server-dead → local stub\"** — packet-capture hooks + a local server stub so an always-online title survives its shutdown (preservation's actual enemy per VGHF) · **T3** · extends GS-055. **[P4]**",
+      "promoted_as": "BPTK-145"
     }
   ]
 }

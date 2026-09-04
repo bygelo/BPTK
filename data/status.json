@@ -6,13 +6,13 @@
   "generated_at": "2026-09-05",
   "source": {
     "path": "bench/roadmap/manifest.json",
-    "revision": "sha256:372a6c8a8f8f546f29bc62323acb6847116ede84c6fdaab9dec21d1da576ec95",
+    "revision": "sha256:edb158c55e093b1e1230eece5d7c3218671fc4910add321117f010fa48bb3d6d",
     "committed_at": null,
-    "sha256": "372a6c8a8f8f546f29bc62323acb6847116ede84c6fdaab9dec21d1da576ec95"
+    "sha256": "edb158c55e093b1e1230eece5d7c3218671fc4910add321117f010fa48bb3d6d"
   },
   "count": {
-    "raw": 156,
-    "accepted": 142,
+    "raw": 159,
+    "accepted": 145,
     "rejected": 8,
     "deferred": 6,
     "implemented": 11,

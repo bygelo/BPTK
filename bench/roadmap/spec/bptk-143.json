@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-143",
+  "item_id": "BPTK-143",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No input bridge or SDK surface exists to inject through.",
+  "prerequisite": [
+    "BPTK-097",
+    "BPTK-116"
+  ],
+  "promotion_trigger": "Promote when every declared feature verifiably alters the running title on its fixture.",
+  "expected_failing_assertion": "No injection surface exists.",
+  "owner_item": "BPTK-143",
+  "active_gate_evidence": "The control command validates logical-action profile selection without a bridge.",
+  "fixture": [
+    "FIX-020"
+  ],
+  "procedure": [
+    "Enable each declared feature on its fixture title.",
+    "Verify the running title behavior actually changes.",
+    "Assert the change leaves the save and containment invariant intact."
+  ],
+  "pass_criterion": [
+    "Every feature alters the run verifiably.",
+    "The invariants hold with injection on."
+  ]
+}

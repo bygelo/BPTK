@@ -3,8 +3,8 @@
   "frozen_at": "2026-07-18",
   "origin_count": {
     "repository": 4,
-    "product": 89,
-    "prior_art": 49,
+    "product": 90,
+    "prior_art": 51,
     "constraint": 14
   },
   "candidate": [
@@ -1255,6 +1255,30 @@
       "target_id": "BPTK-142",
       "summary": "Hold sustained-run stability",
       "dedupe_key": "gs-098-sustained-stability"
+    },
+    {
+      "candidate_id": "CAND-157",
+      "origin": "product",
+      "decision": "accepted",
+      "target_id": "BPTK-143",
+      "summary": "Inject accessibility at the runtime level",
+      "dedupe_key": "gs-099-runtime-accessibility-injection"
+    },
+    {
+      "candidate_id": "CAND-158",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-144",
+      "summary": "Meet the shell accessibility conformance bar",
+      "dedupe_key": "gs-100-shell-wcag-conformance"
+    },
+    {
+      "candidate_id": "CAND-159",
+      "origin": "prior_art",
+      "decision": "accepted",
+      "target_id": "BPTK-145",
+      "summary": "Research revival of a dead live service",
+      "dedupe_key": "gs-102-live-service-revival"
     }
   ]
 }

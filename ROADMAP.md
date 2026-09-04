@@ -21,7 +21,7 @@ The larger ambition — universal browser game runtime + library + platform, **r
 - Product implementation: BPTK-003 live benchmark and promotion checks, BPTK-007 safe local inspection, BPTK-008 bounded static PE32 mapping, BPTK-017 live browser graphics probing, BPTK-037 middleware and protection census, BPTK-038 bounded installer extraction, BPTK-009 i386 execution baseline, BPTK-039 monotonic guest clock, BPTK-043 engine-family census, BPTK-044 declared resource bound, and BPTK-045 guest containment policy are implemented but red. A bounded opt-in i386 entry probe is now reachable through `run`, but it is only partial work toward BPTK-009; no guest-execution game-runtime item passes.
 - CLI boundary: every literal Surface invocation below is reachable, plus `bptk ingest`, which classifies, census-routes, and packages any executable input into a bundle without executing it. `legal`, `corpus status`, `security`, `inspect`, `benchmark`, `foundation compare`, `port`, `run`, `import`, `doctor --graphics`, `package`, `compatibility`, and `report` perform bounded local analysis, live self-check, toolchain diagnosis, PE32 image mapping, live browser capability observation, atomic asset packaging, host emission, policy validation, or privacy-minimized reporting without uploading game code. Most input is never executed. Only a PE32 package that explicitly selects `i386_probe_v1`, has zero import and zero TLS callback, and supplies an instruction budget runs the deterministic integer probe locally. Shared `run` surfaces otherwise report the same missing runtime unless a narrower diagnostic option applies.
 - Foundation state: legal and security command output explicitly requires named review, corpus status publishes no denominator without approval, foundation comparison measures only locally available options, and source porting reports the missing Emscripten and adapter step without emitting a scaffold. The PE32 mapper bounds header, section, image, relocation, import, TLS, stack, heap, and executable entry-point state; a package may resolve ordinary named and ordinal import to declared static address. The opt-in i386 entry probe supports a bounded integer subset, stack, control flow, flags, ModRM memory access, and self-modification, while import call, TLS callback, x87, full instruction coverage, full exception behavior, Win32 HLE, and any game loop remain blocked. The ephemeral Chrome probe observes WebGL2, WebGL, AudioContext, isolation, SharedArrayBuffer, and renderer state; the current host is degraded because it lacks cross-origin isolation, and this does not prove another browser. The packager emits content-addressed assets atomically plus HTML or React host source against one package identity; no supported game runtime is included. Package integrity timing verifies chunk hash on cold and warm reads but cannot measure a game. Thread, network, and control command validate selection or policy without a worker, network, or input bridge. Engine diagnosis never copies the asset because no approved adapter exists. Compatibility observes installed Chrome, reports installed-but-unprobed Safari and absent Firefox, and never emits a support claim without a runtime. Local report recording is off by default and consent output excludes game content and personal data, but there is no session to reproduce. BPTK-001, BPTK-002, and BPTK-004 remain planned because command output cannot manufacture approval. BPTK-003, BPTK-007, BPTK-008, BPTK-009, BPTK-017, BPTK-037, BPTK-038, BPTK-039, BPTK-043, BPTK-044, and BPTK-045 are implemented but red because their prerequisite, approved corpus input, or complete profile remain red. The installer extractor unpacks the pinned Inno Setup 6 unicode family and an MSCF cabinet with stored or MSZIP folder without executing installer code, while encrypted, BZip2, and LZMA chunk are refused with their identity. Full source compilation, full i386 conformance, Win32 HLE, browser input, GDI, DirectDraw, game audio, persistence, integrated import, runtime host behavior, and compatibility reproduction are weeks-scale and remain planned.
-- Current benchmark coverage: **0 / 142 (0%)**.
+- Current benchmark coverage: **0 / 145 (0%)**.
 - Compatibility corpus coverage: not publishable until BPTK-002 freezes the runtime denominator.
 - Closest prior art: BottleShip for unmodified PE32 game; Emscripten for source-assisted game; OpenSA, WebXash, Qwasm2, and ScummVM for engine-family or asset-driven path.
 
@@ -51,21 +51,21 @@ BPTK accepts a supported local input form, inspects it without execution, and re
 
 ## Discovery denominator
 
-The raw candidate denominator was frozen after deduplication on 2026-07-18.
+The raw candidate denominator was frozen after deduplication on 2026-07-18 and extended on 2026-09-05 by the gold-standard program promotion: 100 newly discovered candidate were added and classified accepted in the same change, per the rule below.
 
 | Candidate source | Count | Example signal |
 |---|---:|---|
 | Initial repository state | 4 | License, implementation, test, and documentation were absent |
-| User and product objective | 89 | Broad import, Windows input, browser output, canvas, React host, Maphy ownership, Apple-like workflow |
-| Prior-art capability and limitation | 49 | CPU, PE, Win32, DirectX, source toolchain, engine adapter, package, compatibility evidence, browser-runtime and static-recompilation prior art, middleware and copy-protection census, installer, timing, full-motion video, redistributable runtime, source-lane build profile, and engine-family routing |
+| User and product objective | 90 | Broad import, Windows input, browser output, canvas, React host, Maphy ownership, Apple-like workflow; the gold-standard program design item |
+| Prior-art capability and limitation | 51 | CPU, PE, Win32, DirectX, source toolchain, engine adapter, package, compatibility evidence, browser-runtime and static-recompilation prior art, middleware and copy-protection census, installer, timing, full-motion video, redistributable runtime, source-lane build profile, and engine-family routing; the recompilation, emulator, and accessibility prior-art item |
 | Browser, distribution, and security constraint | 14 | GPU availability, thread isolation, socket limit, storage, user content, copyleft, trademark, hostile import, resource exhaustion, and guest containment |
-| **Raw** | **59** | Frozen denominator |
+| **Raw** | **159** | Frozen denominator plus the gold-standard promotion |
 
 | Decision | Count |
 |---|---:|
-| Accepted into this roadmap | 142 |
+| Accepted into this roadmap | 145 |
 | Rejected | 8 |
-| Deferred | 5 |
+| Deferred | 6 |
 | Implemented | 11 |
 | Passing | 0 |
 
@@ -372,6 +372,14 @@ The full forward catalogue is now ratified inside this roadmap: every gold-stand
 | BPTK-140 | Stay under the declared memory ceiling with no unbounded growth, and keep each guest-host crossing under the declared cost bound | `bptk benchmark <package> --profile performance` | [BENCH-140](bench/roadmap/spec/bptk-140.json): peak memory stays under the declared ceiling with no unbounded growth and the per-crossing cost is under the declared bound | SRC-002/003/019 | **Tier 1** — regression risk: an unbounded growth that passes a short run exhausts the player long after the suite ends | — · Performance |
 | BPTK-141 | Run a sustained session with zero audio underrun and input-to-photon latency inside the declared bound | `bptk benchmark <package> --profile performance` | [BENCH-141](bench/roadmap/spec/bptk-141.json): zero underrun over the sustained run and input-to-photon latency inside the declared bound | SRC-002/003/021 | **Tier 2** — regression risk: an underrun counted only when the player hears it undercounts the real rate | — · Performance |
 | BPTK-142 | Hold tail jitter under the declared bound over a sustained run with no pause exceeding one frame and memory returning to baseline | `bptk benchmark <package> --profile performance` | [BENCH-142](bench/roadmap/spec/bptk-142.json): over the declared sustained duration the tail-minus-median jitter stays under bound, no collection or compile pause exceeds one frame, and memory returns to baseline | SRC-002/003/013 | **Tier 2** — regression risk: a stability run too short to reach the collection or compile pause misses the stall that ends long session | — · Performance |
+
+### Accessibility and reach
+
+| ID | Behavior | Surface | Benchmark | Source | Tier | Dependency · Owner |
+|---|---|---|---|---|---|---|
+| BPTK-143 | Enable remappable input, stick dead-zone and inversion, gyro-as-pointer, subtitle and caption injection, colorblind palette, interface scale, reduced flash, hold-to-press, and extra save slot even when the original title has none | `bptk run <package> --control <profile>` | [BENCH-143](bench/roadmap/spec/bptk-143.json): each accessibility feature verifiably alters the running title on a fixture | SRC-002/003/006/007/009/010/016 | **Tier 2** — regression risk: an injected feature that claims to alter the run without verifiably doing so misleads the player who depends on it | 097, 116 · Experience |
+| BPTK-144 | Operate the library, launcher, and overlay fully by keyboard and assistive technology at the declared conformance level including focus, contrast, target size, motion, and status reporting | `bptk package <project> --host <html>` | [BENCH-144](bench/roadmap/spec/bptk-144.json): the automated and manual conformance audit passes for the shell surface set | SRC-001/002/006/009/010/020/023/024/025/026/027/028 | **Tier 2** — regression risk: a launcher or overlay that a keyboard or screen-reader user cannot operate excludes them from the entire library | 107 · Experience |
+| BPTK-145 | Learn whether an always-online title whose service shut down can run against a local service stub built from capture hook | `bptk run <package> --network off` | [BENCH-145](bench/roadmap/spec/bptk-145.json): capture hook record the service protocol and a local stub keeps the title booting with the declaration that no matchmaking reach other player | SRC-017/033 | Tier 3 | — · Network |
 
 <!-- fanout:program:end -->
 

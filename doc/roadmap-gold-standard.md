@@ -1,11 +1,13 @@
 # BPTK gold-standard program
 
-> Status: **design catalog**, 2026-09-05. This is the forward vision and its full
-> item set. The ratified, benchmark-gated roadmap remains [ROADMAP.md](../ROADMAP.md)
-> (items `BPTK-001..045`, validated by `npm run gate`). Items here use `GS-###`
-> ids and are *designed, not yet gate-ratified*; each is promoted into the gated
-> manifest incrementally (a new `BPTK-###` row + spec) as work begins. `GS` rows
-> are intentionally invisible to the roadmap validator.
+> Status: **fully ratified**, 2026-09-05. This file remains the design catalog and
+> the single source of the vision text. Every `GS-###` item below is now promoted
+> into the gated roadmap as a `BPTK-###` row with its benchmark specification
+> (see the promoted planned scope in [ROADMAP.md](../ROADMAP.md), validated by
+> `npm run gate`); the mapping lives in the `promoted_as` field of
+> [the fanout index](roadmap-gold-standard.json). Promotion ratifies the
+> work-list and its acceptance contract — it is not an implementation claim:
+> every promoted row is planned and red until its behavior lands.
 
 ## Vision
 

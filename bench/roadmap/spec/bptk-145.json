@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "BENCH-145",
+  "item_id": "BPTK-145",
+  "kind": "evidence",
+  "threshold_owner": null,
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "No capture hook or service stub exists and the networking layer is absent.",
+  "prerequisite": [],
+  "promotion_trigger": "Promote when the capture hook record the declared protocol and the local stub boots the title fully offline.",
+  "expected_failing_assertion": "No capture or stub prototype exists.",
+  "owner_item": "BPTK-145",
+  "active_gate_evidence": "The network policy keeps deny-by-default so no prototype can reach a live service silently.",
+  "fixture": [
+    "FIX-019"
+  ],
+  "procedure": [
+    "Record the declared service protocol through the capture hook.",
+    "Boot the title against the local stub fully offline.",
+    "Assert the stub never contacts the live internet."
+  ],
+  "pass_criterion": [
+    "The title boots against the local stub.",
+    "The stub never reaches the live service."
+  ]
+}

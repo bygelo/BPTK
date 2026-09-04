@@ -1,0 +1,29 @@
+{
+  "benchmark_id": "BENCH-144",
+  "item_id": "BPTK-144",
+  "kind": "runtime",
+  "threshold_owner": "BPTK-002",
+  "state": "red",
+  "gate": "excluded",
+  "exclusion_reason": "The four-host embedding set is not complete and no shell surface exists to audit.",
+  "prerequisite": [
+    "BPTK-107"
+  ],
+  "promotion_trigger": "Promote when the automated and manual audit pass for the shell surface set.",
+  "expected_failing_assertion": "No complete shell surface exists to audit.",
+  "owner_item": "BPTK-144",
+  "active_gate_evidence": "The control surface keeps accessibility profile validation and the host emission keeps one identity.",
+  "fixture": [
+    "FIX-020",
+    "FIX-017"
+  ],
+  "procedure": [
+    "Run the automated conformance audit over the shell surface set.",
+    "Complete the manual assistive-technology audit.",
+    "Compare both against the declared level."
+  ],
+  "pass_criterion": [
+    "Both audits pass at the declared level.",
+    "The surface set is fully covered."
+  ]
+}
