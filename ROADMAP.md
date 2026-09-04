@@ -12,6 +12,8 @@ import -> inspect -> choose lane -> adapt -> benchmark -> diagnose -> package ->
 
 The differentiator is one workbench joining binary compatibility, source-assisted porting, engine-family adapter, truthful compatibility reporting, and framework-neutral packaging. The P0 decision may lead to collaboration with or adaptation of BottleShip; rebuilding its demonstrated surface without measured cause is not the strategy.
 
+The larger ambition — universal browser game runtime + library + platform, **recompilation-first**, any origin and any era — and the full forward item catalogue (`GS-###`, ten pillars) live in the [gold-standard program](doc/roadmap-gold-standard.md). Those items are designed, not yet gate-ratified; each is promoted into a `BPTK-###` row with a benchmark spec as its work begins, so this file and `npm run gate` stay the single source of ratified truth.
+
 ## Current truth
 
 - Initial repository state: empty directory with no git repository, license, runtime, test, or documentation.

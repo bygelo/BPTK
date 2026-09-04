@@ -1,0 +1,1205 @@
+{
+  "schema_version": 1,
+  "generated_from": "doc/roadmap-gold-standard.md",
+  "generated_at": "2026-09-05",
+  "note": "Fanout work-list from the .md (single source of truth). Promote each into a gated BPTK-### row + spec; ratified truth stays ROADMAP.md + npm run gate.",
+  "count": {
+    "item": 100,
+    "tier1": 59,
+    "near": 91,
+    "mid": 1,
+    "p4": 8
+  },
+  "item": [
+    {
+      "gs_id": "GS-001",
+      "pillar": "P1: Execution core",
+      "title": "Static x86-PE→WASM recompiler",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-036"
+      ],
+      "dep": [],
+      "spec": "**GS-001 · Static x86-PE→WASM recompiler** — AOT `.text` → WASM; bit-exact vs the BPTK-009 interpreter oracle across the trace, no silent interpreter fallback on hot path · **T1** · extends BPTK-036/005. *Reconciled (exec+lanes).* The unoccupied niche."
+    },
+    {
+      "gs_id": "GS-002",
+      "pillar": "P1: Execution core",
+      "title": "CFG + indirect-branch recovery",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-001"
+      ],
+      "spec": "**GS-002 · CFG + indirect-branch recovery** — function/jump-table/vtable recovery; every switch/vtable arm bit-exact, unknown target → fallback not crash, code-as-data flagged · **T1** · deps GS-001."
+    },
+    {
+      "gs_id": "GS-003",
+      "pillar": "P1: Execution core",
+      "title": "Hybrid interpreter fallback for SMC/dynamic code",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-009"
+      ],
+      "dep": [],
+      "spec": "**GS-003 · Hybrid interpreter fallback for SMC/dynamic code** — self-modifying page detected + re-decoded; untouched blocks stay fast-path · **T1** · extends BPTK-009."
+    },
+    {
+      "gs_id": "GS-004",
+      "pillar": "P1: Execution core",
+      "title": "x86-64 (AMD64) recompilation",
+      "tier": "T2",
+      "phase": "P4",
+      "extend": [
+        "BPTK-031"
+      ],
+      "dep": [
+        "GS-005"
+      ],
+      "spec": "**GS-004 · x86-64 (AMD64) recompilation** — 64-bit GPR/RIP-relative/SSE-default matches x64 reference · **T2** · extends BPTK-031 · deps GS-005. **[P4]**"
+    },
+    {
+      "gs_id": "GS-005",
+      "pillar": "P1: Execution core",
+      "title": "memory64 guest address space",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-035"
+      ],
+      "dep": [],
+      "spec": "**GS-005 · memory64 guest address space** — >4 GB addressing correct, OOB traps not wraps · **T2** · extends BPTK-035."
+    },
+    {
+      "gs_id": "GS-006",
+      "pillar": "P1: Execution core",
+      "title": "Guest SMP / multithreading",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-025"
+      ],
+      "dep": [],
+      "spec": "**GS-006 · Guest SMP / multithreading** — worker pool over SAB; lock/atomic-contention fixture deterministic under N workers, no lost wakeup · **T1** · extends BPTK-025. *Reconciled (exec+runtime).*"
+    },
+    {
+      "gs_id": "GS-007",
+      "pillar": "P1: Execution core",
+      "title": "SSE/SSE2/AVX + x87 vectorization",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-035"
+      ],
+      "dep": [],
+      "spec": "**GS-007 · SSE/SSE2/AVX + x87 vectorization** — packed SIMD + 80-bit x87 bit-exact within IEEE tolerance; strict-SIMD fallback matches · **T1** · extends BPTK-035."
+    },
+    {
+      "gs_id": "GS-008",
+      "pillar": "P1: Execution core",
+      "title": "SEH, vectored exceptions, TLS callbacks",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-035"
+      ],
+      "dep": [],
+      "spec": "**GS-008 · SEH, vectored exceptions, TLS callbacks** — `__try/__except`/`__finally` + AV/#DE via exnref; TLS callback fires before entry · **T1** · extends BPTK-035."
+    },
+    {
+      "gs_id": "GS-009",
+      "pillar": "P1: Execution core",
+      "title": "Benign anti-debug / timing-check satisfaction",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "BPTK-037"
+      ],
+      "spec": "**GS-009 · Benign anti-debug / timing-check satisfaction** — `IsDebuggerPresent`/RDTSC-delta guards pass; **DRM/anti-cheat refused, never bypassed** · **T2** · deps BPTK-037/039."
+    },
+    {
+      "gs_id": "GS-010",
+      "pillar": "P1: Execution core",
+      "title": "CPU-deterministic record & replay",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "BPTK-039",
+        "GS-006"
+      ],
+      "spec": "**GS-010 · CPU-deterministic record & replay** — pinned RNG/input/clock/schedule → identical state hash across two runs + a second machine · **T1** · deps BPTK-039, GS-006. *Reconciled (exec+correctness).*"
+    },
+    {
+      "gs_id": "GS-011",
+      "pillar": "P1: Execution core",
+      "title": "Guest↔host ABI / import-thunk lowering",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-001",
+        "BPTK-010"
+      ],
+      "spec": "**GS-011 · Guest↔host ABI / import-thunk lowering** — recompiled stdcall/cdecl/thiscall calls reach HLE directly with correct stack cleanup, under the GS-075 boundary-cost bar · **T1** · deps GS-001, BPTK-010."
+    },
+    {
+      "gs_id": "GS-012",
+      "pillar": "P1: Execution core",
+      "title": "Console lane — PowerPC (Xbox 360 / GC / Wii)",
+      "tier": "T2",
+      "phase": "P4",
+      "extend": [],
+      "dep": [
+        "GS-001"
+      ],
+      "spec": "**GS-012 · Console lane — PowerPC (Xbox 360 / GC / Wii)** — PPC/VMX128 bit-exact vs reference · **T2** · deps GS-001. *(Xenon proven desktop-only 2025.)* **[P4]**"
+    },
+    {
+      "gs_id": "GS-013",
+      "pillar": "P1: Execution core",
+      "title": "Console lane — MIPS (N64/PS1) + PS2 spike",
+      "tier": "T3",
+      "phase": "P4",
+      "extend": [],
+      "dep": [
+        "GS-001"
+      ],
+      "spec": "**GS-013 · Console lane — MIPS (N64/PS1) + PS2 spike** — N64/PS1 match reference-emu trace; PS2 VU/GS gap pinned or deferred · **T3** · deps GS-001/002. **[P4]**"
+    },
+    {
+      "gs_id": "GS-018",
+      "pillar": "P2: Graphics",
+      "title": "One unified shader IR",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-020"
+      ],
+      "dep": [],
+      "spec": "**GS-018 · One unified shader IR** — every frontend lowers to one IR, one WGSL backend; **static audit proves exactly one emitter** · **T1** · extends BPTK-020. *Kills the three-emitter drift.*"
+    },
+    {
+      "gs_id": "GS-019",
+      "pillar": "P2: Graphics",
+      "title": "DXBC/DXIL frontend → IR",
+      "tier": "T3",
+      "phase": "P4",
+      "extend": [
+        "BPTK-032"
+      ],
+      "dep": [],
+      "spec": "**GS-019 · DXBC/DXIL frontend → IR** — reuse DXVK/dxil-spirv→SPIR-V→Tint reader; unsupported opcodes named not dropped · **T3** · extends BPTK-032. **[P4]**"
+    },
+    {
+      "gs_id": "GS-020",
+      "pillar": "P2: Graphics",
+      "title": "D3D9 SM1–3 → IR",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-020"
+      ],
+      "dep": [],
+      "spec": "**GS-020 · D3D9 SM1–3 → IR** — BPTK-020 corpus emits byte-identical IR-WGSL; standalone SM emitter deleted · **T1** · extends BPTK-020."
+    },
+    {
+      "gs_id": "GS-021",
+      "pillar": "P2: Graphics",
+      "title": "GLSL / ARB / Glide frontend → IR",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-021 · GLSL / ARB / Glide frontend → IR** — GL + two-TMU Glide combiner render within tolerance via IR · **T3**."
+    },
+    {
+      "gs_id": "GS-022",
+      "pillar": "P2: Graphics",
+      "title": "Fixed-function pipeline compiled once",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-018"
+      ],
+      "dep": [],
+      "spec": "**GS-022 · Fixed-function pipeline compiled once** — N-light × M-stage-op × fog/alpha matrix from ONE generator; D3D7/8/9/GL identical-state → identical IR · **T1** · extends BPTK-018/019."
+    },
+    {
+      "gs_id": "GS-023",
+      "pillar": "P2: Graphics",
+      "title": "FFP texgen / projective / shadow-cookie correctness",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-022"
+      ],
+      "spec": "**GS-023 · FFP texgen / projective / shadow-cookie correctness** — spotlight-cookie + planar-shadow fixture within tolerance; dropped projection divide fails closed · **T1** · deps GS-022. *The named silent-wrong-shadow bug.*"
+    },
+    {
+      "gs_id": "GS-024",
+      "pillar": "P2: Graphics",
+      "title": "Honest capability reporting",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-017"
+      ],
+      "dep": [],
+      "spec": "**GS-024 · Honest capability reporting** — advertised D3DCAPS shader-model ≤ real translator support; **advertising SM3 with an SM1.x frontend is red by construction** · **T1** · extends BPTK-017."
+    },
+    {
+      "gs_id": "GS-025",
+      "pillar": "P2: Graphics",
+      "title": "Frame-diff regression (generated references)",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-003"
+      ],
+      "dep": [],
+      "spec": "**GS-025 · Frame-diff regression (generated references)** — ΔE + SSIM vs a reference **computed at test time** (no committed golden — respects `doc/TESTING.md`) · **T1** · extends BPTK-003. *Reconciled (graphics+correctness); resolves the committed-baseline conflict.*"
+    },
+    {
+      "gs_id": "GS-026",
+      "pillar": "P2: Graphics",
+      "title": "WebGPU primary backend (IR→WGSL)",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-026 · WebGPU primary backend (IR→WGSL)** — all FFP+SM1-3 fixtures render on a live adapter · **T1**."
+    },
+    {
+      "gs_id": "GS-027",
+      "pillar": "P2: Graphics",
+      "title": "WebGL2 GLSL-ES fallback",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-017"
+      ],
+      "dep": [],
+      "spec": "**GS-027 · WebGL2 GLSL-ES fallback** — same IR → GLSL ES 3.0; within-floor fixtures match WebGPU within looser tolerance, above-floor named-blocked · **T2** · extends BPTK-017."
+    },
+    {
+      "gs_id": "GS-028",
+      "pillar": "P2: Graphics",
+      "title": "WebGPU compatibility-mode backend",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-028 · WebGPU compatibility-mode backend** — Chrome 146 `featureLevel:\"compatibility\"` → GLES3.1/D3D11-class GPUs; out-of-subset WGSL caught at emit · **T2**."
+    },
+    {
+      "gs_id": "GS-029",
+      "pillar": "P2: Graphics",
+      "title": "Presentation / swapchain / gamma / dirty-rect",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-013"
+      ],
+      "dep": [],
+      "spec": "**GS-029 · Presentation / swapchain / gamma / dirty-rect** — sRGB gamma correct (mid-gray ΔE), dirty-rect region-only, present pacing in budget · **T1** · extends BPTK-013."
+    },
+    {
+      "gs_id": "GS-030",
+      "pillar": "P2: Graphics",
+      "title": "MSAA / multisample resolve / format conversion",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-030 · MSAA / multisample resolve / format conversion** — 4× edge resolves within tolerance; unsupported count → declared fallback, reported · **T2**."
+    },
+    {
+      "gs_id": "GS-031",
+      "pillar": "P2: Graphics",
+      "title": "EDRAM / tiling / console framebuffer (research)",
+      "tier": "T3",
+      "phase": "P4",
+      "extend": [
+        "BPTK-032"
+      ],
+      "dep": [],
+      "spec": "**GS-031 · EDRAM / tiling / console framebuffer (research)** — feasibility report + prototype of EDRAM-tile-resolve→WebGPU · **T3** · extends BPTK-032/033. **[P4]**"
+    },
+    {
+      "gs_id": "GS-032",
+      "pillar": "P2: Graphics",
+      "title": "Compute / UAV-SSBO / modern shaders",
+      "tier": "T3",
+      "phase": "P4",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-032 · Compute / UAV-SSBO / modern shaders** — compute fixture bit-identical on live WebGPU; above-limit named-blocked (WebGPU/compat-only) · **T3**. **[P4]**"
+    },
+    {
+      "gs_id": "GS-033",
+      "pillar": "P2: Graphics",
+      "title": "Shader-translator hostile-bytecode containment",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-004"
+      ],
+      "dep": [],
+      "spec": "**GS-033 · Shader-translator hostile-bytecode containment** — malformed/fuzzed DXBC/DXIL/SM/GLSL refused in time+memory bound, zero OOB/crash (DarthShader class) · **T1** · extends BPTK-004/044."
+    },
+    {
+      "gs_id": "GS-034",
+      "pillar": "P2: Graphics",
+      "title": "Content-addressed pipeline/shader cache",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-022"
+      ],
+      "dep": [],
+      "spec": "**GS-034 · Content-addressed pipeline/shader cache** — warm cache → zero cold-compile frames over budget; content-hash keys invalidate precisely · **T2** · extends BPTK-022."
+    },
+    {
+      "gs_id": "GS-036",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Generic Win32/DirectX conformance suite",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-010"
+      ],
+      "dep": [],
+      "spec": "**GS-036 · Generic Win32/DirectX conformance suite** — synthetic + captured traces per API; return/last-error/out-bytes/side-effects vs oracle; any runtime export with zero case = coverage hole = fail · **T1** · extends BPTK-010/003. *What BottleShip structurally lacks.*"
+    },
+    {
+      "gs_id": "GS-037",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Captured API-trace corpus",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-002"
+      ],
+      "dep": [],
+      "spec": "**GS-037 · Captured API-trace corpus** — every trace has provenance + redaction proof + byte-stability · **T1** · extends BPTK-002."
+    },
+    {
+      "gs_id": "GS-038",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Compatibility rating scheme with provenance",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-030"
+      ],
+      "dep": [],
+      "spec": "**GS-038 · Compatibility rating scheme with provenance** — ladder broken→boots→in-game→playable→complete; each rung only on a passing predicate; no rating above highest-passing (no false green) · **T1** · extends BPTK-030."
+    },
+    {
+      "gs_id": "GS-039",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Per-title deterministic reference/replay artifact",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "BPTK-039",
+        "GS-006"
+      ],
+      "spec": "**GS-039 · Per-title deterministic reference/replay artifact** — two replays hash-match at all checkpoints; no embedded asset/PII · **T1** · deps BPTK-039, GS-006."
+    },
+    {
+      "gs_id": "GS-040",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Public compatibility database",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-040 · Public compatibility database** — every row regenerable from evidence + revision-pinned; stale/unprovenanced refused · **T2** · *Reconciled (correctness+ecosystem, → GS-080).*"
+    },
+    {
+      "gs_id": "GS-041",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "HLE export-coverage ledger",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-036"
+      ],
+      "spec": "**GS-041 · HLE export-coverage ledger** — corpus imports ∩ HLE symbols; `absent`/`stub`-with-zero-case = tracked gap, release gate holds gap budget · **T1** · deps GS-036. *Kills the manual missing-export hunt.*"
+    },
+    {
+      "gs_id": "GS-042",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "No-false-green promotion self-audit",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-003"
+      ],
+      "dep": [],
+      "spec": "**GS-042 · No-false-green promotion self-audit** — sabotage fixtures (wrong return, out-of-tol frame, inflated rating, stale provenance, nondeterministic replay) all rejected · **T1** · extends BPTK-003."
+    },
+    {
+      "gs_id": "GS-104",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Real freeware/.exe corpus acquisition",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-002"
+      ],
+      "dep": [
+        "GS-084"
+      ],
+      "spec": "**GS-104 · Real freeware/`.exe` corpus acquisition** — a versioned pipeline that **downloads lawfully-redistributable freeware games and freeware `.exe` programs** (games *and* utility programs) from named online sources, records provenance + license + hash, and stages them for testing; payload bytes stay out of git (provenance-only manifest, per R-003). Benchmark: the manifest resolves every entry to a redistribution basis + hash and rebuilds byte-stably; a non-redistributable or unlicensed entry is refused · **T1** · extends BPTK-002 · deps GS-084."
+    },
+    {
+      "gs_id": "GS-105",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Run-real-.exe empirical harness",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-007"
+      ],
+      "dep": [
+        "GS-104",
+        "GS-041"
+      ],
+      "spec": "**GS-105 · Run-real-`.exe` empirical harness** — actually execute each corpus binary end-to-end, headless, through the real `bptk ingest`/`run` path, recording reached-stage (loads / entry / interactive / crash) and, on failure, the **generic gap** that broke it (missing export, unimplemented API, unsupported instruction) — not a per-title patch. Benchmark: every corpus binary produces a reproducible run record with a stage and, on failure, a named generic gap that maps to a roadmap item · **T1** · extends BPTK-007/016 · deps GS-104, GS-041."
+    },
+    {
+      "gs_id": "GS-106",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Generalization gate (anti-per-title metric)",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-105",
+        "GS-041"
+      ],
+      "spec": "**GS-106 · Generalization gate (anti-per-title metric)** — a candidate fix is accepted only when it raises the reached-stage of **≥ N distinct corpus titles**, measured by GS-105 before/after; a fix that helps exactly one title is refused unless declared a sandboxed last-resort adapter (R-006). Benchmark: the gate computes per-fix corpus-wide delta and blocks a merge whose only beneficiary is a single title · **T1** · deps GS-105, GS-041. *The direct fix for BottleShip's non-generalization.*"
+    },
+    {
+      "gs_id": "GS-107",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Non-game .exe program support",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-010"
+      ],
+      "dep": [
+        "GS-105",
+        "GS-057"
+      ],
+      "spec": "**GS-107 · Non-game `.exe` program support** — the runtime targets arbitrary freeware Win32 *programs/utilities*, not only games (the \"any `.exe`\" half most competitors skip): console/GUI apps, no game loop, no D3D. Benchmark: a set of freeware utility `.exe` from the GS-104 corpus reach interactive/complete through generic Win32 HLE with the same conformance discipline as games · **T2** · extends BPTK-010 · deps GS-105, GS-057."
+    },
+    {
+      "gs_id": "GS-108",
+      "pillar": "P3: Correctness & compatibility",
+      "title": "Time-travel debugger for recompiled/guest execution",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-010",
+        "GS-039"
+      ],
+      "spec": "**GS-108 · Time-travel debugger for recompiled/guest execution** — step forward **and backward** over a deterministic trace, inspecting guest memory, registers, stack, locals, and CFG at any instruction — the same debugger code running both in-browser (WASM) and as a TUI. Benchmark: on a recorded divergence, the debugger reconstructs exact guest state at any instruction index and reverse-steps to the **first instruction that differs** from the BPTK-009 reference oracle; identical results in the browser and TUI harness · **T2** · deps GS-010, GS-039. *Reverse-stepping to the first divergence is the decisive tool for the recompiler moat (GS-001/002); prior art: [qip wasm-debugger](https://github.com/royalicing/qip/blob/main/components/interactive/wasm-debugger.zig) (royalicing/qip, Zig, portable browser+TUI, time-travel).*"
+    },
+    {
+      "gs_id": "GS-043",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Diagnose-and-route front door",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-007"
+      ],
+      "dep": [],
+      "spec": "**GS-043 · Diagnose-and-route front door** — ranked lane decision + confidence over the 8-lane taxonomy on a mixed corpus; mislabel = hard fail; no exec, no upload · **T1** · extends BPTK-007/037."
+    },
+    {
+      "gs_id": "GS-044",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Universal .bptk bundle format",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-024"
+      ],
+      "dep": [],
+      "spec": "**GS-044 · Universal `.bptk` bundle format** — lane-tagged envelope: decision + content-addressed payload + capability manifest + provenance; schema-pinned, lane≠payload refused; one host loads every lane · **T1** · extends BPTK-024. *Reconciled (lanes+platform).*"
+    },
+    {
+      "gs_id": "GS-045",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Source lane: build-system autodetect + patch-set",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [
+        "BPTK-006"
+      ],
+      "dep": [],
+      "spec": "**GS-045 · Source lane: build-system autodetect + patch-set** — CMake/autotools/Make/Meson detected, pinned Emscripten patch-set, reproducible in a clean env · **T3** · extends BPTK-006/021."
+    },
+    {
+      "gs_id": "GS-046",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Engine lane: open-reimplementation runtime host",
+      "tier": "T1",
+      "phase": "mid",
+      "extend": [
+        "BPTK-029"
+      ],
+      "dep": [],
+      "spec": "**GS-046 · Engine lane: open-reimplementation runtime host** — matched title runs on its Wasm-built open engine (Xash/vkQuake/ScummVM…), assets from OPFS, zero engine/asset commingling, no-rights blocked · **T1** · extends BPTK-029/043. **[mid]**"
+    },
+    {
+      "gs_id": "GS-047",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Modern-PC lane: x86-64 + D3D10/11/12/Vulkan→WebGPU",
+      "tier": "T3",
+      "phase": "P4",
+      "extend": [
+        "BPTK-031"
+      ],
+      "dep": [],
+      "spec": "**GS-047 · Modern-PC lane: x86-64 + D3D10/11/12/Vulkan→WebGPU** — composed decision + prototype of one hard mapping (D3D11 binding→WGSL / Vulkan descriptor model) · **T3** · extends BPTK-031/032/033. **[P4]**"
+    },
+    {
+      "gs_id": "GS-048",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Modern web-native ingest (Unity/Godot/Unreal)",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-043"
+      ],
+      "spec": "**GS-048 · Modern web-native ingest (Unity/Godot/Unreal)** — an already-web-native export boots in the BPTK host under the capability manifest; disallowed-capability blocked · **T1** · deps GS-043/044. **[near-term — highest leverage, fastest demo].**"
+    },
+    {
+      "gs_id": "GS-049",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "DOS / Win16 / Win9x lane via embedded emulator",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-049 · DOS / Win16 / Win9x lane via embedded emulator** — pre-Win32 inputs routed to a sandboxed DOSBox/86Box-class emulator; PE32 not mis-routed · **T3**."
+    },
+    {
+      "gs_id": "GS-050",
+      "pillar": "P4: Lanes beyond Windows",
+      "title": "Cross-lane fallback + confidence chain",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-017"
+      ],
+      "dep": [],
+      "spec": "**GS-050 · Cross-lane fallback + confidence chain** — primary-precondition failure → declared next lane with recorded reason; no-viable → bounded `no-lane` · **T1** · extends BPTK-017."
+    },
+    {
+      "gs_id": "GS-052",
+      "pillar": "P5: Runtime services",
+      "title": "3D/positional audio: XAudio2 · EAX · DS3D",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-014"
+      ],
+      "dep": [],
+      "spec": "**GS-052 · 3D/positional audio: XAudio2 · EAX · DS3D** — submix/voice-ramp/3D-geometry/EAX-reverb mix within tolerance, zero SAB underrun · **T1** · extends BPTK-014."
+    },
+    {
+      "gs_id": "GS-053",
+      "pillar": "P5: Runtime services",
+      "title": "Full input: DirectInput · XInput · gamepad · touch · pointer-lock · rumble",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-011"
+      ],
+      "dep": [],
+      "spec": "**GS-053 · Full input: DirectInput · XInput · gamepad · touch · pointer-lock · rumble** — input-trace replay matches oracle incl. relative-motion + one rumble effect · **T1** · extends BPTK-011/027."
+    },
+    {
+      "gs_id": "GS-054",
+      "pillar": "P5: Runtime services",
+      "title": "Storage & registry fidelity",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-015"
+      ],
+      "dep": [],
+      "spec": "**GS-054 · Storage & registry fidelity** — registry hive + Win32 path (case-insensitive/8.3/UNC/reserved) + quota rollback; base byte-unchanged · **T1** · extends BPTK-015."
+    },
+    {
+      "gs_id": "GS-055",
+      "pillar": "P5: Runtime services",
+      "title": "Networking: Winsock/DirectPlay→WebRTC/WebSocket, lockstep, NAT",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-026"
+      ],
+      "dep": [],
+      "spec": "**GS-055 · Networking: Winsock/DirectPlay→WebRTC/WebSocket, lockstep, NAT** — session semantics + lockstep sync; only allowlisted endpoints, zero off-allowlist · **T1** · extends BPTK-026."
+    },
+    {
+      "gs_id": "GS-056",
+      "pillar": "P5: Runtime services",
+      "title": "FMV sync & subtitles",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-040"
+      ],
+      "dep": [],
+      "spec": "**GS-056 · FMV sync & subtitles** — A/V drift in budget across seek/pause; cues on-time · **T2** · extends BPTK-040."
+    },
+    {
+      "gs_id": "GS-057",
+      "pillar": "P5: Runtime services",
+      "title": "Win32 breadth: user32/gdi32/ole32/COM/CRT/SxS/msvbvm",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-010"
+      ],
+      "dep": [
+        "GS-036"
+      ],
+      "spec": "**GS-057 · Win32 breadth: user32/gdi32/ole32/COM/CRT/SxS/msvbvm** — per-module conformance slice passes incl. COM marshaling, SxS activation, VB6 main window · **T1** · extends BPTK-010, deps GS-036/041."
+    },
+    {
+      "gs_id": "GS-058",
+      "pillar": "P5: Runtime services",
+      "title": "Installer/CD/virtual optical drive",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-038"
+      ],
+      "dep": [],
+      "spec": "**GS-058 · Installer/CD/virtual optical drive** — DRM-free image mounts, sector reads hash-match, Red Book CD-audio in sync; DRM refused · **T2** · extends BPTK-038."
+    },
+    {
+      "gs_id": "GS-059",
+      "pillar": "P5: Runtime services",
+      "title": "Locale / codepage / Unicode fidelity",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-059 · Locale / codepage / Unicode fidelity** — ANSI↔wide across codepages incl. DBCS byte-exact; CompareString/LCMapString match oracle · **T2**."
+    },
+    {
+      "gs_id": "GS-060",
+      "pillar": "P5: Runtime services",
+      "title": "Frame-pacing / vblank scheduler",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-039"
+      ],
+      "dep": [],
+      "spec": "**GS-060 · Frame-pacing / vblank scheduler** — cadence within jitter budget, speed host-throughput-independent, QPC/RDTSC busy-wait yields to rAF (no spin) · **T1** · extends BPTK-039. *Retires the 6500-line spin-loop.*"
+    },
+    {
+      "gs_id": "GS-061",
+      "pillar": "P6: Platform & delivery",
+      "title": "Compressed content-addressed streaming",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-022"
+      ],
+      "dep": [],
+      "spec": "**GS-061 · Compressed content-addressed streaming** — per-chunk zstd/brotli; bytes-to-interactive ≤55% of uncompressed `.wgb`; each chunk hash-verified · **T1** · extends BPTK-022. *Beats uncompressed `.wgb`.*"
+    },
+    {
+      "gs_id": "GS-062",
+      "pillar": "P6: Platform & delivery",
+      "title": "Range/block streaming + prefetch + async guest I/O",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-061"
+      ],
+      "spec": "**GS-062 · Range/block streaming + prefetch + async guest I/O** — reaches interactive with payload partly unfetched; sync guest read of absent block serviced without frame stall (via BPTK-034) · **T1** · deps GS-061."
+    },
+    {
+      "gs_id": "GS-063",
+      "pillar": "P6: Platform & delivery",
+      "title": "Embedding SDK: HTML / React / Web Component / iframe",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-024"
+      ],
+      "dep": [],
+      "spec": "**GS-063 · Embedding SDK: HTML / React / Web Component / iframe** — all four hosts → identical runtime artifact; remount leaks zero worker/audio/GPU; iframe sandboxed · **T1** · extends BPTK-024."
+    },
+    {
+      "gs_id": "GS-064",
+      "pillar": "P6: Platform & delivery",
+      "title": "PWA / offline install",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-022"
+      ],
+      "dep": [],
+      "spec": "**GS-064 · PWA / offline install** — interactive offline after one run; SW serves only hash-verified chunks; updates invalidate exactly changed chunks · **T2** · extends BPTK-022."
+    },
+    {
+      "gs_id": "GS-065",
+      "pillar": "P6: Platform & delivery",
+      "title": "Hosting-constraint automation (COOP/COEP)",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-025"
+      ],
+      "dep": [],
+      "spec": "**GS-065 · Hosting-constraint automation (COOP/COEP)** — emitted headers yield `crossOriginIsolated`; absent-isolation → single-thread bundle, never a broken SAB build · **T1** · extends BPTK-025."
+    },
+    {
+      "gs_id": "GS-066",
+      "pillar": "P6: Platform & delivery",
+      "title": "Cross-title CDN asset dedup",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-061",
+        "BPTK-041"
+      ],
+      "spec": "**GS-066 · Cross-title CDN asset dedup** — shared redistributables stored/served once; cross-title cache-hit zero re-download; never merge differing hashes · **T2** · deps GS-061, BPTK-041."
+    },
+    {
+      "gs_id": "GS-067",
+      "pillar": "P6: Platform & delivery",
+      "title": "Cloud save sync",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-015"
+      ],
+      "dep": [],
+      "spec": "**GS-067 · Cloud save sync** — only the overlay diff uploads, base/hash-matching files never transmitted; deterministic conflict resolution · **T1** · extends BPTK-015."
+    },
+    {
+      "gs_id": "GS-068",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Game catalog UI + metadata schema",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-063",
+        "GS-084"
+      ],
+      "spec": "**GS-068 · Game catalog UI + metadata schema** — every entry validates frozen schema; `instant-play` requires approved redistribution + passing capability profile; no-rights → BYO-only · **T3** · deps GS-063, GS-084."
+    },
+    {
+      "gs_id": "GS-069",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Instant-play redistributable hosting",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-061",
+        "GS-084"
+      ],
+      "spec": "**GS-069 · Instant-play redistributable hosting** — hosted title interactive from cold browser; publish refuses any title without an in-date redistribution grant · **T1** · deps GS-061/066, GS-084."
+    },
+    {
+      "gs_id": "GS-070",
+      "pillar": "P7: Games, library & authoring",
+      "title": "BYO-file import into the library",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-007"
+      ],
+      "dep": [],
+      "spec": "**GS-070 · BYO-file import into the library** — local classify+stage+launch, zero upload of game bytes, local-only entry never published · **T1** · extends BPTK-007/015."
+    },
+    {
+      "gs_id": "GS-071",
+      "pillar": "P7: Games, library & authoring",
+      "title": "First-party BPTK original / tech-demo games",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-072",
+        "BPTK-003"
+      ],
+      "spec": "**GS-071 · First-party BPTK original / tech-demo games** — buildable from clean first-party source, instant-play hosted, and its passing run **is** the benchmark evidence for its capability · **T1** · deps GS-072, BPTK-003. *Real games beat synthetic fixtures.*"
+    },
+    {
+      "gs_id": "GS-072",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Authoring SDK / runtime-target API",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-021"
+      ],
+      "dep": [],
+      "spec": "**GS-072 · Authoring SDK / runtime-target API** — a new game built only on the public SDK runs in all four hosts under the same save/capability/containment invariants; semver API-stability contract · **T1** · extends BPTK-021/024. *Reconciled (lanes+platform).*"
+    },
+    {
+      "gs_id": "GS-073",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Community submission pipeline",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-079"
+      ],
+      "spec": "**GS-073 · Community submission pipeline** — accepts profile+provenance (not assets); strips/refuses proprietary/PII; maps to a tracker entry; unattested claim can't promote a rating · **T2** · deps GS-079/080."
+    },
+    {
+      "gs_id": "GS-074",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Preservation catalog with provenance",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-084"
+      ],
+      "spec": "**GS-074 · Preservation catalog with provenance** — append-only provenance (source/build-hash/redistribution-basis/attestation); export reproducible, PII-free · **T2** · deps GS-084."
+    },
+    {
+      "gs_id": "GS-075",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Compatibility-ratings site",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-028"
+      ],
+      "dep": [],
+      "spec": "**GS-075 · Compatibility-ratings site** — rating shown only when backed by a reproducible BPTK-028 replay pinned to a browser profile + revision; stale ratings grey out · **T1** · extends BPTK-028/030."
+    },
+    {
+      "gs_id": "GS-076",
+      "pillar": "P7: Games, library & authoring",
+      "title": "Modding support",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-015"
+      ],
+      "dep": [],
+      "spec": "**GS-076 · Modding support** — mod overlay over read-only CoW base (base hash-unchanged), sandboxed to the game's containment, oversized mod refused at the bound · **T2** · extends BPTK-015/045."
+    },
+    {
+      "gs_id": "GS-078",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Clonable, non-stale repo + release process",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-078 · Clonable, non-stale repo + release process** — clean clone builds+gates in CI every push; **freshness gate fails if default branch older than a declared window**; releases reproducible from tag · **T1**. *vs 7-week-stale branch.*"
+    },
+    {
+      "gs_id": "GS-079",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Public issue + compatibility tracker",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-079 · Public issue + compatibility tracker** — templates enforce env+revision+repro-hash, bare reports rejected; triage-freshness SLA · **T3**. *vs empty tracker.*"
+    },
+    {
+      "gs_id": "GS-080",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Public compatibility database",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "BPTK-028"
+      ],
+      "spec": "**GS-080 · Public compatibility database** — every row: title/build-hash + env + browser + revision + evidence; export byte-stable; no unbacked or PII rows · **T2** · deps BPTK-028. *Reconciled (→GS-040).*"
+    },
+    {
+      "gs_id": "GS-081",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Test-first + ratcheting coverage bar",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-003"
+      ],
+      "dep": [],
+      "spec": "**GS-081 · Test-first + ratcheting coverage bar** — merge fails if a runtime surface lands without a linked benchmark or coverage on runtime modules drops below the floor · **T1** · extends BPTK-003. *vs ~10% tests.*"
+    },
+    {
+      "gs_id": "GS-082",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Multi-maintainer / kill bus-factor-1",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-082 · Multi-maintainer / kill bus-factor-1** — CODEOWNER review ≠ author; release needs ≥2 signers; `MAINTAINERS.md` + recovery path (mechanism testable before a 2nd human exists) · **T2**. *vs bus-factor-1.*"
+    },
+    {
+      "gs_id": "GS-083",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Human + AI-agent contributor pipeline",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-079"
+      ],
+      "spec": "**GS-083 · Human + AI-agent contributor pipeline** — human and agent PRs accepted only through the same benchmark+coverage+authorship-disclosure gate · **T3** · deps GS-079/081/082."
+    },
+    {
+      "gs_id": "GS-084",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "License / reuse / provenance graph",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-001"
+      ],
+      "dep": [],
+      "spec": "**GS-084 · License / reuse / provenance graph** — resolves every component→license + every hosted title→redistribution basis; publish/host/bundle refused on unlicensed/incompatible/expired node · **T1** · extends BPTK-001. *Reconciled (lanes SBOM + ecosystem); load-bearing for GS-069/074.*"
+    },
+    {
+      "gs_id": "GS-085",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Governance/RFC + telemetry-free analytics + community",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-082",
+        "BPTK-028"
+      ],
+      "spec": "**GS-085 · Governance/RFC + telemetry-free analytics + community** — breaking change to SDK/`.bptk`/CLI needs a merged RFC; analytics aggregate/opt-in/PII-free (byte-audited); code of conduct + community space · **T2** · deps GS-082/BPTK-028."
+    },
+    {
+      "gs_id": "GS-101",
+      "pillar": "P8: Ecosystem & governance",
+      "title": "Lane / accuracy honesty badge + documented unsupported set",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-044",
+        "GS-038"
+      ],
+      "spec": "**GS-101 · Lane / accuracy honesty badge + documented unsupported set** — every title and program surfaces its execution lane (*AOT-recompiled* / *interpreted-JIT* / *emulated* / *web-native*) and accuracy caveats, and the project publishes a machine-readable **unsupported set** (kernel anti-cheat, DRM classes, unproven APIs) so no capability is implied that isn't measured. Benchmark: every catalog/run surface renders the correct lane+accuracy label from the bundle's recorded lane (GS-044), and a title in the unsupported set can never be marked playable · **T2** · deps GS-044, GS-038. *Truthfulness as a feature — the anti-\"we run Valorant\" gate.*"
+    },
+    {
+      "gs_id": "GS-086",
+      "pillar": "P9: Security & safety",
+      "title": "Per-lane guest containment",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-045"
+      ],
+      "dep": [],
+      "spec": "**GS-086 · Per-lane guest containment** — every lane its own confinement profile; web-native can't reach `window.parent`, emulator can't open host FS beyond bundle; any escape fails · **T1** · extends BPTK-045."
+    },
+    {
+      "gs_id": "GS-087",
+      "pillar": "P9: Security & safety",
+      "title": "Cross-lane resource-exhaustion bounds",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-044"
+      ],
+      "dep": [],
+      "spec": "**GS-087 · Cross-lane resource-exhaustion bounds** — decompression-bomb / unbounded-stream / OPFS-quota / GPU-flood / worker-flood each fail closed; recomp+emulator enforce instruction/time budget · **T1** · extends BPTK-044."
+    },
+    {
+      "gs_id": "GS-088",
+      "pillar": "P9: Security & safety",
+      "title": "DRM / copy-protection detect-and-REFUSE",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-037"
+      ],
+      "dep": [],
+      "spec": "**GS-088 · DRM / copy-protection detect-and-REFUSE** — labelled protection corpus routed to `refuse` with the protection named; **zero unwrap/patch artifact emitted for any protected input** · **T1** · extends BPTK-037."
+    },
+    {
+      "gs_id": "GS-089",
+      "pillar": "P9: Security & safety",
+      "title": "Malware / threat scan of untrusted input",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [
+        "BPTK-004"
+      ],
+      "dep": [],
+      "spec": "**GS-089 · Malware / threat scan of untrusted input** — benign corpus passes, EICAR/known-bad flagged pre-exec, flagged web-native script quarantined; local-only, bounded · **T1** · extends BPTK-004."
+    },
+    {
+      "gs_id": "GS-090",
+      "pillar": "P9: Security & safety",
+      "title": "Capability-based permission manifest + consent",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-044"
+      ],
+      "spec": "**GS-090 · Capability-based permission manifest + consent** — bundle declares least-privilege set; undeclared-capability use denied + surfaced; default deny-network / OPFS-scoped · **T1** · deps GS-044/086."
+    },
+    {
+      "gs_id": "GS-091",
+      "pillar": "P9: Security & safety",
+      "title": "Trust-tier legal boundary for arbitrary executables",
+      "tier": "T3",
+      "phase": "near",
+      "extend": [
+        "BPTK-004"
+      ],
+      "dep": [],
+      "spec": "**GS-091 · Trust-tier legal boundary for arbitrary executables** — attested→full lanes; unknown-untrusted→scan+inspect only, no net/persistence; DRM/anti-cheat/illegal→refused; tier can't silently upgrade · **T3** · extends BPTK-004/001."
+    },
+    {
+      "gs_id": "GS-092",
+      "pillar": "P10: Performance bars",
+      "title": "MIPS throughput floor",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-001"
+      ],
+      "spec": "**GS-092 · MIPS throughput floor** — ≥ **770 MIPS** on the reference desktop for the frozen CPU-bound workload (BottleShip's own \"required\" figure; it reaches 174) · **T1** · deps GS-001."
+    },
+    {
+      "gs_id": "GS-093",
+      "pillar": "P10: Performance bars",
+      "title": "Recompile-vs-interpret speedup",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-093 · Recompile-vs-interpret speedup** — recompiled ≥ **5×** the BPTK-009 interpreter AND ≥ **50%** of native · **T1**. *The moat metric.*"
+    },
+    {
+      "gs_id": "GS-094",
+      "pillar": "P10: Performance bars",
+      "title": "Frame-time budget / per-lane fps floor",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-094 · Frame-time budget / per-lane fps floor** — p99 ≤ **16.67 ms** (60 fps) / ≤ **33.3 ms** (30 fps console) per the lane matrix · **T1**."
+    },
+    {
+      "gs_id": "GS-095",
+      "pillar": "P10: Performance bars",
+      "title": "Cold-start / time-to-first-frame",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-095 · Cold-start / time-to-first-frame** — ≤ declared budget (e.g. ≤5 s cold / ≤1.5 s warm) incl. WASM compile + streamed assets · **T2**."
+    },
+    {
+      "gs_id": "GS-096",
+      "pillar": "P10: Performance bars",
+      "title": "Memory ceiling + guest-host boundary cost",
+      "tier": "T1",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-096 · Memory ceiling + guest-host boundary cost** — peak ≤ declared ceiling (e.g. ≤2 GB, no unbounded growth) + per-crossing cost under bound · **T1**."
+    },
+    {
+      "gs_id": "GS-097",
+      "pillar": "P10: Performance bars",
+      "title": "Audio-underrun + input-to-photon latency",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-097 · Audio-underrun + input-to-photon latency** — zero underruns over a sustained run; input-to-photon ≤ declared bound (e.g. ≤50 ms) · **T2**."
+    },
+    {
+      "gs_id": "GS-098",
+      "pillar": "P10: Performance bars",
+      "title": "Sustained-run stability / jitter",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-098 · Sustained-run stability / jitter** — over ≥30 min: jitter (p99.9−median) under bound, no GC/compile pause > one frame, memory returns to baseline · **T2**."
+    },
+    {
+      "gs_id": "GS-099",
+      "pillar": "Accessibility",
+      "title": "Runtime-level accessibility injection",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [],
+      "dep": [
+        "GS-053",
+        "GS-072"
+      ],
+      "spec": "**GS-099 · Runtime-level accessibility injection** — remappable input, stick deadzone/inversion, gyro-as-mouse, subtitle/caption injection, colorblind palettes, UI scale, reduced-flash, hold-to-press, extra save slots — **available even when the original game has none** (the Zelda64Recomp / Steam Deck bar). Benchmark: each feature verifiably alters the running title against a fixture · **T2** · deps GS-053, GS-072."
+    },
+    {
+      "gs_id": "GS-100",
+      "pillar": "Accessibility",
+      "title": "Shell WCAG 2.2 conformance",
+      "tier": "T2",
+      "phase": "near",
+      "extend": [
+        "BPTK-027"
+      ],
+      "dep": [
+        "GS-063"
+      ],
+      "spec": "**GS-100 · Shell WCAG 2.2 conformance** — library, launcher, and overlays meet WCAG 2.2 AA (keyboard, focus, contrast, target size, motion, status). Benchmark: automated + manual audit passes; extends BPTK-027 · **T2** · deps GS-063/068. Grounded in the [Game Accessibility Guidelines](https://gameaccessibilityguidelines.com/) and [WCAG 2.2](https://www.w3.org/TR/WCAG22/)."
+    },
+    {
+      "gs_id": "GS-102",
+      "pillar": "Accessibility",
+      "title": "Live-service revival: server reimpl + \"server-dead → local stub\"",
+      "tier": "T3",
+      "phase": "P4",
+      "extend": [],
+      "dep": [],
+      "spec": "**GS-102 · Live-service revival: server reimpl + \"server-dead → local stub\"** — packet-capture hooks + a local server stub so an always-online title survives its shutdown (preservation's actual enemy per VGHF) · **T3** · extends GS-055. **[P4]**"
+    }
+  ]
+}
