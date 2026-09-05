@@ -122,7 +122,7 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Gold-standard item promoted as planned work: **100**
 - Rejected candidate: **8**
 - Deferred candidate: **6**
-- Implemented item: **45**
+- Implemented item: **46**
 - Passing roadmap benchmark: **0 / 145 (0%)**
 - Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis and research, live self-check, toolchain comparison, PE32 mapping and declared import resolution, an opt-in deterministic i386 entry probe, bounded installer extraction, declared resource bound, middleware and engine census routing, ephemeral Chrome capability probing, asset packaging, host emission, local policy diagnosis, safe import diagnosis, and local reporting; a new registry release has not been made from this branch
 

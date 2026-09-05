@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { ingestInput } from "../lib/ingest.mjs";
+import { formatFallbackChain, ingestInput, resolveFallbackChain } from "../lib/ingest.mjs";
 import { createInnoFixture } from "./extract.test.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
@@ -146,4 +146,48 @@ test("an installer bomb refusal propagates loudly through ingest", (context) => 
   const cliResult = run(["ingest", installerPath, "--output", outputDir, "--json"]);
   assert.equal(cliResult.status, 1);
   assert.equal(JSON.parse(cliResult.stderr).error_code, "bound_ratio_exceeded");
+});
+
+test("the fallback chain carries a plain PE32 as a binary-lane candidate without executing it", (context) => {
+  const inputPath = createRoot(context, "game.exe");
+  writeFileSync(inputPath, createPe32File());
+  const chain = resolveFallbackChain(inputPath);
+  assert.equal(chain.carried_lane, "binary_i386");
+  assert.equal(chain.state, "candidate");
+  assert.equal(chain.is_executed, false);
+  assert.equal(chain.is_terminal_bounded, true);
+});
+
+test("the fallback chain falls from a refused binary to the engine lane and records the hop", (context) => {
+  const dir = createRoot(context, "protected");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "game.exe"), createPe32File());
+  writeFileSync(join(dir, "bptk.json"), JSON.stringify({ schema_version: 1, executable: "game.exe" }));
+  writeFileSync(join(dir, "00000001.tmp"), "safedisc loader artifact");
+  writeFileSync(join(dir, "game.wad"), "IWAD payload");
+  const chain = resolveFallbackChain(dir);
+  assert.ok(chain.ranked_lane.includes("binary_i386") && chain.ranked_lane.includes("engine_asset"));
+  assert.equal(chain.carried_lane, "engine_asset");
+  assert.equal(chain.state, "candidate");
+  assert.ok(chain.hop.some((entry) => entry.lane === "binary_i386" && entry.reason.includes("protection")));
+});
+
+test("the fallback chain terminates in a bounded no-lane state for an unroutable input", (context) => {
+  const inputPath = createRoot(context, "mystery.bin");
+  writeFileSync(inputPath, Buffer.from("this is not any known executable or asset"));
+  const chain = resolveFallbackChain(inputPath);
+  assert.equal(chain.carried_lane, "no_lane");
+  assert.equal(chain.state, "no_lane");
+  assert.equal(chain.is_terminal_bounded, true);
+  assert.ok(chain.hop.length <= chain.ranked_lane.length);
+});
+
+test("the fallback chain is reachable at the real CLI and never asserts the title runs", (context) => {
+  const inputPath = createRoot(context, "game.exe");
+  writeFileSync(inputPath, createPe32File());
+  const result = run(["route", "--fallback", inputPath, "--json"]);
+  assert.equal(result.status, 0);
+  const chain = JSON.parse(result.stdout);
+  assert.equal(chain.is_executed, false);
+  assert.match(chain.note, /does not assert the title runs/);
 });

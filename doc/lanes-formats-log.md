@@ -13,7 +13,7 @@ Converge-to-completion run over the P4 lane/routing/format scope. Verifier:
 | GS-046 | BPTK-091 | Engine lane open-reimpl host | planned |
 | GS-048 | BPTK-093 | Web-native ingest under capability | implemented (pre-run) |
 | GS-049 | BPTK-094 | DOS/Win16/Win9x emulator lane | **implemented** |
-| GS-050 | BPTK-095 | Cross-lane fallback + confidence chain | planned |
+| GS-050 | BPTK-095 | Cross-lane fallback + confidence chain | **implemented** |
 | GS-057 | BPTK-101 | Win32 module breadth | planned |
 | GS-072 | BPTK-116 | Authoring SDK / runtime-target API | implemented (pre-run) |
 
@@ -47,3 +47,18 @@ Converge-to-completion run over the P4 lane/routing/format scope. Verifier:
   and the GS-072 `data/sdk-api.json` export manifest (+3 exports).
 - Spec `bptk-094.json`: gate excluded → active; red until an emulator core is
   embedded. Counts: implemented 44 → 45. passing 0. Gate exit 0.
+
+## Cycle 3 — GS-050 / BPTK-095 (cross-lane fallback chain)
+
+- `lib/ingest.mjs`: `resolveFallbackChain` consumes the front-door ranking and
+  walks candidate lanes in confidence order, applying a per-lane structural
+  precondition table (reusing `diagnoseSourcePort` and `admitEmulatorLane`).
+  First lane whose precondition holds becomes the carried candidate; skipped
+  lanes record a per-hop reason; an exhausted chain terminates in a bounded
+  `no_lane` state. `bptk route --fallback <input>` wired into the CLI. A
+  carried candidate is a structural match — it never asserts the title runs.
+- Tests in `test/ingest.test.mjs`: PE32 carried as binary candidate; a
+  protection-refused binary with an engine asset falls binary → engine with a
+  recorded hop; unroutable input terminates bounded no-lane; CLI reachability.
+- Spec `bptk-095.json`: gate excluded → active; red because no candidate lane
+  has a passing runtime. Counts: implemented 45 → 46; +2 SDK exports. Gate 0.
