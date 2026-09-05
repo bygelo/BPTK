@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The promotion runner is active for eleven implemented surface but no sabotage audit exists.",
+  "gate": "active",
+  "exclusion_reason": "The no-false-green self-audit is implemented as a battery of five sabotage fixtures \u2014 wrong return, out-of-tolerance frame, inflated rating, stale provenance, and non-deterministic replay \u2014 each pushed through the real promotion predicate and required to be rejected. The benchmark stays red because there is no real passing promotion candidate to guard (the runtime, BPTK-010, is absent), so the audit has only sabotage to reject, never a real green to admit.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every declared sabotage class is rejected by the live promotion path.",
   "expected_failing_assertion": "No sabotage fixture exists to reject.",
   "owner_item": "BPTK-082",
-  "active_gate_evidence": "The benchmark runner keeps deterministic in-memory checks and content-addressed promotion without retained result.",
+  "active_gate_evidence": "The self-audit suite covers the whole battery rejecting every sabotage class and each class individually \u2014 the oracle comparator failing a wrong return, the frame diff failing an out-of-tolerance frame, the rating engine refusing an inflated rung, the database refusing a stale-provenance row, and the replay comparator refusing a non-deterministic run.",
   "fixture": [
     "FIX-000"
   ],

@@ -233,6 +233,7 @@ ALLOWED_MJS_PATH = {
     Path("test/recompile.test.mjs"),
     Path("test/replay.test.mjs"),
     Path("test/port.test.mjs"),
+    Path("test/report.test.mjs"),
     Path("test/runtime.test.mjs"),
     Path("test/security.test.mjs"),
     Path("test/seh.test.mjs"),

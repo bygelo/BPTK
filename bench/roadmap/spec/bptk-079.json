@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No guest loop or recording exists to replay.",
+  "gate": "active",
+  "exclusion_reason": "The reference/replay artifact is implemented as a generic recorder that reduces each checkpoint to a state hash (no raw asset byte, no personal data), a byte-stable artifact hash, and a checkpoint-by-checkpoint comparator that flags the first divergence. The benchmark stays red because the real checkpoints come from a live runtime session (BPTK-010) that does not exist, so no real run can be recorded.",
   "prerequisite": [
     "BPTK-039",
     "BPTK-051"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when two replay hash-match at every declared checkpoint and the artifact privacy proof holds.",
   "expected_failing_assertion": "No replay artifact exists.",
   "owner_item": "BPTK-079",
-  "active_gate_evidence": "The report command keeps consent recording minimized and off by default.",
+  "active_gate_evidence": "The replay suite covers the identical-hash match across two replays of one run, the first-divergence detection at its checkpoint index, the hash-only artifact that embeds no raw state, and the refusal of an artifact that embeds personal data or a raw state blob.",
   "fixture": [
     "FIX-021"
   ],

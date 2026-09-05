@@ -12,7 +12,9 @@
     "max_byte": 536870912,
     "timeout_ms": 300000,
     "redirect_max": 5,
-    "scheme_allow": ["https"]
+    "scheme_allow": [
+      "https"
+    ]
   },
   "record": [
     {
@@ -167,6 +169,40 @@
       "acquired_at": "2026-09-05",
       "state": "acquired",
       "note": "The i386 console entry of the corpus: a 32-bit non-game program on the non-game runtime ladder (GS-107)."
+    },
+    {
+      "entry_id": "CORPUS-010",
+      "title": "jq 1.7.1 win32",
+      "kind": "program",
+      "category": "command-line processor",
+      "payload_kind": "executable",
+      "source_url": "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-i386.exe",
+      "origin_url": "https://jqlang.github.io/jq/",
+      "license": "MIT",
+      "redistribution_basis": "The MIT license permits redistribution of the unmodified binary; the file is the project release asset served by the jqlang GitHub release.",
+      "size_byte": 1027584,
+      "sha256": "e4efdd6a2c463ae714ed98fd5e874fe834a3a2380e17885bd4cda1c49e5166df",
+      "game_loop": false,
+      "acquired_at": "2026-09-05",
+      "state": "acquired",
+      "note": "The i386 build of jq: a 32-bit console program that stresses the PE32 mapper and Win32 core import surface without a window layer."
+    },
+    {
+      "entry_id": "CORPUS-011",
+      "title": "PuTTYgen 0.81 win32",
+      "kind": "program",
+      "category": "key generator",
+      "payload_kind": "executable",
+      "source_url": "https://the.earth.li/~sgtatham/putty/0.81/w32/puttygen.exe",
+      "origin_url": "https://www.chiark.greenend.org.uk/~sgtatham/putty/",
+      "license": "MIT",
+      "redistribution_basis": "The MIT license permits redistribution of the unmodified binary; the file is served by the project's own download mirror.",
+      "size_byte": 883480,
+      "sha256": "577de7e22defc950bc5450557af31befcfc050743ffd94c11ec49db45b072480",
+      "game_loop": false,
+      "acquired_at": "2026-09-05",
+      "state": "acquired",
+      "note": "A 32-bit GUI program: exercises the user32/gdi32 window-and-dialog import breadth in the export-coverage ledger, distinct from the console-only i386 entries."
     }
   ]
 }

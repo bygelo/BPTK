@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No package runtime exists to rate and the compatibility surface claims nothing.",
+  "gate": "active",
+  "exclusion_reason": "The broken→boots→in-game→playable→complete ladder is implemented as one generic engine that grants a rung only when its predicate passes, every lower predicate passed, and the rung carries backing evidence, so no rating exceeds the highest contiguously-passing rung. The benchmark stays red because the real predicates read a live runtime session (BPTK-010) that does not exist, so every real predicate fails and the honest rating is broken.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every rung maps to a passing predicate and the inflated-rating case is red by construction.",
   "expected_failing_assertion": "No rating ladder exists.",
   "owner_item": "BPTK-078",
-  "active_gate_evidence": "The compatibility surface keeps observing capability without emitting a support claim.",
+  "active_gate_evidence": "The rating suite covers the full evidence-backed climb to complete, the contiguous-ceiling rule that a passing higher rung above a failed lower rung never lifts the rating, the unbacked-rung refusal, and the honest broken floor when no predicate passes.",
   "fixture": [
     "FIX-021"
   ],
