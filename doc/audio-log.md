@@ -1,0 +1,73 @@
+# Audio subsystem log (BPTK-014)
+
+Legacy audio → WebAudio. New logic lives in `lib/audio.mjs`; `lib/hle.mjs` is
+touched only to register exports once the guest export surface is wired.
+
+## Honesty state
+
+`implemented` here means real code plus an **active red** acceptance contract.
+The portable DSP and state-machine core is exercised by a **green** node suite
+(`test/audio.test.mjs`); the live half — a real `AudioWorklet`, the autoplay
+gesture, and browser suspension — is **not** exercised in node, so the roadmap
+benchmark **BENCH-014 stays `red` / `gate: excluded`** until FIX-007 renders
+verified output after gesture activation. No binary stage moves this cycle: a
+real `.exe` will not advance its stage until the thread → seh → cpu → user/gdi
+block lands, exactly as the lane plan anticipates. `bptk corpus run` is
+unavailable in this worktree (the DRM-free corpus stage is not mounted here);
+coverage is measured by the acceptance suite below.
+
+## Acceptance (offline, green)
+
+| Property | How it is proven | State |
+| --- | --- | --- |
+| PCM decode (8/16-bit int, 32-bit float) | normalized to [-1, 1], unsupported tag refused by name | green |
+| Constant-power pan + decibel volume/pan law | law checked at center/hard-left, −6 dB ≈ 0.501, floor = silence | green |
+| Golden offline mix within tolerance | mixed block vs an independently computed pan/volume oracle, max error < 2e-4 | green |
+| Resampling | half-rate source vs a linear-interpolation oracle, max error < 1e-5 | green |
+| Zero underrun over a sustained run | 4000-block producer/consumer SAB ring run, `underrun_count === 0`; a starved read is still counted | green |
+| A/V clock from one monotonic source | `createAudioClock` render position === guest clock elapsed, both derive from `lib/clock.mjs` | green |
+| waveOut open/write/reset/callback | WOM_OPEN → WOM_DONE on drain, reset returns the queue early, WOM_CLOSE | green |
+| DirectSound loop/volume/pan/position | looping buffer plays past its length, decibel gain applied, play cursor reported | green |
+| DirectSound notification position | callback fires as the play cursor crosses the declared offset | green |
+| DirectSound pause/resume | pause holds the cursor detached from the mix, resume continues from it | green |
+
+## Live contract (red)
+
+BENCH-014 (`bench/roadmap/spec/bptk-014.json`) remains `red` / `excluded`:
+> The PCM fixture produces no verified WebAudio output.
+
+Promotion trigger (unchanged): FIX-007 produces the expected audio hash,
+callback trace, loop, volume, pan, and synchronization result after gesture
+activation.
+
+## Design notes
+
+- **One mixer, many APIs.** waveOut, DirectSound, and (next slice) an XAudio2
+  voice subset all lower a playing sound into one `mixSource`; a single
+  deterministic summing pass renders interleaved stereo. Every gain resolves to
+  an explicit left/right linear multiplier so the mixer stays one code path.
+- **Thread seam.** Guest callbacks post through an injected
+  `dispatch(callback, message, param)` — the seam onto the thread subsystem
+  (BPTK-010) so a callback lands on the correct guest thread. The default runs
+  synchronously, which keeps the mixer testable without the thread lane and lets
+  that lane swap in real cross-thread posting on rebase. This lane therefore
+  carries no hard import of `lib/thread.mjs`.
+- **Ring.** Single-producer/single-consumer `Float32` interleaved ring over a
+  `SharedArrayBuffer`, `Atomics` indices, underrun and overrun counted rather
+  than papered over — the browser worklet's starvation signal.
+
+## Cycle history
+
+- **Cycle 1** — `lib/audio.mjs` core: format/decode, gain law, deterministic
+  mixer + resampler, SAB ring, audio clock, waveOut and DirectSound state
+  machines. `test/audio.test.mjs` (11 case, green). Registered
+  `lib/audio.mjs` / `test/audio.test.mjs` in the npm content manifest and the
+  validator surface. `npm run gate` exits 0 (175 test, 45 file).
+
+## Next
+
+- XAudio2 voice subset (source voice submit/start/stop/volume, mastering voice).
+- Conformance case table for the audio exports (`winmm!waveOut*`,
+  `dsound!*`), then register the exports in `lib/hle.mjs`.
+- Promote BPTK-014 `planned → implemented` via the 8-file contract, keeping the
+  live BENCH-014 red and every count reconciled.
