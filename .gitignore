@@ -5,3 +5,6 @@ node_modules/
 
 # agent worktrees (transient, per Agent-tool isolation)
 .claude/
+
+# browser-test payloads (out of git, R-003)
+web/payload/
