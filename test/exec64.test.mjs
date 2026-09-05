@@ -150,17 +150,63 @@ test("a served import dispatches through the Win64 ABI and execution continues",
   assert.equal(probe.register.rax, "0x1", "RAX carries the GetCurrentThreadId result (thread id 1)");
 });
 
+function le8(value) {
+  const byte = [];
+  let v = BigInt.asUintN(64, value);
+  for (let i = 0; i < 8; i += 1) { byte.push(Number(v & 0xffn)); v >>= 8n; }
+  return byte;
+}
+const movRax = (value) => [0x48, 0xb8, ...le8(value)];
+
+test("the probe's SSE executor agrees with the oracle: paddd/pshufd/pxor extract exactly", () => {
+  // paddd [1,2]+[0x10,0x0A] = [0x11,0x0C] read back to rcx via movq — the same
+  // microprogram frozen in test/lift64.test.mjs, proving exec64 mirrors lift64.
+  const paddd = run([
+    ...movRax(0x0000000200000001n), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x0000000A00000010n), 0x66, 0x48, 0x0f, 0x6e, 0xc8,
+    0x66, 0x0f, 0xfe, 0xc1,
+    0x66, 0x48, 0x0f, 0x7e, 0xc1,
+    0xc3,
+  ]);
+  assert.equal(paddd.stop_reason, "entry_return", JSON.stringify(paddd.exception));
+  assert.equal(paddd.register.rcx, 0x0000000C00000011n, `rcx 0x${paddd.register.rcx.toString(16)}`);
+
+  const pxor = run([
+    ...movRax(0xFFFFFFFFFFFFFFFFn), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x0F0F0F0F0F0F0F0Fn), 0x66, 0x48, 0x0f, 0x6e, 0xc8,
+    0x66, 0x0f, 0xef, 0xc1,
+    0x66, 0x48, 0x0f, 0x7e, 0xc1,
+    0xc3,
+  ]);
+  assert.equal(pxor.register.rcx, 0xF0F0F0F0F0F0F0F0n, `rcx 0x${pxor.register.rcx.toString(16)}`);
+});
+
+test("the probe serves CPUID and REP STOSB with the same semantics as the oracle", () => {
+  const cpuid = run([0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3]);
+  assert.equal(cpuid.register.rdx, 0x07808011n, `rdx 0x${cpuid.register.rdx.toString(16)}`);
+  const stos = run([0xb9, 0x04, 0x00, 0x00, 0x00, 0xb0, 0xab, 0x48, 0x89, 0xe7, 0x48, 0x83, 0xef, 0x40, 0xf3, 0xaa, 0x8b, 0x57, 0xfc, 0xc3]);
+  assert.equal(stos.stop_reason, "entry_return", JSON.stringify(stos.exception));
+  assert.equal(stos.register.rdx, 0xABABABABn, `rdx 0x${stos.register.rdx.toString(16)}`);
+  assert.equal(stos.register.rcx, 0n);
+});
+
 test("PuTTY x64 executes past its first import through the served Win64 HLE", { skip: existsSync(puttyPath) ? false : "PuTTY x64 corpus package absent" }, () => {
   const mapped = mapPe64State(puttyPath);
   const probe = executeProbe64(mapped, 2000000);
   assert.equal(probe.state, "probe_executed");
   assert.equal(probe.is_executed, true);
-  // Before M4 the CRT prologue stopped at the first IAT call
-  // (kernel32!GetSystemTimeAsFileTime) after 13 instructions. With the Win64
-  // HLE dispatch that import is served and execution continues well past it —
-  // the honest stop is now a later structured boundary (an opcode outside the
-  // read-only lift subset, e.g. CPUID), never the first call.
-  assert.equal(probe.instruction_count > 13, true, `instruction_count ${probe.instruction_count}`);
-  assert.notEqual(probe.stop_reason, "import_present");
-  assert.equal(["unsupported_opcode", "fault", "instruction_budget_exhausted", "process_exit", "guest_exception", "hle_fault"].includes(probe.stop_reason), true, `stop_reason ${probe.stop_reason}`);
+  // Before the SSE/SSE2 and integer-op families were served, the CRT prologue
+  // stopped early at an opcode outside the lift subset (CPUID, after ~62
+  // instructions). With those families served — CPUID, CMPXCHG, the SSE/SSE2
+  // register file, and the REP string ops the CRT init runs — execution now
+  // threads over a thousand instructions of CRT setup and the honest stop is a
+  // LATER import the Win64 HLE table does not yet serve (kernel32!FlsAlloc), not
+  // an unsupported opcode and not the first CRT import.
+  assert.equal(probe.instruction_count > 1000, true, `instruction_count ${probe.instruction_count}`);
+  assert.equal(["unsupported_opcode", "import_present", "fault", "instruction_budget_exhausted", "process_exit", "guest_exception", "hle_fault"].includes(probe.stop_reason), true, `stop_reason ${probe.stop_reason}`);
+  // Whatever the frontier, it is deep in CRT init — never the first import that
+  // used to end the probe at 13 instructions.
+  if (probe.stop_reason === "import_present") {
+    assert.notEqual(probe.import_reached.symbol, "GetSystemTimeAsFileTime", "the probe must run past the first CRT import, not stop at it");
+  }
 });
