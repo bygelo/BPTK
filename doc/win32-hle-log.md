@@ -42,3 +42,18 @@ passing stays 0. Still red: ole32 COM marshaling, SxS activation context, and
 msvbvm module slices are absent, and the real-corpus gap budget is unmeasured here.
 
 Gate: exit 0.
+
+## Cycle 2 — BPTK-098 registry fidelity slice (implemented, red/active)
+Added generic advapi32 registry breadth over the bounded in-memory hive in
+lib/hle.mjs: RegOpenKeyExA, RegCreateKeyExA/W (reporting REG_CREATED_NEW_KEY vs
+REG_OPENED_EXISTING_KEY through the disposition pointer), RegQueryValueExW,
+RegSetValueExW, RegDeleteValueA/W, RegDeleteKeyA/W (refusing a key that still
+has subkeys with access-denied), and RegFlushKey. Served advapi32 export 6→16;
+total served 179→189. Every new export carries a conformance case; added a
+fidelity test proving disposition, byte-exact value round-trip, delete-then-
+not-found, and the subkey-refusal rule. Implemented count 44→45; passing 0.
+Still red: the copy-on-write overlay with byte-for-byte quota rollback and the
+persistent OPFS bridge are not built, and the real-corpus path-alias fixture is
+not staged here.
+
+Gate: exit 0.

@@ -480,6 +480,38 @@ test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clo
   assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
 });
 
+test("BPTK-098: registry create reports disposition, round-trips a value, and refuses deleting a key with subkeys", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const resultPtr = base + 0x40;
+  const dispPtr = base + 0x44;
+  const dataPtr = base + 0x60;
+  const readPtr = base + 0x80;
+  const lenPtr = base + 0xa0;
+  // Creating a fresh key reports REG_CREATED_NEW_KEY (1).
+  assert.equal(guest.registryCreate(0x80000001, "Soft\\A", resultPtr, dispPtr), 0);
+  assert.equal(memory.readMemory(dispPtr, 4), 1);
+  const handle = memory.readMemory(resultPtr, 4);
+  // Re-creating the same key reports REG_OPENED_EXISTING_KEY (2).
+  guest.registryCreate(0x80000001, "Soft\\A", resultPtr, dispPtr);
+  assert.equal(memory.readMemory(dispPtr, 4), 2);
+  // Set then query the value byte-exactly.
+  memory.writeMemory(dataPtr, 4, 0x2a2a2a2a);
+  assert.equal(guest.registrySet(handle, "V", 1, dataPtr, 4), 0);
+  memory.writeMemory(lenPtr, 4, 64);
+  assert.equal(guest.registryQuery(handle, "V", 0, readPtr, lenPtr), 0);
+  assert.equal(memory.readMemory(lenPtr, 4), 4);
+  assert.equal(memory.readMemory(readPtr, 4), 0x2a2a2a2a);
+  // A parent key with a child cannot be deleted.
+  assert.equal(guest.registryDeleteKey(0x80000001, "Soft"), 5);
+  // Deleting the value twice: first succeeds, then reports not-found.
+  assert.equal(guest.registryDeleteValue(handle, "V"), 0);
+  assert.equal(guest.registryDeleteValue(handle, "V"), 2);
+  // The leaf key deletes once no child remains.
+  assert.equal(guest.registryDeleteKey(0x80000001, "Soft\\A"), 0);
+  assert.equal(guest.registryDeleteKey(0x80000001, "Soft"), 0);
+});
+
 test("BPTK-101: SetErrorMode returns the previous mode", () => {
   const { guest } = createConformanceMachine();
   assert.equal(invoke(guest, "kernel32.dll", "SetErrorMode", [0x8000]), 0);
