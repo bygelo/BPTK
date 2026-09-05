@@ -85,7 +85,20 @@ browser present/invalidation path of FIX-005 are absent.
 
 Gate: exit 0.
 
+## Cycle 5 — BPTK-099 ws2_32 Winsock lifecycle slice (implemented, red/active)
+Bound the ws2_32 import surface in lib/hle.mjs to one offline-by-default mediated
+Winsock (lib/net.mjs): WSAStartup (WSADATA marshaled), WSACleanup,
+WSAGetLastError, socket/closesocket over the handle table, bind/connect
+(sockaddr_in marshaled through the consent gate), send/recv, ioctlsocket FIONBIO,
+and the pure htons/htonl/ntohs/ntohl and inet_addr helpers. Served ws2_32 export
+0→15; total 203→218. Every export carries a conformance case; added a test
+proving WSADATA marshaling, handle table, deny-by-default dial refusal (WSAEACCES),
+and byte-exact helpers. Implemented count 47→48; passing 0. Still red: FIX-019
+needs a consented allowlisted peer and the WebRTC/WebSocket transport binding.
+
+Gate: exit 0.
+
 ## Progress
-Implemented 43→47 (BPTK-101, 098, 011, 012). Served HLE export surface 156→203.
-Remaining owned planned items: BPTK-096 (3D audio), 097 (full input), 099
-(networking bind), 100 (FMV), 102 (installer/optical), 104 (frame-pacing).
+Implemented 43→48 (BPTK-101, 098, 011, 012, 099). Served HLE export 156→218.
+Remaining owned planned items: BPTK-096 (3D audio), 097 (full input), 100 (FMV),
+102 (installer/optical), 104 (frame-pacing).

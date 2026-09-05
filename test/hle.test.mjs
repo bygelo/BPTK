@@ -480,6 +480,32 @@ test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clo
   assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
 });
 
+test("BPTK-099: the ws2_32 lifecycle marshals WSADATA, serves the handle table, and refuses an offline dial", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const wsaData = base + 0x40;
+  const sockAddr = base + 0x220;
+  // Before startup a socket is refused; WSAStartup then writes the WSADATA.
+  assert.equal(invoke(guest, "ws2_32.dll", "socket", [2, 1, 6]) | 0, -1, "socket before WSAStartup fails");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAStartup", [0x0202, wsaData]), 0);
+  assert.equal(memory.readMemory(wsaData + 0, 2), 0x0202, "wVersion");
+  assert.equal(memory.readMemory(wsaData + 2, 2), 0x0202, "wHighVersion");
+  const socket = invoke(guest, "ws2_32.dll", "socket", [2, 1, 6]);
+  assert.equal(socket, 1);
+  // The offline default has no consent, so bind and connect are refused.
+  memory.writeMemory(sockAddr + 0, 2, 2);
+  memory.writeMemory(sockAddr + 2, 1, 0x1f); memory.writeMemory(sockAddr + 3, 1, 0x90);
+  [1, 2, 3, 4].forEach((octet, index) => memory.writeMemory(sockAddr + 4 + index, 1, octet));
+  assert.equal(invoke(guest, "ws2_32.dll", "connect", [socket, sockAddr]) | 0, -1, "an unconsented dial is refused");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAGetLastError", []), 10013, "WSAEACCES");
+  assert.equal(invoke(guest, "ws2_32.dll", "closesocket", [socket]), 0);
+  // Byte-order and address helpers are pure and always served.
+  assert.equal(invoke(guest, "ws2_32.dll", "htons", [0x1234]), 0x3412);
+  assert.equal(invoke(guest, "ws2_32.dll", "htonl", [0x12345678]), 0x78563412);
+  guest.writeAnsiString(base + 0x300, "127.0.0.1", 16);
+  assert.equal(invoke(guest, "ws2_32.dll", "inet_addr", [base + 0x300]), 0x7f000001);
+});
+
 test("BPTK-011: the message loop and geometry exports marshal MSG and RECT through guest memory", () => {
   const { guest, memory } = createConformanceMachine();
   const base = guest.layout.arena_base;
