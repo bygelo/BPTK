@@ -45,6 +45,7 @@
     "lib/pe.mjs",
     "lib/pe64.mjs",
     "lib/port.mjs",
+    "lib/present.mjs",
     "lib/recompile.mjs",
     "lib/replay.mjs",
     "lib/report.mjs",

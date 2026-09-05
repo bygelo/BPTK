@@ -152,6 +152,7 @@ BINARY_SUFFIX = {
 }
 
 ALLOWED_SUFFIX = {".md", ".json", ".mjs", ".py"}
+WEB_SUFFIX = {".mjs", ".html", ".css"}
 ALLOWED_NAME = {"LICENSE", "NOTICE"}
 ALLOWED_SPECIAL_PATH = {Path(".gitignore"), Path(".github/workflows/roadmap.yml"), Path(".github/CODEOWNERS")}
 ALLOWED_MJS_PATH = {
@@ -196,6 +197,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/pe.mjs"),
     Path("lib/pe64.mjs"),
     Path("lib/port.mjs"),
+    Path("lib/present.mjs"),
     Path("lib/recompile.mjs"),
     Path("lib/replay.mjs"),
     Path("lib/report.mjs"),
@@ -255,7 +257,12 @@ ALLOWED_MJS_PATH = {
     Path("test/hle.test.mjs"),
     Path("test/thread.test.mjs"),
     Path("test/user.test.mjs"),
+    Path("test/present.test.mjs"),
     Path("test/x64decode.test.mjs"),
+    Path("web/shim/buffer.mjs"),
+    Path("web/shim/crypto.mjs"),
+    Path("web/shim/fs.mjs"),
+    Path("web/shim/path.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -300,7 +307,11 @@ def validate_path(error: list[str]) -> None:
             continue
         if path.suffix.lower() in BINARY_SUFFIX:
             error.append(f"game or executable binary is disallowed in planning scope: {relative}")
-        if relative not in ALLOWED_SPECIAL_PATH and path.name not in ALLOWED_NAME and path.suffix.lower() not in ALLOWED_SUFFIX:
+        # The browser display layer (milestone 1: node:* shims; milestone 2: the
+        # host page) lives under web/ and carries the source suffix a browser
+        # build needs. Permit those, keeping every other tree at the prior surface.
+        is_web_source = len(relative.parts) > 0 and relative.parts[0] == "web" and path.suffix.lower() in WEB_SUFFIX
+        if not is_web_source and relative not in ALLOWED_SPECIAL_PATH and path.name not in ALLOWED_NAME and path.suffix.lower() not in ALLOWED_SUFFIX:
             error.append(f"product or unrecognized file is disallowed in planning scope: {relative}")
         if path.suffix == ".mjs" and relative not in ALLOWED_MJS_PATH:
             error.append(f"JavaScript file is outside the approved npm tooling surface: {relative}")
@@ -440,6 +451,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/pe.mjs",
         "lib/pe64.mjs",
         "lib/port.mjs",
+        "lib/present.mjs",
         "lib/recompile.mjs",
         "lib/replay.mjs",
         "lib/report.mjs",
