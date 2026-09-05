@@ -17,10 +17,14 @@ import {
   computeFrameDiff,
   declaredCaps,
   emitWgsl,
+  evaluateProgram,
   formatProgram,
   generateFixedFunction,
+  generateProjectiveTexgen,
   generateReferenceFrame,
   parseD3d9PixelShader,
+  referenceProjectiveTexgenFrame,
+  renderProjectiveTexgenFrame,
 } from "../lib/shader.mjs";
 
 function assemblePixelShader(model, instructions) {
@@ -87,6 +91,53 @@ test("one fixed-function generator is API-blind: identical state yields identica
   const wgslLeft = emitWgsl(left.program);
   const wgslRight = emitWgsl(right.program);
   assert.equal(wgslLeft, wgslRight);
+});
+
+test("the numeric evaluator runs one program and performs the projective divide", () => {
+  const program = [
+    { op: "mov", dest: { type: "temp", index: 0 }, dest_mask: "xyzw", src: [{ type: "constant", index: 0, swizzle: "" }] },
+    { op: "div", dest: { type: "temp", index: 1 }, dest_mask: "xy", src: [{ type: "temp", index: 0, swizzle: "xy" }, { type: "temp", index: 0, swizzle: "w" }] },
+  ];
+  const file = evaluateProgram(program, { constant: { 0: [4, 8, 0, 2] } });
+  assert.deepEqual(file.temp[1].slice(0, 2), [2, 4]);
+});
+
+test("the projective texgen generator is API-blind and lowers through the one emitter", () => {
+  const state = { mode: "spotlight_cookie", texture_stage_count: 1 };
+  const d3d = generateProjectiveTexgen({ ...state, api: "d3d9" });
+  const gl = generateProjectiveTexgen({ ...state, api: "opengl" });
+  assert.deepEqual(formatProgram(d3d.program), formatProgram(gl.program));
+  assert.equal(d3d.has_projection_divide, true);
+  assert.match(emitWgsl(d3d.program), /\//);
+  assert.throws(() => generateProjectiveTexgen({ mode: "bogus" }), (error) => error.input_code === "unsupported_texgen_mode");
+});
+
+test("the spotlight-cookie and planar-shadow fixtures render within tolerance and the dropped divide fails closed", () => {
+  const matrix = [
+    [0.5, 0, 0, 0.5],
+    [0, 0.5, 0, 0.5],
+    [0, 0, 1, 0],
+    [0, 0, 0, 2],
+  ];
+  const scene = {
+    matrix,
+    vertex: [
+      [0.4, 0.4, 0, 1],
+      [-0.2, 0.3, 0, 1],
+      [0.6, -0.5, 0, 1],
+      [0.1, 0.1, 0, 1],
+    ],
+  };
+  for (const mode of ["spotlight_cookie", "planar_shadow"]) {
+    const reference = referenceProjectiveTexgenFrame(scene);
+    const rendered = renderProjectiveTexgenFrame({ mode }, scene);
+    const report = computeFrameDiff(rendered, reference, { mean_tolerance: 1.0, reference_source: "projective oracle computed at test time" });
+    assert.equal(report.pass, true, `${mode} must render within tolerance`);
+    assert.equal(report.committed_baseline, false);
+    const mutated = renderProjectiveTexgenFrame({ mode, drop_projection_divide: true }, scene);
+    const mutatedReport = computeFrameDiff(mutated, reference, { mean_tolerance: 1.0 });
+    assert.equal(mutatedReport.pass, false, `${mode} with the projection divide dropped must fail closed`);
+  }
 });
 
 test("the frame diff computes its reference at test time with no committed baseline", (context) => {

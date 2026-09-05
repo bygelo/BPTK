@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No fixed-function generator exists to extend.",
+  "gate": "active",
+  "exclusion_reason": "The fixed-function texgen, projective, and shadow path is implemented: one API-blind generator lowers the spotlight-cookie and planar-shadow projective coordinate into the unified representation, the projective divide is an explicit instruction, and the numeric evaluator renders the cookie and shadow fixture within the frozen tolerance against an independent projective oracle. Dropping the projection divide fails the tolerance check closed. The benchmark remains red because the end-to-end render on a live WebGPU adapter does not run in the gate; the acceptance uses the software evaluator as oracle, not the device pipeline.",
   "prerequisite": [
     "BPTK-063"
   ],
   "promotion_trigger": "Promote when the cookie and shadow fixture render within tolerance and the projection-divide mutation fails closed.",
-  "expected_failing_assertion": "No texgen or shadow path exists.",
+  "expected_failing_assertion": "The cookie and shadow fixture render on a live WebGPU adapter within tolerance.",
   "owner_item": "BPTK-064",
-  "active_gate_evidence": "The graphics probes and roadmap keep the fixed-function benchmarks red.",
+  "active_gate_evidence": "The shader suite proves the projective texgen generator is API-blind and lowers through the one emitter, that the spotlight-cookie and planar-shadow fixture render within the frozen tolerance against an independent projective oracle, and that dropping the projection divide fails the tolerance check closed.",
   "fixture": [
     "FIX-012"
   ],
