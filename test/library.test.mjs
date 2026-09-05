@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -51,6 +51,20 @@ function createProject(rootPath, packageValue) {
   if (packageValue) writeFileSync(join(projectPath, "package.json"), JSON.stringify(packageValue));
   return projectPath;
 }
+
+test("BYO import stages locally with zero network and never publishes", (context) => {
+  const rootPath = scratch(context);
+  const filePath = join(rootPath, "my-save.dat");
+  writeFileSync(filePath, "user owned game file\n");
+  const stagePath = join(rootPath, "library");
+  const importRun = run(["library", "import", filePath, "--stage", stagePath, "--json"]);
+  assert.equal(importRun.status, 0);
+  const report = JSON.parse(importRun.stdout);
+  assert.equal(report.network_byte, 0);
+  assert.equal(report.is_published, false);
+  assert.equal(report.is_launch_local, true);
+  assert.equal(existsSync(report.staged_path), true);
+});
 
 test("hosting publishes an in-date grant and refuses an expired one", (context) => {
   const rootPath = scratch(context);
