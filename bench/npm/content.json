@@ -50,6 +50,7 @@
     "lib/security.mjs",
     "lib/seh.mjs",
     "lib/shader.mjs",
+    "lib/simd.mjs",
     "lib/status.mjs",
     "lib/storage.mjs",
     "lib/thread.mjs",

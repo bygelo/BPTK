@@ -169,3 +169,21 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   142's 30-minute sustained bound needs a game runtime.
 - **Counts:** implemented 51 → 54; passing 0. Gate exit 0 (324 tests).
 - **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-050 (memory64).
+
+## Cycle 9 — BPTK-052 (GS-007) SSE packed-SIMD strict-fallback conformance
+
+- **Done:** `lib/simd.mjs` — verifies the interpreter's packed SSE battery
+  (addps/mulps/subps/addpd/mulpd, andps/orps/xorps) as the primary path against
+  an independent strict per-lane IEEE-754 reference (the strict fallback),
+  matching to zero ULP. Operands loaded via movaps from a readable data region;
+  the result read from the probe's xmm[0].
+- **Evidence:** `test/simd.test.mjs` (2) — all 8 packed ops match the strict
+  fallback exactly; the 80-bit x87 and AVX-256 legs are pinned red.
+- **Why still red:** the x87 path is 64-bit precision (80-bit extended precision
+  not modeled) and AVX-256 width is not covered, so the packed-and-80-bit
+  tolerance across every declared width is unmet.
+- **Counts:** implemented 54 → 55; passing 0. Gate exit 0 (326 tests, 54 files).
+- **Scope note:** BPTK-049/050 (x86-64, memory64) and 057/058 (console) are P4
+  report-only per the lane brief — no support claim, left planned. BPTK-138
+  (frame budget) and 141 (audio/input latency) need a graphics/audio/input
+  runtime that does not exist, so they are not honestly implementable here.
