@@ -58,6 +58,7 @@
     "lib/thread.mjs",
     "lib/toolchain.mjs",
     "lib/user.mjs",
+    "lib/x64decode.mjs",
     "package.json"
   ]
 }

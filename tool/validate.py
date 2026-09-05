@@ -209,6 +209,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/thread.mjs"),
     Path("lib/toolchain.mjs"),
     Path("lib/user.mjs"),
+    Path("lib/x64decode.mjs"),
     Path("script/package.mjs"),
     Path("script/status.mjs"),
     Path("test/abi.test.mjs"),
@@ -247,6 +248,7 @@ ALLOWED_MJS_PATH = {
     Path("test/hle.test.mjs"),
     Path("test/thread.test.mjs"),
     Path("test/user.test.mjs"),
+    Path("test/x64decode.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -444,6 +446,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/thread.mjs",
         "lib/toolchain.mjs",
         "lib/user.mjs",
+        "lib/x64decode.mjs",
         "package.json",
     ]
     if package_content.get("schema_version") != 1:
