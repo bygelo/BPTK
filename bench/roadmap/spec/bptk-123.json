@@ -4,15 +4,15 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No compatibility session exists to publish and BPTK-028 recording remains red.",
+  "gate": "active",
+  "exclusion_reason": "The public compatibility database export is implemented: every row must carry a declared evidence field, an unbacked or personal-data row is refused, and the export is deterministic byte-stable across runs. The benchmark stays red because generating a live compatibility session to back the rows needs the absent recording/runtime path (BPTK-028).",
   "prerequisite": [
     "BPTK-028"
   ],
   "promotion_trigger": "Promote when the export is byte-stable across regeneration and every row resolves to evidence with no unbacked or personal-data row.",
   "expected_failing_assertion": "No database export exists.",
   "owner_item": "BPTK-123",
-  "active_gate_evidence": "The report command keeps consent recording minimized and off by default.",
+  "active_gate_evidence": "test/governance.test.mjs asserts the export hash and body are identical across two runs, and that an evidence-less row and a personal-data row are each refused.",
   "fixture": [
     "FIX-021"
   ],
