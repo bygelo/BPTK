@@ -122,6 +122,49 @@ Format per item: **`GS-###` · title** — benchmark essence · **T#** tier · e
 - **GS-033 · Shader-translator hostile-bytecode containment** — malformed/fuzzed DXBC/DXIL/SM/GLSL refused in time+memory bound, zero OOB/crash (DarthShader class) · **T1** · extends BPTK-004/044.
 - **GS-034 · Content-addressed pipeline/shader cache** — warm cache → zero cold-compile frames over budget; content-hash keys invalidate precisely · **T2** · extends BPTK-022.
 
+#### Graphics translation — concrete toolchain (2026 research)
+
+Two-stream deep research (2026-09) fixed the *how* for Pillar 2. Headline: **reuse
+the shader translators, don't write them; skip every authoring layer.**
+
+- **Skip (authoring-only — cannot ingest a game's graphics):** Vercel `vgpu`, Rive
+  GPU Canvas, use.gpu, TypeGPU, TSL, WESL (as translator), gpu.cpp, three.js /
+  Babylon / Unity / Godot WebGPU renderers. They *write* new WGSL; they can't read
+  a binary's D3D/GL command stream.
+- **Reuse — OFFLINE, at pack-time** (permissive licenses, clean vs GS-084):
+  - **DXVK `dxbc-spirv`** (zlib, DXVK 3.0) — SSA IR spanning **D3D SM1–6** → SPIR-V;
+    the closest thing to a "unified D3D shader IR" that ships. The workhorse.
+  - **`dxil-spirv`** (MIT, vkd3d-proton) — DXIL + legacy DXBC → SPIR-V.
+  - **DXVK `dxso` decoder** (zlib) — the *only* mature D3D9 **SM1–3 token** decoder;
+    carry its global-state lowering (fog/alpha/clip/texture-stage) too.
+  - **Tint** (BSD) — the single **SPIR-V → WGSL** emitter (naga MIT as backup).
+  - **ANGLE** (BSD) — **reference** for the OpenGL/GLES path (its shader translator),
+    not a runtime dependency.
+- **The pipeline (SPIR-V is the universal IR; one Tint tail):**
+  ```
+  D3D9 SM1-3   → dxso → dxbc-spirv → SPIR-V ┐
+  D3D10/11/12  → dxbc-spirv / dxil-spirv    ┼→ Tint → WGSL   (baked into the bundle)
+  OpenGL GLSL  → glslang / ANGLE            ┘
+  FFP (D3D7/8/9) + Glide → HAND-WRITTEN state→WGSL generator (no bytecode exists)
+  ```
+- **Runtime substrate:** browser WebGPU accepts **WGSL only, never SPIR-V** — so
+  translation is **build-time mandatory** (bake WGSL at pack-time; ship no
+  translator). Hand-write the WebGPU backend against `webgpu.h` via **`emdawnwebgpu`**
+  + JSPI. Target `requestAdapter({featureLevel:"compatibility"})` (Chrome 146, reaches
+  GLES3.1/D3D11-class GPUs) and use **immediates / push-constants** (Chrome 149-150)
+  where present. Safari 26 makes iPhone a target; Firefox-Linux is still a hole.
+- **Three risks to budget:** (1) SPIR-V dialect — constrain emitters to Vulkan-1.1-
+  valid ≤1.3 or Tint's reader rejects them (the #1 integration failure); (2)
+  global-state lowering is not optional for SM1-3/FFP; (3) **FFP and Glide have no
+  tool** — they are unavoidably hand-written generators (port DXVK's FFP ubershader
+  design as reference). Do not depend on ray tracing, mesh shaders, or bindless — a
+  generation away.
+
+This refines, not replaces, GS-018–034: GS-018's "unified IR" *is* SPIR-V; GS-019/020
+reuse `dxbc-spirv`/`dxil-spirv`/`dxso`; GS-021/022 stay hand-written (GL-FFP, Glide);
+GS-026 emits via `emdawnwebgpu`. If Unity is the source, use Unity 6.6 WebGPU export
+(the GS-048 web-native lane), not a custom translator.
+
 ### Pillar 3 — Correctness & compatibility (the Wine-scale surface)
 - **GS-036 · Generic Win32/DirectX conformance suite** — synthetic + captured traces per API; return/last-error/out-bytes/side-effects vs oracle; any runtime export with zero case = coverage hole = fail · **T1** · extends BPTK-010/003. *What BottleShip structurally lacks.*
 - **GS-037 · Captured API-trace corpus** — every trace has provenance + redaction proof + byte-stability · **T1** · extends BPTK-002.
