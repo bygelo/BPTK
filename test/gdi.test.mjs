@@ -28,7 +28,18 @@ import {
   systemColor,
   compositorMetric,
 } from "../lib/gdi.mjs";
-import { createUserSubsystem } from "../lib/user.mjs";
+import { createUserSubsystem, dialogBaseUnit, dialogRectToPixel } from "../lib/user.mjs";
+
+// The pixel geometry instantiateDialog stores for a DLU template: the frame
+// (client size plus the caption band on its height) and each control's local
+// rect, so a compositor fixture computes the same screen positions the window
+// manager did rather than treating template DLU as pixels.
+function dialogPixelGeometry(template) {
+  const unit = dialogBaseUnit(template.font);
+  const frame = dialogRectToPixel({ x: template.x, y: template.y, cx: template.cx, cy: template.cy }, unit);
+  const item = template.item.map((entry) => dialogRectToPixel(entry, unit));
+  return { frame, item };
+}
 
 const FIRST_HANDLE = 0x00040000;
 
@@ -382,9 +393,10 @@ test("compositeDesktop paints a dialog's frame, caption, STATIC, and BUTTON at t
   assert.equal(surface.height, compositorMetric.desktop_height);
   assert.equal(surface.window_painted, 1, "exactly one top-level frame painted");
 
-  // The frame occupies template (x,y)..(x+cx,y+cy); its client is btnFace grey.
-  const fx = template.x;
-  const fy = template.y;
+  // The frame occupies the converted template rect; its client is btnFace grey.
+  const geometry = dialogPixelGeometry(template);
+  const fx = geometry.frame.x;
+  const fy = geometry.frame.y;
   const cap = compositorMetric.caption_height;
   // Desktop shows through outside the frame.
   assert.deepEqual(pixelAt(surface, fx - 3, fy - 3), [58, 110, 165, 255], "desktop background outside the frame");
@@ -396,12 +408,12 @@ test("compositeDesktop paints a dialog's frame, caption, STATIC, and BUTTON at t
   // The STATIC caption paints black glyph ink inside its screen rect. Its client
   // origin is the frame origin plus the caption band; the caption reads "About
   // PuTTY", so at least one ink pixel lands in the rect.
-  const staticItem = template.item[0];
+  const staticItem = geometry.item[0];
   const staticLeft = fx + staticItem.x;
   const staticTop = fy + cap + staticItem.y;
   let staticInk = 0;
-  for (let y = staticTop; y < staticTop + staticItem.cy; y += 1) {
-    for (let x = staticLeft; x < staticLeft + staticItem.cx; x += 1) {
+  for (let y = staticTop; y < staticTop + staticItem.height; y += 1) {
+    for (let x = staticLeft; x < staticLeft + staticItem.width; x += 1) {
       const [r, g, b] = pixelAt(surface, x, y);
       if (r === 0 && g === 0 && b === 0) staticInk += 1;
     }
@@ -410,11 +422,11 @@ test("compositeDesktop paints a dialog's frame, caption, STATIC, and BUTTON at t
 
   // The BUTTON paints a raised bevel: white highlight on the top edge, grey
   // shadow on the bottom edge, at the control's screen rect.
-  const buttonItem = template.item[1];
+  const buttonItem = geometry.item[1];
   const bLeft = fx + buttonItem.x;
   const bTop = fy + cap + buttonItem.y;
-  const bRight = bLeft + buttonItem.cx;
-  const bBottom = bTop + buttonItem.cy;
+  const bRight = bLeft + buttonItem.width;
+  const bBottom = bTop + buttonItem.height;
   assert.deepEqual(pixelAt(surface, bLeft, bTop), [255, 255, 255, 255], "the button highlight edge (top-left)");
   assert.deepEqual(pixelAt(surface, bRight - 1, bBottom - 1), [128, 128, 128, 255], "the button shadow edge (bottom-right)");
   // The button caption "OK" paints black ink somewhere inside its face.
@@ -457,10 +469,56 @@ test("compositeDesktop paints an EDIT control as a sunken white client", () => {
   user.instantiateDialog(template, 0, 0);
   const surface = gdi.compositeDesktop(user.paintSnapshot(), 320, 200);
   const cap = compositorMetric.caption_height;
-  const eLeft = template.x + template.item[0].x;
-  const eTop = template.y + cap + template.item[0].y;
+  const editGeometry = dialogPixelGeometry(template);
+  const eLeft = editGeometry.frame.x + editGeometry.item[0].x;
+  const eTop = editGeometry.frame.y + cap + editGeometry.item[0].y;
   // The interior of the EDIT client is white.
   assert.deepEqual(pixelAt(surface, eLeft + 4, eTop + 4), [255, 255, 255, 255], "the EDIT client is white");
   // Its sunken bevel puts the shadow on the top edge.
   assert.deepEqual(pixelAt(surface, eLeft + 4, eTop), [128, 128, 128, 255], "the EDIT sunken top edge");
+});
+
+test("compositeDesktop exposes non-overlapping control rects for a two-button dialog", () => {
+  const user = createUserSubsystem();
+  const gdi = createGdiSubsystem();
+  // Two buttons abutting in DLU (0..50, 55..105); under the 8pt base they widen
+  // to non-overlapping pixel rects wide enough for their captions.
+  const template = {
+    is_ex: false, style: 0, ex_style: 0, control_count: 2,
+    x: 10, y: 10, cx: 120, cy: 40, class_name: "#32770", title: "Pair",
+    font: { point_size: 8, typeface: "MS Shell Dlg" },
+    item: [
+      { style: WS_VISIBLE | WS_CHILD | WS_TABSTOP, ex_style: 0, x: 0, y: 10, cx: 50, cy: 14, id: 1, class_name: "Button", title: "Left One" },
+      { style: WS_VISIBLE | WS_CHILD | WS_TABSTOP, ex_style: 0, x: 55, y: 10, cx: 50, cy: 14, id: 2, class_name: "Button", title: "Right Two" },
+    ],
+  };
+  user.instantiateDialog(template, 0, 0);
+  const surface = gdi.compositeDesktop(user.paintSnapshot(), 320, 200);
+
+  assert.equal(surface.frame_rect.length, 1, "one frame rect is exposed");
+  assert.equal(surface.control_rect.length, 2, "both control rects are exposed");
+
+  const geometry = dialogPixelGeometry(template);
+  const cap = compositorMetric.caption_height;
+  // Each exposed control rect equals the frame origin plus the converted local
+  // rect, offset by the caption band.
+  for (let index = 0; index < 2; index += 1) {
+    const local = geometry.item[index];
+    const expected = {
+      left: geometry.frame.x + local.x,
+      top: geometry.frame.y + cap + local.y,
+      right: geometry.frame.x + local.x + local.width,
+      bottom: geometry.frame.y + cap + local.y + local.height,
+    };
+    const painted = surface.control_rect[index];
+    assert.deepEqual({ left: painted.left, top: painted.top, right: painted.right, bottom: painted.bottom }, expected, `control ${index} rect matches the conversion`);
+  }
+  // The two buttons do not overlap.
+  const [a, b] = surface.control_rect;
+  assert.ok(a.right <= b.left || b.right <= a.left, "the two button rects are horizontally disjoint");
+  // Both controls lie within the frame rect.
+  const frame = surface.frame_rect[0];
+  for (const rect of surface.control_rect) {
+    assert.ok(rect.left >= frame.left && rect.right <= frame.right && rect.top >= frame.top && rect.bottom <= frame.bottom, "the control lies within the frame");
+  }
 });
