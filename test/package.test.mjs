@@ -42,6 +42,32 @@ test("HTML and React host preserve one generated package identity", (context) =>
   assert.match(readFileSync(join(reactReport.output_path, "BptkHost.mjs"), "utf8"), new RegExp(assetReport.package_id));
 });
 
+test("CDN store dedups a shared payload and never merges a differing hash", (context) => {
+  const storePath = mkdtempSync(join(tmpdir(), "bptk-cdn-"));
+  context.after(() => rmSync(storePath, { recursive: true, force: true }));
+  const shared = Buffer.from("BPTK shared redistributable runtime payload\n");
+  const different = Buffer.from("BPTK unrelated payload\n");
+
+  const first = createProject(context, shared);
+  assert.equal(run(["package", first.project_path, "--asset-mode", "stream", "--json"]).status, 0);
+  const firstPublish = JSON.parse(run(["package", first.package_path, "--publish-cdn", storePath, "--json"]).stdout);
+  assert.ok(firstPublish.stored_count >= 1);
+  assert.equal(firstPublish.hit_count, 0);
+
+  const second = createProject(context, shared);
+  assert.equal(run(["package", second.project_path, "--asset-mode", "stream", "--json"]).status, 0);
+  const secondPublish = JSON.parse(run(["package", second.package_path, "--publish-cdn", storePath, "--json"]).stdout);
+  assert.equal(secondPublish.stored_count, 0, "shared payload stored once");
+  assert.equal(secondPublish.hit_count, firstPublish.stored_count, "second title hits the cache");
+
+  const third = createProject(context, different);
+  assert.equal(run(["package", third.project_path, "--asset-mode", "stream", "--json"]).status, 0);
+  const thirdPublish = JSON.parse(run(["package", third.package_path, "--publish-cdn", storePath, "--json"]).stdout);
+  assert.ok(thirdPublish.stored_count >= 1, "differing hash is a new key, never merged");
+  assert.equal(thirdPublish.hit_count, 0);
+  assert.equal(readdirSync(join(storePath, "object")).length, firstPublish.stored_count + thirdPublish.stored_count);
+});
+
 test("PWA emits a hash-precaching service worker and a single-block edit invalidates only that block", (context) => {
   const value = createProject(context);
   const assetReport = JSON.parse(run(["package", value.project_path, "--asset-mode", "stream", "--json"]).stdout);
