@@ -17,6 +17,10 @@ import {
   windowMessage,
   showCommand,
   systemMetric,
+  mulDiv,
+  dialogBaseUnit,
+  dialogRectToPixel,
+  defaultDialogBaseUnit,
 } from "../lib/user.mjs";
 
 const FIRST_ATOM = 0xc000;
@@ -203,6 +207,72 @@ test("instantiateDialog creates the frame and every control, carrying the guest 
   assert.equal(user.getDlgItem(result.hwnd, 2), result.control[1].handle, "GetDlgItem resolves control id 2");
   assert.equal(result.focus_control, result.control[0].handle, "the first WS_TABSTOP control takes initial focus");
   assert.equal(user.windowCount(), 3, "one frame plus two control windows exist");
+});
+
+test("mulDiv rounds to nearest and dialogBaseUnit derives the base from the font", () => {
+  assert.equal(mulDiv(216, 6, 4), 324, "216 DLU * 6/4 = 324 px");
+  assert.equal(mulDiv(118, 13, 8), 192, "118 DLU * 13/8 rounds 191.75 -> 192");
+  assert.equal(mulDiv(0, 6, 4), 0, "zero maps to zero");
+  assert.equal(mulDiv(10, 5, 0), 0, "a zero denominator is refused, not NaN");
+  // No font: the standard MS Sans Serif 8pt default base (6, 13).
+  assert.deepEqual(dialogBaseUnit(null), { x: defaultDialogBaseUnit.x, y: defaultDialogBaseUnit.y });
+  assert.deepEqual(dialogBaseUnit({ point_size: 8, typeface: "MS Shell Dlg" }), { x: 6, y: 13 }, "8pt yields the reference base");
+  // A larger point size scales the base proportionally (a 16pt font is ~2x).
+  assert.deepEqual(dialogBaseUnit({ point_size: 16, typeface: "Tahoma" }), { x: 12, y: 26 }, "16pt scales the 8pt reference");
+  // dialogRectToPixel applies the horizontal base over 4 DLU and vertical over 8.
+  assert.deepEqual(
+    dialogRectToPixel({ x: 6, y: 118, cx: 70, cy: 14 }, { x: 6, y: 13 }),
+    { x: 9, y: 192, width: 105, height: 23 },
+    "a control DLU rect converts under the base unit pair",
+  );
+});
+
+test("instantiateDialog converts two side-by-side DLU buttons to non-overlapping pixel rects", () => {
+  const user = createUserSubsystem();
+  // Two buttons abutting in DLU (0..50 and 55..105 horizontally) with the same
+  // top and height. Under the 8pt base (6,13) they must stay side by side and
+  // non-overlapping in pixels; raw DLU widths (50 px) would be too narrow for the
+  // 8px-per-glyph captions and the ink would collide.
+  const template = {
+    style: 0x80c800c0,
+    ex_style: 0,
+    x: 0, y: 0, cx: 120, cy: 40,
+    class_name: null,
+    title: "Pair",
+    font: { point_size: 8, typeface: "MS Shell Dlg" },
+    item: [
+      { style: 0x50010001, ex_style: 0, x: 0, y: 10, cx: 50, cy: 14, id: 1, class_name: "Button", title: "Left One" },
+      { style: 0x50010001, ex_style: 0, x: 55, y: 10, cx: 50, cy: 14, id: 2, class_name: "Button", title: "Right Two" },
+    ],
+  };
+  const result = user.instantiateDialog(template, 0n, 0);
+  assert.notEqual(result.hwnd, 0, "the frame is created");
+
+  const unit = dialogBaseUnit(template.font);
+  const snapshot = user.paintSnapshot();
+  assert.ok(snapshot.length >= 3, "the frame and both buttons are in the paint log");
+
+  // The frame stores pixel geometry: cx/cy converted, plus the caption band on
+  // the height so the client (converted cy) fits below the caption.
+  const frame = snapshot.find((entry) => (entry.parent >>> 0) === 0);
+  const frameRect = dialogRectToPixel({ x: template.x, y: template.y, cx: template.cx, cy: template.cy }, unit);
+  assert.equal(frame.x, frameRect.x, "frame x converts");
+  assert.equal(frame.y, frameRect.y, "frame y converts");
+  assert.equal(frame.width, frameRect.width, "frame width converts");
+  assert.equal(frame.height, frameRect.height + 14, "frame height is the client height plus the caption band");
+
+  // Each button window stores the converted local rect.
+  const child = snapshot.filter((entry) => (entry.parent >>> 0) !== 0);
+  assert.equal(child.length, 2, "both buttons are logged");
+  for (let index = 0; index < template.item.length; index += 1) {
+    const local = dialogRectToPixel(template.item[index], unit);
+    assert.equal(child[index].x, local.x, `button ${index} x converts`);
+    assert.equal(child[index].width, local.width, `button ${index} width converts`);
+  }
+  // Non-overlap in local pixel space: left button 0..75, right button 82..157.
+  const leftRect = dialogRectToPixel(template.item[0], unit);
+  const rightRect = dialogRectToPixel(template.item[1], unit);
+  assert.ok(leftRect.x + leftRect.width <= rightRect.x, "the two buttons do not overlap after conversion");
 });
 
 test("registerClassGuest carries the guest WndProc to every window of the class", () => {
