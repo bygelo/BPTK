@@ -148,6 +148,22 @@ enumeration, pointer-lock/touch bridge, and the live browser Gamepad feed.
 
 Gate: exit 0.
 
-## Progress
-Implemented 43→52 (BPTK-101, 098, 011, 012, 099, 096, 104, 102, 097). Served HLE
-export 156→229. Remaining owned planned item: BPTK-100 (FMV sync & subtitles).
+## Cycle 10 — BPTK-100 FMV A/V-sync & subtitles (implemented, red/active)
+Added createFmvTimeline in lib/audio.mjs: locks the video frame to the one audio
+master clock, counts frames a stall skipped as dropped, clamps to the last frame,
+and resolves subtitle cues by time (end-exclusive) carried on the present path.
+No new HLE guest import (timeline math); two tests prove the master-clock lock,
+drop-on-stall, clamp, and cue resolution. Implemented count 52→53; passing 0.
+Still red: no video decode path (proprietary Bink/Smacker refused by identity, no
+redistributable decoder wired), so seek/pause drift cannot be measured.
+
+Gate: exit 0.
+
+## Progress — ALL owned P5 planned items implemented
+Implemented 43→53 (+10): BPTK-101, 098, 011, 012, 099, 096, 104, 102, 097, 100.
+Served HLE export surface 156→229 (kernel32 107→137, advapi32 6→16, user32 14→23,
+gdi32 22→27, ws2_32 0→15, xinput1_3 0→4). Passing stays 0 (no real benchmark
+passes). Every owned P5 gold-standard item (GS-052..060) plus BPTK-011/012 is now
+implemented with an active red contract; the corpus gap budget and the live
+browser bridges remain the red frontier and require a staged corpus + running app
+to advance further.

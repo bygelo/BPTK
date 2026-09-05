@@ -21,6 +21,7 @@ import {
   compute3dSourceGain,
   distanceAttenuation,
   azimuthPan,
+  createFmvTimeline,
   createAudioClock,
   createAudioRing,
   createAudioSystem,
@@ -334,4 +335,39 @@ test("BPTK-096: the 3D source gain combines attenuation and constant-power pan",
   assert.ok(far.gain_right < near.gain_right, "a farther emitter is quieter");
   const center = compute3dSourceGain(listener, { position: { x: 0, y: 0, z: 1 } }, { min_distance: 1, max_distance: 100 });
   assert.ok(Math.abs(center.gain_left - center.gain_right) < 1e-9, "a centered emitter is balanced");
+});
+
+test("BPTK-100: the FMV timeline locks the picture to the audio master clock", () => {
+  const fmv = createFmvTimeline({ fps: 10, frame_count: 100 }); // 100ms per frame
+  assert.equal(fmv.frameIndexAt(0), 0);
+  assert.equal(fmv.frameIndexAt(50), 0, "mid-frame stays on the current frame");
+  assert.equal(fmv.frameIndexAt(150), 1);
+  // On-cadence presents advance one frame at a time with no drop.
+  assert.equal(fmv.present(50).frame_index, 0);
+  assert.equal(fmv.present(150).dropped, 0);
+  assert.equal(fmv.present(250).frame_index, 2);
+  // A stall in the audio master clock drops the frames it skipped.
+  const stalled = fmv.present(650);
+  assert.equal(stalled.frame_index, 6);
+  assert.equal(stalled.dropped, 3, "frames 3, 4, 5 were skipped");
+  assert.equal(stalled.is_in_sync, false);
+  // The frame index never runs past the last frame.
+  assert.equal(fmv.frameIndexAt(1_000_000), 99);
+});
+
+test("BPTK-100: subtitle cues resolve by the playback time", () => {
+  const fmv = createFmvTimeline({
+    fps: 30,
+    frame_count: 300,
+    subtitle: [
+      { start_ms: 1000, end_ms: 2000, text: "hello" },
+      { start_ms: 2500, end_ms: 3000, text: "world" },
+    ],
+  });
+  assert.equal(fmv.activeSubtitle(500), null, "before the first cue");
+  assert.equal(fmv.activeSubtitle(1500), "hello");
+  assert.equal(fmv.activeSubtitle(2000), null, "the cue is exclusive of its end");
+  assert.equal(fmv.activeSubtitle(2200), null, "between cues");
+  assert.equal(fmv.activeSubtitle(2750), "world");
+  assert.equal(fmv.present(1500).subtitle, "hello", "present carries the active subtitle");
 });
