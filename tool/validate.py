@@ -218,6 +218,7 @@ ALLOWED_MJS_PATH = {
     Path("test/net.test.mjs"),
     Path("test/package.test.mjs"),
     Path("test/policy.test.mjs"),
+    Path("test/port.test.mjs"),
     Path("test/runtime.test.mjs"),
     Path("test/security.test.mjs"),
     Path("test/seh.test.mjs"),
