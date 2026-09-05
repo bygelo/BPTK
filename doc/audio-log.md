@@ -64,10 +64,16 @@ activation.
   `lib/audio.mjs` / `test/audio.test.mjs` in the npm content manifest and the
   validator surface. `npm run gate` exits 0 (175 test, 45 file).
 
+- **Cycle 2** — XAudio2 voice subset: a mastering voice (master volume) and a
+  source voice with a buffer queue, per-buffer loop count (0 / finite / 255
+  infinite), source-amplitude volume, frequency ratio, `FlushSourceBuffers`,
+  `GetState`, and the `OnBufferEnd` callback. Master and voice volume multiply
+  into the mix-source gain. `test/audio.test.mjs` now 13 case, green. `npm run
+  gate` exits 0.
+
 ## Next
 
-- XAudio2 voice subset (source voice submit/start/stop/volume, mastering voice).
 - Conformance case table for the audio exports (`winmm!waveOut*`,
-  `dsound!*`), then register the exports in `lib/hle.mjs`.
+  `dsound!*`, `xaudio2!*`), then register the exports in `lib/hle.mjs`.
 - Promote BPTK-014 `planned → implemented` via the 8-file contract, keeping the
   live BENCH-014 red and every count reconciled.

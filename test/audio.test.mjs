@@ -220,6 +220,52 @@ test("a DirectSound notification fires as the play cursor crosses it", () => {
   buffer.release();
 });
 
+test("an XAudio2 source voice drains its buffer queue and fires OnBufferEnd in order", () => {
+  const ended = [];
+  const clock = createGuestClock({ mode: "virtual_monotonic" });
+  const system = createAudioSystem({ guest_clock: clock });
+  const master = system.createMasteringVoice({ volume: 1 });
+  const format = { format_tag: "pcm", sample_rate_hz: mixRate, channel_count: 1, bit_per_sample: 16 };
+  const voice = system.createSourceVoice({ format, mastering_voice: master, on_buffer_end: (context) => ended.push(context) });
+
+  voice.submitSourceBuffer({ byte: sinePcm16(mixRate, 440, 256), context: "a" });
+  voice.submitSourceBuffer({ byte: sinePcm16(mixRate, 550, 128), context: "b" });
+  assert.equal(voice.getState().buffer_queued_count, 2);
+  voice.start();
+
+  system.render(256); // drains buffer "a"
+  assert.deepEqual(ended, ["a"]);
+  assert.equal(voice.getState().buffer_queued_count, 1);
+  system.render(128); // drains buffer "b"
+  assert.deepEqual(ended, ["a", "b"]);
+  assert.equal(voice.getState().buffer_queued_count, 0);
+  assert.equal(voice.getState().sample_played_count, 384);
+});
+
+test("an XAudio2 infinite-loop buffer never ends and voice volume scales the mix", () => {
+  const ended = [];
+  const clock = createGuestClock({ mode: "virtual_monotonic" });
+  const system = createAudioSystem({ guest_clock: clock });
+  const master = system.createMasteringVoice({ volume: 0.5 });
+  const format = { format_tag: "pcm", sample_rate_hz: mixRate, channel_count: 1, bit_per_sample: 16 };
+  const voice = system.createSourceVoice({ format, mastering_voice: master, on_buffer_end: (context) => ended.push(context) });
+  voice.submitSourceBuffer({ byte: sinePcm16(mixRate, 440, 100, 1), loop_count: 255, context: "loop" });
+  voice.setVolume(0.4);
+  voice.start();
+
+  const { output } = system.render(1000); // ten loop lengths, no OnBufferEnd
+  assert.equal(ended.length, 0);
+  assert.equal(voice.getState().buffer_queued_count, 1);
+  // gain = voice 0.4 * master 0.5 = 0.2; the peak of the unit sine is bounded by it.
+  let peak = 0;
+  for (const value of output) peak = Math.max(peak, Math.abs(value));
+  assert.ok(peak <= 0.2 + 1e-3 && peak > 0.15, `scaled peak ${peak} outside the expected band`);
+
+  voice.stop();
+  system.render(100);
+  assert.equal(voice.getState().buffer_queued_count, 1); // stop does not dequeue
+});
+
 test("DirectSound pause holds the cursor and resume continues from it", () => {
   const clock = createGuestClock({ mode: "virtual_monotonic" });
   const system = createAudioSystem({ guest_clock: clock });
