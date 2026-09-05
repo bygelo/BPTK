@@ -188,6 +188,10 @@ test("TranslateMessage posts WM_CHAR for a mapped key and nothing for an unmappe
 // subsystem method is chosen by the USER32 symbol under test.
 function applyUserOp(user, symbol, argument) {
   switch (symbol) {
+    case "InitCommonControls":
+      return 0;
+    case "InitCommonControlsEx":
+      return 1;
     case "RegisterClassW":
     case "RegisterClassExW":
       return user.registerClass(argument[0], null, argument[1] ?? 0);
@@ -285,6 +289,10 @@ function buildUserConformanceCase() {
     caseNumber += 1;
     caseList.push({ case_id: `USER-${String(caseNumber).padStart(3, "0")}`, library: "user32.dll", symbol, input, expected });
   }
+  function defineLib(library, symbol, input, expected) {
+    caseNumber += 1;
+    caseList.push({ case_id: `USER-${String(caseNumber).padStart(3, "0")}`, library, symbol, input, expected });
+  }
   const registerStep = ["RegisterClassW", ["AppClass", 0]];
   const createStep = ["CreateWindowExW", ["AppClass", 0]];
   const showStep = ["ShowWindow", [FIRST_HANDLE, showCommand.SW_SHOWNORMAL]];
@@ -335,6 +343,9 @@ function buildUserConformanceCase() {
   define("MsgWaitForMultipleObjects", { argument: [0, 0, 0, 0, 0x1ff] }, { return_value: 0x102, last_error: 0 });
   define("PeekMessageA", { scenario: [registerStep, createStep], argument: [0, 0, 0, 0, 1] }, { return_value: 0, last_error: 0 });
   define("SendMessageA", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, windowMessage.WM_NULL, 0, 0] }, { return_value: 0, last_error: 0 });
+
+  defineLib("comctl32.dll", "InitCommonControls", { argument: [] }, { return_value: 0, last_error: 0 });
+  defineLib("comctl32.dll", "InitCommonControlsEx", { argument: [0] }, { return_value: 1, last_error: 0 });
 
   return caseList;
 }
