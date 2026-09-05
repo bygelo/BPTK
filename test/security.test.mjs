@@ -173,3 +173,88 @@ test("the license graph refuses unknown, unlicensed, and expired node", (context
   assert.equal(currentReport.decision, "review_required");
   assert.equal(currentReport.graph.refusal.length, 0);
 });
+
+test("the lane router ranks the eight-lane taxonomy with a hard mislabel failure", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-batchb-route-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const pe = createExePackage(context);
+  const peRun = run(["inspect", pe.packagePath, "--json"]);
+  const peReport = JSON.parse(peRun.stdout);
+  assert.equal(peReport.lane_decision.primary_lane, "binary_i386");
+  assert.equal(peReport.lane_decision.is_executed, false);
+
+  const web = join(rootPath, "webexport");
+  mkdirSync(web);
+  writeFileSync(join(web, "index.html"), "<html></html>");
+  writeFileSync(join(web, "game.wasm"), Buffer.alloc(8));
+  const webRun = run(["inspect", web, "--json"]);
+  const webReport = JSON.parse(webRun.stdout);
+  assert.equal(webReport.lane_decision.primary_lane, "web_native");
+
+  const empty = join(rootPath, "empty");
+  mkdirSync(empty);
+  const emptyRun = run(["inspect", empty, "--json"]);
+  assert.equal(JSON.parse(emptyRun.stdout).lane_decision.primary_lane, "no_lane");
+});
+
+test("a schema-2 lane bundle runs on the probe lane and refuses a payload mismatch", (context) => {
+  const good = createExePackage(context, {
+    manifest: { schema_version: 2, package_kind: "lane_bundle", lane: "binary_probe", executable: "game.exe" },
+  });
+  const goodRun = run(["run", good.packagePath, "--json"]);
+  assert.equal(goodRun.status, 0);
+  const goodReport = JSON.parse(goodRun.stdout);
+  assert.equal(goodReport.lane, "binary_probe");
+  assert.equal(goodReport.lane_accuracy.is_playable_claim, false);
+  assert.equal(goodReport.unsupported_set.schema_version, 1);
+  assert.match(goodReport.lane_accuracy.accuracy_note, /not a playable claim/);
+
+  const mismatch = createExePackage(context, {
+    manifest: { schema_version: 2, package_kind: "lane_bundle", lane: "binary_probe", executable: "page.html" },
+  });
+  writeFileSync(join(mismatch.packagePath, "page.html"), "<html></html>");
+  const mismatchRun = run(["run", mismatch.packagePath, "--json"]);
+  assert.equal(mismatchRun.status, 1);
+  assert.equal(JSON.parse(mismatchRun.stderr).error_code, "lane_payload_mismatch");
+
+  const absent = createExePackage(context, {
+    manifest: { schema_version: 2, package_kind: "lane_bundle", lane: "web_native", executable: "game.exe" },
+  });
+  const absentRun = run(["run", absent.packagePath, "--json"]);
+  assert.equal(absentRun.status, 1);
+  assert.equal(JSON.parse(absentRun.stderr).error_code, "lane_not_available");
+});
+
+test("a web-native export stages only under a least-privilege capability manifest", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-batchb-web-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const web = join(rootPath, "export");
+  mkdirSync(web);
+  writeFileSync(join(web, "index.html"), "<html></html>");
+  writeFileSync(join(web, "game.wasm"), Buffer.alloc(8));
+
+  const missing = run(["ingest", web, "--json"]);
+  assert.equal(missing.status, 1);
+  assert.equal(JSON.parse(missing.stderr).error_code, "web_native_manifest_required");
+
+  writeFileSync(join(web, "bptk.json"), JSON.stringify({
+    schema_version: 1,
+    package_kind: "web_native",
+    capability: { host_script: false, file_system: false, network: false, process: false, device: false },
+  }));
+  const outputDir = join(rootPath, "staged");
+  const staged = run(["ingest", web, "--output", outputDir, "--json"]);
+  assert.equal(staged.status, 0);
+  const stagedReport = JSON.parse(staged.stdout);
+  assert.equal(stagedReport.state, "web_native_host_pending");
+  assert.equal(stagedReport.is_executed, false);
+
+  writeFileSync(join(web, "bptk.json"), JSON.stringify({
+    schema_version: 1,
+    package_kind: "web_native",
+    capability: { host_script: false, file_system: false, network: true, process: false, device: false },
+  }));
+  const granted = run(["ingest", web, "--output", outputDir, "--json"]);
+  assert.equal(granted.status, 1);
+  assert.equal(JSON.parse(granted.stderr).error_code, "web_native_capability_refused");
+});

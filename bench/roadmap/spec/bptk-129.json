@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No lane-tagged bundle record or rating exists to render.",
+  "gate": "active",
+  "exclusion_reason": "The lane and accuracy honesty label is implemented on the run surface from the bundle lane with an explicit is_playable_claim false, and the machine-readable unsupported set is exported with the run report. The benchmark remains red because the catalog surfaces that must render the label (the library and ratings surface) do not exist yet.",
   "prerequisite": [
     "BPTK-078",
     "BPTK-089"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when every declared surface renders the record-derived label and the unsupported-set case can never read playable.",
   "expected_failing_assertion": "No lane label or unsupported set exists.",
   "owner_item": "BPTK-129",
-  "active_gate_evidence": "The compatibility and status surfaces keep reporting observed state without support claim.",
+  "active_gate_evidence": "The run report carries lane_accuracy with is_playable_claim false and the exported unsupported set, asserted at the real CLI in the security test.",
   "fixture": [
     "FIX-021"
   ],

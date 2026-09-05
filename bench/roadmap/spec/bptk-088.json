@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The inspector classifies input form and census but not the full lane taxonomy ranking.",
+  "gate": "active",
+  "exclusion_reason": "The diagnose-and-route front door is implemented in the inspect surface: the eight-lane taxonomy returns a ranked decision with evidence-weighted confidence, package directory resolve their declared executable, and the routing test hard-fails on a mislabel. The benchmark remains red because the mixed-corpus labelled routing evidence waits on the BPTK-002 denominator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the mixed-corpus routing fixture is labeled correctly with confidence and the mislabel case fails hard.",
   "expected_failing_assertion": "No lane ranking exists in the inspect surface.",
   "owner_item": "BPTK-088",
-  "active_gate_evidence": "The inspect surface keeps classification and census routing without execution or upload.",
+  "active_gate_evidence": "The security test asserts the primary lane for a package directory, a web-native export, and an empty folder at the real CLI, and the corpus run record carries the routed lane for nine entry.",
   "fixture": [
     "FIX-001"
   ],

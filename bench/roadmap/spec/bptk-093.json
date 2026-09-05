@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The ingest path classifies web-native input but the host does not run it.",
+  "gate": "active",
+  "exclusion_reason": "The web-native ingest is implemented: an index.html export with a WebAssembly payload routes to the web-native lane, stages only under a declared least-privilege capability manifest, and refuses any granted capability with the key surfaced. The benchmark remains red because the browser host runtime that boots the export is absent.",
   "prerequisite": [
     "BPTK-088"
   ],
   "promotion_trigger": "Promote when a declared web-native export boots in the host and the disallowed-capability case is blocked at boot.",
   "expected_failing_assertion": "No web-native boot path exists.",
   "owner_item": "BPTK-093",
-  "active_gate_evidence": "The ingest path keeps classifying and census-routing without executing.",
+  "active_gate_evidence": "The security test refuses a web-native export without a manifest, stages one under the least-privilege manifest to web_native_host_pending without execution, and refuses a granted network capability.",
   "fixture": [
     "FIX-009"
   ],

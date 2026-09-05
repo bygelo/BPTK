@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The packager emits the asset-and-host package only, with no lane-tagged envelope.",
+  "gate": "active",
+  "exclusion_reason": "The schema-2 lane bundle envelope is implemented in the run surface: a schema-pinned envelope carries the lane, the executable, the capability manifest, and provenance, and a lane that mismatches its payload is refused. The benchmark remains red because the one-host-loads-every-lane proof needs the web-native and emulator runtime that are still absent.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every lane round-trips through the envelope and the mismatch case is refused.",
   "expected_failing_assertion": "No lane-tagged envelope exists.",
   "owner_item": "BPTK-089",
-  "active_gate_evidence": "The packager keeps one content-addressed package identity across host emission.",
+  "active_gate_evidence": "The security test runs a schema-2 lane bundle through the real run surface and refuses both a payload mismatch (lane_payload_mismatch) and an absent lane runtime (lane_not_available).",
   "fixture": [
     "FIX-009",
     "FIX-017"
