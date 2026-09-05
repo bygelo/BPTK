@@ -112,3 +112,21 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   surface, so an in-run patch-then-re-enter fixture isn't closed end to end.
 - **Counts:** implemented 48 → 49; passing 0. Gate exit 0 (313 tests).
 - **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-051 (guest SMP).
+
+## Cycle 6 — BPTK-051 (GS-006) guest SMP determinism
+
+- **Done:** `runContentionFixture` in `lib/thread.mjs` over the existing
+  deterministic cooperative scheduler. N workers contend on an interlocked
+  counter and a critical-section-guarded RMW and hand a token around an
+  auto-reset event for wakeup accounting. Returns the guest-state hash (the two
+  counters), the schedule hash, lost_wakeup_count, and a deadlock flag.
+- **Evidence:** `test/thread.test.mjs` (+3, now 27) — both counters reach the
+  expected total; guest-state + schedule hashes are byte-reproducible across
+  repeated runs; the guest-state hash is identical across worker counts (1 vs 8)
+  with zero lost wakeup and no deadlock; is_worker_backed false keeps the real
+  cross-core leg red.
+- **Why still red:** the reproducible schedule is a cooperative model; a real
+  SharedArrayBuffer-backed Worker pool (true cross-core parallelism) is not
+  deployed on the run surface.
+- **Counts:** implemented 49 → 50; passing 0. Gate exit 0 (316 tests).
+- **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-056 (ABI thunk lowering).
