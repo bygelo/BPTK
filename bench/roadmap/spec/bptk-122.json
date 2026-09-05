@@ -4,13 +4,13 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No public tracker or template exists in the planning repository.",
+  "gate": "active",
+  "exclusion_reason": "The public issue and compatibility tracker is implemented: a bare report is rejected, a report carrying environment, revision, and a reproduction hash is accepted and maps to a tracker entry, and triage latency is measured against the published freshness level. The benchmark stays red because reproducing the tracked compatibility claim needs the absent browser game runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the templates reject a bare report and the triage-freshness level is published and measured.",
   "expected_failing_assertion": "No tracker template exists to enforce.",
   "owner_item": "BPTK-122",
-  "active_gate_evidence": "The report command keeps writing a privacy-minimized, revision-pinned local report that a tracker entry can reference.",
+  "active_gate_evidence": "test/governance.test.mjs asserts a bare report is rejected, a complete report is accepted and triaged within the published freshness window.",
   "fixture": [
     "FIX-021"
   ],

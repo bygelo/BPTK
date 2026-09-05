@@ -224,6 +224,7 @@ ALLOWED_MJS_PATH = {
     Path("test/seh.test.mjs"),
     Path("test/shader.test.mjs"),
     Path("test/gdi.test.mjs"),
+    Path("test/governance.test.mjs"),
     Path("test/hle.test.mjs"),
     Path("test/thread.test.mjs"),
     Path("test/user.test.mjs"),
