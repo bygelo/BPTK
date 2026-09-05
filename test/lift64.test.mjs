@@ -106,6 +106,141 @@ test("microprogram: CMP then SETcc records the ordered comparison and a taken co
   assertState(report, { register: { rax: 3n, rcx: 1n } });
 });
 
+// A little-endian imm64 encoding and the `mov rax, imm64` that loads it, used to
+// seed an xmm register through `movq xmm, rax`; the SSE end state is read back
+// out to a GPR (movq / pmovmskb) so the frozen reference is an integer literal.
+function le8(value) {
+  const byte = [];
+  let v = BigInt.asUintN(64, value);
+  for (let i = 0; i < 8; i += 1) { byte.push(Number(v & 0xffn)); v >>= 8n; }
+  return byte;
+}
+const movRax = (value) => [0x48, 0xb8, ...le8(value)];
+
+test("SSE: movq builds [lo,hi] via punpcklqdq and pshufd extracts each 64-bit lane", () => {
+  // movq xmm0,rax(lo); movq xmm1,rax(hi); punpcklqdq xmm0,xmm1 → xmm0=[lo,hi].
+  // movq rcx,xmm0 reads the low lane; pshufd xmm2,xmm0,0xEE lifts the high lane.
+  const report = run([
+    ...movRax(0x1111111122222222n), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x3333333344444444n), 0x66, 0x48, 0x0f, 0x6e, 0xc8,
+    0x66, 0x0f, 0x6c, 0xc1,
+    0x66, 0x48, 0x0f, 0x7e, 0xc1,
+    0x66, 0x0f, 0x70, 0xd0, 0xee,
+    0x66, 0x48, 0x0f, 0x7e, 0xd2,
+    0xc3,
+  ]);
+  assertState(report, { register: { rcx: 0x1111111122222222n, rdx: 0x3333333344444444n } });
+});
+
+test("SSE: pxor of 0xFFFF… and 0x0F0F… yields 0xF0F0… lane-for-lane", () => {
+  const report = run([
+    ...movRax(0xFFFFFFFFFFFFFFFFn), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x0F0F0F0F0F0F0F0Fn), 0x66, 0x48, 0x0f, 0x6e, 0xc8,
+    0x66, 0x0f, 0xef, 0xc1, // pxor xmm0,xmm1
+    0x66, 0x48, 0x0f, 0x7e, 0xc1, // movq rcx,xmm0
+    0xc3,
+  ]);
+  assertState(report, { register: { rcx: 0xF0F0F0F0F0F0F0F0n } });
+});
+
+test("SSE2: paddd adds packed dwords without carry across lane boundaries", () => {
+  // [1,2] + [0x10,0x0A] = [0x11,0x0C] → low 64 = 0x0000000C_00000011.
+  const report = run([
+    ...movRax(0x0000000200000001n), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x0000000A00000010n), 0x66, 0x48, 0x0f, 0x6e, 0xc8,
+    0x66, 0x0f, 0xfe, 0xc1, // paddd xmm0,xmm1
+    0x66, 0x48, 0x0f, 0x7e, 0xc1,
+    0xc3,
+  ]);
+  assertState(report, { register: { rcx: 0x0000000C00000011n } });
+});
+
+test("SSE2: pcmpeqb of a register with its own copy sets every byte, pmovmskb reads 0xFFFF", () => {
+  const report = run([
+    ...movRax(0x0123456789ABCDEFn), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    0x66, 0x0f, 0x6f, 0xc8, // movdqa xmm1,xmm0
+    0x66, 0x0f, 0x74, 0xc1, // pcmpeqb xmm0,xmm1
+    0x66, 0x0f, 0xd7, 0xc0, // pmovmskb eax,xmm0
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 0xFFFFn } });
+});
+
+test("SSE2: pshufd with imm 0x1B reverses the four dwords", () => {
+  // xmm0 = [1,2,3,4]; pshufd ...,0x1B selects dwords 3,2,1,0 → [4,3,2,1].
+  const report = run([
+    ...movRax(0x0000000200000001n), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x0000000400000003n), 0x66, 0x48, 0x0f, 0x6e, 0xc8,
+    0x66, 0x0f, 0x6c, 0xc1, // punpcklqdq xmm0,xmm1 → [1,2,3,4]
+    0x66, 0x0f, 0x70, 0xc8, 0x1b, // pshufd xmm1,xmm0,0x1B
+    0x66, 0x48, 0x0f, 0x7e, 0xc9, // movq rcx,xmm1 (low = [4,3])
+    0x66, 0x0f, 0x70, 0xd1, 0xee, // pshufd xmm2,xmm1,0xEE (high lane down)
+    0x66, 0x48, 0x0f, 0x7e, 0xd2, // movq rdx,xmm2 (= [2,1])
+    0xc3,
+  ]);
+  assertState(report, { register: { rcx: 0x0000000300000004n, rdx: 0x0000000100000002n } });
+});
+
+test("SSE2: psllq by an immediate 4 shifts the quadword left", () => {
+  const report = run([
+    ...movRax(0x1n), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    0x66, 0x0f, 0x73, 0xf0, 0x04, // psllq xmm0,4
+    0x66, 0x48, 0x0f, 0x7e, 0xc1,
+    0xc3,
+  ]);
+  assertState(report, { register: { rcx: 0x10n } });
+});
+
+test("SSE: movss merges the low dword and preserves the upper bits of the destination", () => {
+  // xmm0 low64 = 0xFFFFFFFFFFFFFFFF; movd xmm1,0x11111111; movss xmm0,xmm1
+  // replaces only the low dword → 0xFFFFFFFF_11111111.
+  const report = run([
+    ...movRax(0xFFFFFFFFFFFFFFFFn), 0x66, 0x48, 0x0f, 0x6e, 0xc0,
+    ...movRax(0x11111111n), 0x66, 0x0f, 0x6e, 0xc8, // movd xmm1,eax
+    0xf3, 0x0f, 0x10, 0xc1, // movss xmm0,xmm1
+    0x66, 0x48, 0x0f, 0x7e, 0xc1,
+    0xc3,
+  ]);
+  assertState(report, { register: { rcx: 0xFFFFFFFF11111111n } });
+});
+
+test("CPUID leaf 0 reports the vendor and leaf 1 reports exactly the emulated feature bits", () => {
+  const leaf0 = run([0xb8, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3]);
+  assertState(leaf0, { register: { rax: 1n, rbx: 0x756e6547n, rdx: 0x49656e69n, rcx: 0x6c65746en } });
+  const leaf1 = run([0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3]);
+  // EDX = FPU|TSC|CMOV|MMX|FXSR|SSE|SSE2 = bits 0,4,15,23,24,25,26 = 0x07808011.
+  assertState(leaf1, { register: { rax: 0x6a0n, rbx: 0n, rcx: 0n, rdx: 0x07808011n } });
+});
+
+test("CMPXCHG stores the source when the accumulator matches and loads the destination when it does not", () => {
+  // eax=5, ecx=5, edx=9; cmpxchg ecx,edx → equal, ZF=1, ecx=9, eax unchanged.
+  const equal = run([0xb8, 0x05, 0x00, 0x00, 0x00, 0xb9, 0x05, 0x00, 0x00, 0x00, 0xba, 0x09, 0x00, 0x00, 0x00, 0x0f, 0xb1, 0xd1, 0xc3]);
+  assertState(equal, { register: { rax: 5n, rcx: 9n }, flag: { zf: true, pf: true } });
+  // eax=5, ecx=7 → unequal, ZF=0, eax=7 (the destination), ecx unchanged. The
+  // flags are CMP(5,7): result 0xFFFFFFFE → CF, SF, AF set; PF clear (odd byte).
+  const unequal = run([0xb8, 0x05, 0x00, 0x00, 0x00, 0xb9, 0x07, 0x00, 0x00, 0x00, 0xba, 0x09, 0x00, 0x00, 0x00, 0x0f, 0xb1, 0xd1, 0xc3]);
+  assertState(unequal, { register: { rax: 7n, rcx: 7n }, flag: { zf: false, cf: true, sf: true, pf: false, af: true } });
+});
+
+test("REP STOSB fills a byte run and retires one counted instruction per element", () => {
+  // ecx=4; al=0xAB; rdi=rsp-0x40; rep stosb; mov edx,[rdi-4] → 0xABABABAB, ecx=0.
+  const report = run([0xb9, 0x04, 0x00, 0x00, 0x00, 0xb0, 0xab, 0x48, 0x89, 0xe7, 0x48, 0x83, 0xef, 0x40, 0xf3, 0xaa, 0x8b, 0x57, 0xfc, 0xc3]);
+  assertState(report, { register: { rdx: 0xABABABABn, rcx: 0n } });
+});
+
+test("bit ops, scans, exchange-add, byte swap and accumulator sign-extend are bit-exact", () => {
+  // bts eax,3; bts eax,5 → 0x28.
+  assertState(run([0xb8, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xba, 0xe8, 0x03, 0x0f, 0xba, 0xe8, 0x05, 0xc3]), { register: { rax: 0x28n } });
+  // rax=0x100; bsf rcx,rax → 8; bsr rdx,rax → 8.
+  assertState(run([0x48, 0xb8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x48, 0x0f, 0xbc, 0xc8, 0x48, 0x0f, 0xbd, 0xd0, 0xc3]), { register: { rcx: 8n, rdx: 8n } });
+  // xchg eax,ecx swaps 0x11 and 0x22.
+  assertState(run([0xb8, 0x11, 0x00, 0x00, 0x00, 0xb9, 0x22, 0x00, 0x00, 0x00, 0x87, 0xc8, 0xc3]), { register: { rax: 0x22n, rcx: 0x11n } });
+  // bswap rax reverses the byte order of the quadword.
+  assertState(run([0x48, 0xb8, 0xef, 0xcd, 0xab, 0x89, 0x67, 0x45, 0x23, 0x01, 0x48, 0x0f, 0xc8, 0xc3]), { register: { rax: 0xefcdab8967452301n } });
+  // eax=0xFFFFFFFF; cdqe sign-extends to the full 64-bit accumulator.
+  assertState(run([0xb8, 0xff, 0xff, 0xff, 0xff, 0x48, 0x98, 0xc3]), { register: { rax: 0xFFFFFFFFFFFFFFFFn } });
+});
+
 test("the lifter splits a straight-line run into a basic block terminated by its branch", () => {
   const block = liftBlock(Buffer.from([0xb8, 0x05, 0x00, 0x00, 0x00, 0x01, 0xc8, 0x74, 0x02, 0xc3]), 0);
   assert.equal(block.node.length, 3, "the block ends at the Jcc, not before or after");
@@ -144,14 +279,20 @@ test("cross-check: the structured decode agrees with x64decode on every served p
     decodedCount += 1;
     if (mine.served) {
       servedCount += 1;
-      const lengthAgree = mine.length === reference.length;
-      const mnemonicAgree = reference.is_served && mine.mnemonic === reference.mnemonic;
-      if (!lengthAgree || !mnemonicAgree) {
+      // The cross-check binds only where BOTH decoders serve: x64decode does not
+      // decode the SSE/SSE2 map (nor CPUID/CMPXCHG), so where it refuses there is
+      // nothing to agree on — this file's structured decode is the authority for
+      // the length there. Where the reference DOES serve, length and mnemonic
+      // must match exactly, as before.
+      if (reference.is_served && (mine.length !== reference.length || mine.mnemonic !== reference.mnemonic)) {
         disagreeCount += 1;
         if (disagreeSample.length < 8) disagreeSample.push({ offset, mine: mine.mnemonic, mineLength: mine.length, reference: reference.mnemonic, referenceLength: reference.length });
       }
     }
-    offset += reference.length;
+    // Advance by this file's length when it serves (its decode spans the full
+    // instruction, including SSE the reference under-advances); else follow the
+    // reference so the sweep still steps past an opcode neither file serves.
+    offset += mine.served ? mine.length : reference.length;
   }
 
   const servedFraction = servedCount / decodedCount;
