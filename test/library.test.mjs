@@ -88,6 +88,29 @@ test("hosting publishes an in-date grant and refuses an expired one", (context) 
   assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
 });
 
+test("ratings show only when record-backed and current; stale ones grey out", (context) => {
+  const rootPath = scratch(context);
+  const ratingPath = join(rootPath, "rating.json");
+  const session = [{ frame: 0 }, { frame: 1 }];
+  writeFileSync(ratingPath, JSON.stringify({
+    current_revision: "rev-3",
+    rating: [
+      { title: "Reproduced current", score: 5, revision: "rev-3", record: { session, replay: session } },
+      { title: "Reproduced stale", score: 4, revision: "rev-1", record: { session, replay: session } },
+      { title: "Not reproduced", score: 5, revision: "rev-3", record: { session, replay: [{ frame: 9 }] } },
+      { title: "No record", score: 5, revision: "rev-3" },
+    ],
+  }));
+  const report = JSON.parse(run(["library", "rating", ratingPath, "--json"]).stdout);
+  assert.equal(report.rating[0].display, "shown");
+  assert.equal(report.rating[1].display, "greyed_out_stale");
+  assert.equal(report.rating[2].display, "hidden_no_record");
+  assert.equal(report.rating[3].display, "hidden_no_record");
+  assert.equal(report.shown_count, 1);
+  assert.equal(report.greyed_count, 1);
+  assert.equal(report.hidden_count, 2);
+});
+
 test("preservation catalog is append-only and exports reproducibly and PII-free", (context) => {
   const rootPath = scratch(context);
   const catalogPath = join(rootPath, "preservation.json");
