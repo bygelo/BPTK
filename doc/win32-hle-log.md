@@ -134,6 +134,20 @@ audio).
 
 Gate: exit 0.
 
+## Cycle 9 — BPTK-097 XInput gamepad slice (implemented, red/active)
+Added createGamepadSubsystem in lib/input.mjs (four disconnected-by-default slots
+driven by injected browser Gamepad state, XInput packet-number-on-change, field
+clamping, rumble) and bound xinput1_3.dll in lib/hle.mjs: XInputGetState,
+XInputSetState, XInputGetCapabilities, XInputEnable marshaling XINPUT_STATE/
+VIBRATION/CAPABILITIES and reporting ERROR_DEVICE_NOT_CONNECTED for empty/out-of-
+range slots. Served xinput surface 0→4; total 225→229. Every export carries a
+conformance case (default disconnected); a unit test proves the injected-state
+byte-exact marshaling, packet-number semantics, capabilities/rumble, and
+disconnect. Implemented count 51→52; passing 0. Still red: DirectInput
+enumeration, pointer-lock/touch bridge, and the live browser Gamepad feed.
+
+Gate: exit 0.
+
 ## Progress
-Implemented 43→51 (BPTK-101, 098, 011, 012, 099, 096, 104, 102). Served HLE
-export 156→225. Remaining owned planned items: BPTK-097 (full input), 100 (FMV).
+Implemented 43→52 (BPTK-101, 098, 011, 012, 099, 096, 104, 102, 097). Served HLE
+export 156→229. Remaining owned planned item: BPTK-100 (FMV sync & subtitles).

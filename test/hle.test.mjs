@@ -480,6 +480,43 @@ test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clo
   assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
 });
 
+test("BPTK-097: XInput reports no controller by default and reflects an injected gamepad state", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const stateBuf = base + 0x40;
+  const capsBuf = base + 0x80;
+  const vibBuf = base + 0xc0;
+  // By default every slot is disconnected.
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [0, stateBuf]), 1167);
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetCapabilities", [0, 0, capsBuf]), 1167);
+  // Inject a controller state (the browser Gamepad bridge feeds this).
+  guest.gamepad.injectGamepad(0, { buttons: 0x1000, left_trigger: 255, thumb_lx: -32768, thumb_ry: 32767 });
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [0, stateBuf]), 0);
+  assert.equal(memory.readMemory(stateBuf + 4, 2), 0x1000, "wButtons: A pressed");
+  assert.equal(memory.readMemory(stateBuf + 6, 1), 255, "bLeftTrigger");
+  assert.equal(memory.readMemory(stateBuf + 8, 2), 0x8000, "sThumbLX -32768 as unsigned");
+  assert.equal(memory.readMemory(stateBuf + 14, 2), 0x7fff, "sThumbRY 32767");
+  assert.ok(memory.readMemory(stateBuf + 0, 4) > 0, "the packet number advanced");
+  // Capabilities and vibration are served once connected.
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetCapabilities", [0, 0, capsBuf]), 0);
+  assert.equal(memory.readMemory(capsBuf + 0, 1), 1, "Type gamepad");
+  memory.writeMemory(vibBuf, 2, 40000);
+  memory.writeMemory(vibBuf + 2, 2, 20000);
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputSetState", [0, vibBuf]), 0);
+  assert.deepEqual(guest.gamepad.getVibration(0), { left_motor: 40000, right_motor: 20000 });
+  // An out-of-range slot is not connected.
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [7, stateBuf]), 1167);
+  // The packet number only advances when the state actually changes.
+  const before = guest.gamepad.getState(0).packet_number;
+  guest.gamepad.injectGamepad(0, { buttons: 0x1000, left_trigger: 255, thumb_lx: -32768, thumb_ry: 32767 });
+  assert.equal(guest.gamepad.getState(0).packet_number, before, "an identical state does not bump the packet number");
+  guest.gamepad.injectGamepad(0, { buttons: 0x2000 });
+  assert.ok(guest.gamepad.getState(0).packet_number > before, "a changed state bumps the packet number");
+  // A disconnect returns the slot to not-connected.
+  guest.gamepad.disconnectGamepad(0);
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [0, stateBuf]), 1167);
+});
+
 test("BPTK-102: the virtual drive geometry reports a fixed C: and a read-only optical D:", () => {
   const { guest, memory } = createConformanceMachine();
   const base = guest.layout.arena_base;
