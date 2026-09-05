@@ -297,6 +297,33 @@ test("regression risk: a served import binds to the HLE thunk page and a TLS cal
   assert.equal(tlsReport.instruction_count, 2);
 });
 
+test("regression risk: the fs moffs load resolves against the TEB base, not a zero segment", (context) => {
+  // mov eax, fs:[0x18]; ret — the NT_TIB self pointer. The moffs form (0xa1)
+  // must add the fs segment base like a ModRM effective offset, so eax lands on
+  // the mapped TEB base. Without it the load read linear address 0x18.
+  const report = readRun(createPackage(context, [0x64, 0xa1, 0x18, 0x00, 0x00, 0x00, 0xc3], { import_value: true }).packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.exception, null);
+  assert.equal(report.register.eax, report.thread.teb_base);
+});
+
+test("regression risk: the fs moffs store lands in the TEB and reads back through the same base", (context) => {
+  // mov eax,0x11223344; mov fs:[0x40],eax (0xa3); xor eax,eax; mov eax,fs:[0x40]
+  // (0xa1). The exact CRT SEH-prologue store form: without the fs base on the
+  // moffs store it wrote linear address 0x40 and faulted; with it the value
+  // round-trips through a TEB slot.
+  const report = readRun(createPackage(context, [
+    0xb8, 0x44, 0x33, 0x22, 0x11,       // mov eax, 0x11223344
+    0x64, 0xa3, 0x40, 0x00, 0x00, 0x00, // mov fs:[0x40], eax
+    0x31, 0xc0,                         // xor eax, eax
+    0x64, 0xa1, 0x40, 0x00, 0x00, 0x00, // mov eax, fs:[0x40]
+    0xc3,
+  ], { import_value: true }).packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.exception, null);
+  assert.equal(report.register.eax, 0x11223344);
+});
+
 test("regression risk: CPUID serves the declared processor identity leaf table", (context) => {
   // mov eax, 0; cpuid; ret — vendor string lands in EBX:ECX:EDX.
   const vendor = readRun(createPackage(context, [
