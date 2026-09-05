@@ -112,9 +112,9 @@ coverage are different claims:
 
 ### Measured
 
-- **Surface conformance: still coverage-complete.** 23 case over 20 served
+- **Surface conformance: still coverage-complete.** 22 case over 19 served
   ws2_32 export; `is_coverage_complete === true`, `fail_count === 0`. Delta from
-  cycle 1: 11 served → 20 served, 13 case → 23 case, no uncovered export.
+  cycle 1: 11 served → 19 served, 13 case → 22 case, no uncovered export.
 - **Gate:** `node --test` 181 pass / 0 fail; `npm run gate` exit 0.
 - **Corpus import coverage:** still 0 measured — no payload staged; the hle
   export registration and local corpus acquisition remain the next step.
@@ -151,7 +151,7 @@ Per the 8-file promotion contract, reconciled across the gate:
 
 ### Measured
 
-- **Surface conformance: coverage-complete.** 23 case over 20 served ws2_32
+- **Surface conformance: coverage-complete.** 22 case over 19 served ws2_32
   export; zero uncovered, zero failing.
 - **Gate:** `node --test` 183 pass / 0 fail; `npm run gate` exit 0.
 - **Manifest:** 41 implemented / 0 passing — passing stays 0 because no real
