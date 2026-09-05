@@ -12,6 +12,7 @@
     "data/coverage-ratchet.json",
     "data/sdk-api.json",
     "data/status.json",
+    "lib/audio.mjs",
     "lib/benchmark.mjs",
     "lib/bound.mjs",
     "lib/census.mjs",
