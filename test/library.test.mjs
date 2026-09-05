@@ -88,6 +88,24 @@ test("hosting publishes an in-date grant and refuses an expired one", (context) 
   assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
 });
 
+test("first-party demo builds reproducibly, is publishable, and reports no passing run", (context) => {
+  const rootPath = scratch(context);
+  const outA = join(rootPath, "demo-a");
+  const outB = join(rootPath, "demo-b");
+  const reportA = JSON.parse(run(["library", "demo", outA, "--json"]).stdout);
+  const reportB = JSON.parse(run(["library", "demo", outB, "--json"]).stdout);
+  assert.equal(reportA.is_clean_build, true);
+  assert.equal(reportA.build_hash, reportB.build_hash, "clean build is reproducible");
+  assert.equal(reportA.is_first_party, true);
+  // Honest: no runtime, so no passing capability evidence is promoted.
+  assert.equal(reportA.is_passing, false);
+  assert.equal(reportA.capability_evidence.is_passing, false);
+  assert.equal(reportA.capability_evidence.evidence_hash, null);
+  // The generated demo is Apache-licensed, so it is publishable through hosting.
+  const publish = JSON.parse(run(["library", "publish", outA, "--json"]).stdout);
+  assert.equal(publish.is_published, true);
+});
+
 test("submission maps to a tracker entry; unattested never promotes; proprietary and PII refused", (context) => {
   const rootPath = scratch(context);
   const attested = join(rootPath, "attested.json");
