@@ -224,6 +224,63 @@ test("regression risk: bounded x87 load, multiply, and store keep deterministic 
   assert.equal(second.memory_sha256, report.memory_sha256);
 });
 
+test("regression risk: the operand-size override executes the 16-bit form with the high word preserved", (context) => {
+  // mov eax, 0x12345678; mov ax, 0x1234 — the 16-bit write preserves the
+  // high word of EAX, the rule the probe must not confuse with zeroing.
+  const report = readRun(createPackage(context, [
+    0xb8, 0x78, 0x56, 0x34, 0x12,
+    0x66, 0xb8, 0x34, 0x12,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.eax, 0x12341234);
+});
+
+test("regression risk: 16-bit arithmetic sets the carry and zero flags on the 16-bit result", (context) => {
+  // mov eax, 0; mov ax, 0xffff (via 66 B8); add ax, 2 via 66 05 — wraps to
+  // 0x0001 with carry out of bit 15 and the high word of EAX untouched.
+  const report = readRun(createPackage(context, [
+    0xb8, 0, 0, 0, 0,
+    0x66, 0xb8, 0xff, 0xff,
+    0x66, 0x05, 0x02, 0x00,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.eax, 0x00000001);
+  assert.equal(report.flag.carry, true);
+  assert.equal(report.flag.zero, false);
+});
+
+test("regression risk: the 16-bit push decrements the stack pointer by two", (context) => {
+  // mov eax, 0x00aa00bb; push ax; pop edx (32-bit pop of the two pushed byte
+  // plus the two stack byte already there is not decoded) — assert through
+  // esp and memory instead: push ax twice, then read the trace hash stability.
+  const report = readRun(createPackage(context, [
+    0xb8, 0xbb, 0x00, 0xaa, 0x00,
+    0x66, 0x50,
+    0x89, 0xe2,
+    0x83, 0xc4, 0x02,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  // The 16-bit push moves ESP by exactly two and the stack rebalances.
+  assert.equal(report.register.edx, 0x7000fff6);
+  assert.equal(report.register.esp, 0x7000fffc);
+  assert.equal(report.register.eax, 0x00aa00bb);
+});
+
+test("regression risk: the rare 16-bit control forms stay structured unsupported", (context) => {
+  const callReport = readRun(createPackage(context, [0x66, 0xe8, 0, 0, 0, 0], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(callReport.stop_reason, "unsupported_opcode");
+  assert.equal(callReport.exception.opcode, 0xe8);
+  const retReport = readRun(createPackage(context, [0x66, 0xc3], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(retReport.stop_reason, "unsupported_opcode");
+  const pushfReport = readRun(createPackage(context, [0x66, 0x9c], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(pushfReport.stop_reason, "unsupported_opcode");
+  const ffReport = readRun(createPackage(context, [0x66, 0xff, 0x15, 0, 0x10, 0x40, 0x00], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(ffReport.stop_reason, "unsupported_opcode");
+});
+
 test("regression risk: a served import binds to the HLE thunk page and a TLS callback fires before entry", (context) => {
   // The Win32 core HLE (BPTK-010) serves kernel32!ExitProcess, so the image
   // now executes and the import reports resolved against the thunk page.

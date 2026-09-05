@@ -157,10 +157,37 @@ override and SSE, so real binaries cannot reach `entry` until both widen.
   import surface (OpenTTD i386 serves 109 of 302 import, Plink i386 86 of
   142). Reached stage of the two i386 entry stays honestly at `loaded`.
 
+## 2026-09-05 — cycle 6
+
+### Widened: BPTK-009 — the operand-size override (0x66)
+
+- The remaining unserved families (threads, SEH, windows, audio, sockets) all
+  need the models their item own, so the cycle took the other lever: the CPU
+  subset. The probe now executes the operand-size override (0x66) — the
+  prefix every real i386 binary uses constantly and which the probe refused
+  outright before: 16-bit register push and pop adjust the stack by exactly
+  two byte, 16-bit arithmetic and immediate forms set the 16-bit carry, zero,
+  sign, and overflow flags exactly, the high word of the 32-bit register is
+  preserved (the rule that must not be confused with the 64-bit zero-extend
+  rule), and the rare 16-bit control forms (ret16, call16, jmp16, pushf16,
+  popf16, r/m16 call and jump) stay structured unsupported rather than
+  mis-executing.
+- Proof: four runtime check through the real run surface (high-word
+  preservation 0x12345678 with AX overwritten to 0x12341234, 16-bit carry-out
+  wrapping 0xffff + 2 to 0x0001 with CF set, the exact two-byte stack
+  adjustment captured mid-run through EDX, and the structured refusals); full
+  suite 125 test, 0 failing. No real binary reaches `entry` yet — real CRT
+  startup also needs SSE and the exception model — so the corpus reached
+  stage and coverage are honestly unchanged this cycle; the advance is the
+  widened measured instruction subset.
+- One expected-value bug was mine, not the probe's: two assertions first
+  encoded a carry propagation into the high word that the real architecture
+  does not do; the probe had the architecture right.
+
 ### State after the commit
 
-- Implemented count stays 40; the cycle deepened four implemented item. Passing
-  stays 0 (no benchmark runner exists yet).
+- Implemented count stays 40; the cycle widened BPTK-009. Passing stays 0 (no
+  benchmark runner exists yet).
 - Next highest-leverage target: the BPTK-009 instruction-subset widening
   (operand-size override first) toward a real binary reaching `entry`, since
   the remaining unserved families need the thread, exception, window, audio,
