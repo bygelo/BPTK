@@ -57,3 +57,17 @@ persistent OPFS bridge are not built, and the real-corpus path-alias fixture is
 not staged here.
 
 Gate: exit 0.
+
+## Cycle 3 — BPTK-011 USER32 message loop, geometry, metrics (implemented, red/active)
+Exposed the existing subsystem message queue as exports and added window
+geometry in lib/user.mjs + registration in lib/hle.mjs: GetMessageW, PeekMessageW,
+TranslateMessage, DispatchMessageW (MSG struct marshaled to/from guest memory),
+GetClientRect, GetWindowRect, MoveWindow, AdjustWindowRect, and GetSystemMetrics
+over one declared virtual-desktop profile. Served user32 export 14→23; total
+189→198. Cases added to BOTH conformance suites (test/user.test.mjs subsystem +
+core HLE); added an HLE-level marshaling test proving MSG/RECT round-trip through
+guest memory. Implemented count 45→46; passing 0. Still red: the guest WndProc is
+not yet invoked as real code (CPU core owns that; DefWindowProc fallback stands),
+and the cursor/timer/browser-gesture and focus-recovery path of FIX-004 are absent.
+
+Gate: exit 0.

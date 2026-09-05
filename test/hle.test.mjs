@@ -480,6 +480,37 @@ test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clo
   assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
 });
 
+test("BPTK-011: the message loop and geometry exports marshal MSG and RECT through guest memory", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  const msgBuffer = base + 0x140;
+  const rectBuffer = base + 0x180;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  memory.writeMemory(classStruct + 0, 4, 0); // style
+  memory.writeMemory(classStruct + 4, 4, 0); // wndProc -> DefWindowProc fallback
+  memory.writeMemory(classStruct + 36, 4, classNamePtr); // lpszClassName
+  invoke(guest, "user32.dll", "RegisterClassW", [classStruct]);
+  const window = invoke(guest, "user32.dll", "CreateWindowExW", [0, classNamePtr, 0, 0, 0, 0, 320, 240, 0, 0, 0, 0]);
+  assert.ok(window !== 0);
+  // A posted message round-trips through GetMessageW into the MSG struct.
+  invoke(guest, "user32.dll", "PostMessageW", [window, 0x0400, 7, 9]);
+  assert.equal(invoke(guest, "user32.dll", "GetMessageW", [msgBuffer, 0, 0, 0]), 1);
+  assert.equal(memory.readMemory(msgBuffer + 0, 4), window);
+  assert.equal(memory.readMemory(msgBuffer + 4, 4), 0x0400);
+  assert.equal(memory.readMemory(msgBuffer + 8, 4), 7);
+  assert.equal(memory.readMemory(msgBuffer + 12, 4), 9);
+  // The client rect is origin-anchored at the created extent.
+  assert.equal(invoke(guest, "user32.dll", "GetClientRect", [window, rectBuffer]), 1);
+  assert.deepEqual([0, 1, 2, 3].map((i) => memory.readMemory(rectBuffer + i * 4, 4)), [0, 0, 320, 240]);
+  // MoveWindow updates the geometry the window rect then reports.
+  assert.equal(invoke(guest, "user32.dll", "MoveWindow", [window, 10, 20, 100, 200, 1]), 1);
+  invoke(guest, "user32.dll", "GetWindowRect", [window, rectBuffer]);
+  assert.deepEqual([0, 1, 2, 3].map((i) => memory.readMemory(rectBuffer + i * 4, 4)), [10, 20, 110, 220]);
+  assert.equal(invoke(guest, "user32.dll", "GetSystemMetrics", [0]), 1920);
+});
+
 test("BPTK-098: registry create reports disposition, round-trips a value, and refuses deleting a key with subkeys", () => {
   const { guest, memory } = createConformanceMachine();
   const base = guest.layout.arena_base;
