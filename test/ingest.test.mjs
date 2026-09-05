@@ -5,12 +5,13 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { formatFallbackChain, ingestInput, resolveFallbackChain } from "../lib/ingest.mjs";
+import { readSevenZip } from "../lib/sevenzip.mjs";
 import { createInnoFixture } from "./extract.test.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
@@ -190,4 +191,72 @@ test("the fallback chain is reachable at the real CLI and never asserts the titl
   const chain = JSON.parse(result.stdout);
   assert.equal(chain.is_executed, false);
   assert.match(chain.note, /does not assert the title runs/);
+});
+
+// A bounded 7z archive built with 7-Zip's own default exe pipeline: readme.txt
+// under plain LZMA and bin/game.exe under the LZMA + BCJ x86 filter chain. The
+// blob is embedded so the codec path is exercised with no external tool.
+const sevenZipLzmaBase64 =
+  "N3q8ryccAAQAoJDEFQEAAAAAAAAjAAAAAAAAAHQHzXEANhhLVQA45N4vBRoGbyP30oCeTHzYUUkKk58Yy+y/z07xEeqO29tYPFoo4LVH8+xdkvhSe5No8bwAYXmZs1Y3PRa8ACaWfBuMu0QtksPPKJ0lO3XY6RAMVBgdDSx1HN/rQsPV/l7NKxCu806Gwb1i1pYFakZtKhXUsmXCye4cPARPGpy/KZHXMtsRCKEnrmhReOZAAACBMweuMZwiLUtYhUPhMfotoj5laO2nG7wjp3jVJjJcRocK/Iz4GR3FHzzZZDtDrqG+TGDzJo473jGgRfCmLWpb/cXxN7uewLTK12eEmhpXU0u5ny7od49GCUlBcflt0eZvBNhMQM1UdNRcbo82w+OuQhoMyDqjfDiKgL7JIAAAFwaAlAEJgIEABwsBAAEjAwEBBV0AEAAADICmCgE2KTnQAAA=";
+// The same archive with header and payload encryption (-mhe=on -p): the header
+// itself is an AES-256 folder, so the reader refuses before any structure read.
+const sevenZipEncryptedBase64 =
+  "N3q8ryccAASIdA5ccAEAAAAAAAA/AAAAAAAAAFStacs5wFPCicZVwCJi9ooXs3Cp6CeA9q143mj4zfG/4yhWZMqX8Fm/evHSod6MC3fsXbH9ANDy9PGvSkW9sIEY/dyAbrR7lIDFls9FHShAuKAPJ+zr1IXuSrsqqhgvHOHVRbI6+aRpy1wGJieRNo4OPTXzR2wyMMDvFhjpzE0b3/y6gA6hvIMcK0MsVN6n8qnL25/wvLXBfPlDpL9+FyzCwT9hGGZFrOFgA00AP2yCshTUXyV4EOjVvPErCILcIimQ2ZAitLjkpl9U+4yvTyucdS8Q7ATnPcjWYxCRYYdaxTFGcT2JxGcq75K3PRwFKzmR92MEmZEanGzYYRCrYNTHXWxJ7cp5KKwdL11oajrMLfynNG96CaXO3J2eb4XDhrTtPB7/pvHJwGZQCduhJSUUiFSZL232TFPNq+FCtbdbQszeC2BNM7AcJUOYejhHXjVlFBNHP9WdK55IeqXIjXGB36WN/YRJ3aokUrRNXXpSLzx1HBcGgLABCYDAAAcLAQACJAbxBwESUw+HT5nSOopocJPnhWJ8MZ7oIwMBAQVdABAAAAEADICxgNYKATNIQfUAAA==";
+const sevenZipExeSha256 = "8f342b758b051baa813e23d0daa2d563c3d7af9f4d9c2255c5d34401b569357c";
+
+test("ingest stages a bounded 7z archive and packages its recovered executable", (context) => {
+  const inputPath = createRoot(context, "tool.7z");
+  writeFileSync(inputPath, Buffer.from(sevenZipLzmaBase64, "base64"));
+  const outputDir = createRoot(context, "out7z") + "-out";
+  const report = ingestInput(inputPath, { output: outputDir });
+  assert.equal(report.is_ingested, true);
+  assert.equal(report.extraction.installer_family, "7z");
+  assert.equal(report.package_manifest.executable, "bin/game.exe");
+  // The recovered executable is the real bytes, verified against its own hash.
+  const recovered = readFileSync(join(outputDir, "bin", "game.exe"));
+  assert.equal(createHash("sha256").update(recovered).digest("hex"), sevenZipExeSha256);
+  assert.ok(existsSync(join(outputDir, "readme.txt")));
+  assert.ok(report.extraction.entry.some((entry) => entry.path === "readme.txt"));
+});
+
+test("a 7z archive without an output directory is refused with the archive gap", (context) => {
+  const inputPath = createRoot(context, "tool.7z");
+  writeFileSync(inputPath, Buffer.from(sevenZipLzmaBase64, "base64"));
+  assert.throws(() => ingestInput(inputPath), (error) => error.input_code === "archive_ingest_unimplemented");
+});
+
+test("an encrypted 7z folder is refused with a structured reason before any write", (context) => {
+  const encrypted = Buffer.from(sevenZipEncryptedBase64, "base64");
+  assert.throws(() => readSevenZip(encrypted), (error) => error.input_code === "archive_entry_encrypted");
+  const inputPath = createRoot(context, "secret.7z");
+  writeFileSync(inputPath, encrypted);
+  const outputDir = createRoot(context, "secret-out") + "-out";
+  assert.throws(() => ingestInput(inputPath, { output: outputDir }), (error) => error.input_code === "archive_entry_encrypted");
+});
+
+// The full BCJ2 coder chain and end-to-end corpus proof run only when the
+// lawful freeware payload is staged locally; the codec surface above stays
+// hermetic, so this is gated on the staged file exactly like the other
+// corpus-dependent tests.
+const stagedSevenZip = process.env.BPTK_SEVENZIP_PAYLOAD
+  ?? join(process.env.BPTK_CORPUS_STAGE ?? join(fileURLToPath(new URL("../..", import.meta.url)), "bptk-corpus", "stage"), "corpus-004", "7z2501-extra.7z");
+
+test("the staged 7-Zip corpus payload recovers its x86-64 executable byte-for-byte", (context) => {
+  if (!existsSync(stagedSevenZip)) {
+    context.skip(`The 7-Zip corpus payload is not staged at ${stagedSevenZip}`);
+    return;
+  }
+  const recovered = readSevenZip(readFileSync(stagedSevenZip));
+  const executable = recovered.file.find((entry) => entry.path === "x64/7za.exe");
+  assert.ok(executable, "the archive carries x64/7za.exe");
+  assert.equal(executable.checksum_state, "verified");
+  assert.equal(
+    createHash("sha256").update(executable.content).digest("hex"),
+    "574bb90d17732f3cc4145fd4ba12d8f29b9d63400881c0e6fe3110c88b0485de",
+  );
+  // The recovered executable is a real x86-64 PE image, so the run surface can
+  // only load it into the research lane; extraction never asserts it runs.
+  const headerOffset = executable.content.readUInt32LE(0x3c);
+  assert.equal(executable.content.toString("ascii", headerOffset, headerOffset + 4), "PE\0\0");
+  assert.equal(executable.content.readUInt16LE(headerOffset + 4), 0x8664);
 });
