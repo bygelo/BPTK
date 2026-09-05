@@ -53,6 +53,7 @@
     "lib/rsrc.mjs",
     "lib/runtime.mjs",
     "lib/run.mjs",
+    "lib/sdl.mjs",
     "lib/security.mjs",
     "lib/seh.mjs",
     "lib/sevenzip.mjs",
