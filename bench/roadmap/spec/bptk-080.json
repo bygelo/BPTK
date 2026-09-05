@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No compatibility session or database exists.",
+  "gate": "active",
+  "exclusion_reason": "Every database row is built through a generic engine that stamps a regenerated row hash, refuses an unbacked row (no replay-artifact evidence), refuses a stale row whose revision differs from the current pin, and refuses a personal-data row. The benchmark stays red because a real row needs a real recorded run and rating (BPTK-010) that do not exist, so no real title is regenerable yet.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every declared row regenerates byte-stably from its evidence and the stale and unprovenanced case is refused.",
   "expected_failing_assertion": "No database row exists to regenerate.",
   "owner_item": "BPTK-080",
-  "active_gate_evidence": "The report command keeps recording privacy-minimized and revision-pinned.",
+  "active_gate_evidence": "The database suite covers the regenerable, revision-pinned publishable row, the row-level regeneration from evidence, the unbacked-row refusal, the stale-revision refusal, and the personal-data refusal.",
   "fixture": [
     "FIX-021"
   ],

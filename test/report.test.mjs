@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildReplayArtifact, compareReplay, computeCompatibilityRating, verifyReplayArtifact } from "../lib/report.mjs";
+import { buildCompatibilityDatabase, buildReplayArtifact, compareReplay, computeCompatibilityRating, exportCompatibilityDatabase, verifyCompatibilityRow, verifyReplayArtifact } from "../lib/report.mjs";
 
 const provenance = { boots: "replay:aa", in_game: "replay:bb", playable: "replay:cc", complete: "replay:dd" };
 
@@ -76,4 +76,46 @@ test("an artifact that embeds personal data or a raw state blob is refused", () 
   assert.equal(verdict.is_clean, false);
   assert.match(verdict.reason.join(" "), /embedded personal_data/);
   assert.match(verdict.reason.join(" "), /embeds raw state/);
+});
+
+const goodRow = {
+  title_id: "T-DEMO",
+  build_hash: "sha256:build",
+  environment: "linux-node22",
+  browser: "chrome-141",
+  revision: "sha256:rev1",
+  evidence_sha256: "b".repeat(64),
+  rating: "boots",
+};
+
+test("a fully-backed, revision-pinned row publishes and the export is byte-stable", () => {
+  const db = buildCompatibilityDatabase({ revision: "sha256:rev1", row: [goodRow] });
+  assert.equal(db.is_publishable, true);
+  assert.equal(db.row_count, 1);
+  const first = exportCompatibilityDatabase(db);
+  const second = exportCompatibilityDatabase(buildCompatibilityDatabase({ revision: "sha256:rev1", row: [{ ...goodRow }] }));
+  assert.equal(first.export_sha256, second.export_sha256);
+});
+
+test("every published row regenerates from its own evidence", () => {
+  const db = buildCompatibilityDatabase({ revision: "sha256:rev1", row: [goodRow] });
+  assert.equal(verifyCompatibilityRow(db.row[0], "sha256:rev1").is_regenerable, true);
+});
+
+test("an unbacked row is refused", () => {
+  const db = buildCompatibilityDatabase({ revision: "sha256:rev1", row: [{ ...goodRow, evidence_sha256: undefined }] });
+  assert.equal(db.is_publishable, false);
+  assert.match(db.refused[0].reason.join(" "), /missing evidence_sha256|unbacked/);
+});
+
+test("a stale row pinned to an older revision is refused", () => {
+  const db = buildCompatibilityDatabase({ revision: "sha256:rev2", row: [goodRow] });
+  assert.equal(db.is_publishable, false);
+  assert.match(db.refused[0].reason.join(" "), /stale/);
+});
+
+test("a row carrying personal data is refused", () => {
+  const db = buildCompatibilityDatabase({ revision: "sha256:rev1", row: [{ ...goodRow, environment: "user PERSONAL_DATA_MARKER" }] });
+  assert.equal(db.is_publishable, false);
+  assert.match(db.refused[0].reason.join(" "), /personal data/);
 });

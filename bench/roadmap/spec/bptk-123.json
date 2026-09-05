@@ -4,15 +4,15 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No compatibility session exists to publish and BPTK-028 recording remains red.",
+  "gate": "active",
+  "exclusion_reason": "The publish path is the same generic database engine whose export is a byte-stable canonical serialization of the admitted rows in title order, with every row carrying title, build hash, environment, browser, revision, and backing evidence. The benchmark stays red because a real row needs a real recorded run and rating (BPTK-010) that do not exist, so the published export carries no real title.",
   "prerequisite": [
     "BPTK-028"
   ],
   "promotion_trigger": "Promote when the export is byte-stable across regeneration and every row resolves to evidence with no unbacked or personal-data row.",
   "expected_failing_assertion": "No database export exists.",
   "owner_item": "BPTK-123",
-  "active_gate_evidence": "The report command keeps consent recording minimized and off by default.",
+  "active_gate_evidence": "The database suite covers the byte-stable export equal across two builds of the same rows, the full evidence-chain row fields, and the refusal of every unbacked, stale, or personal row.",
   "fixture": [
     "FIX-021"
   ],
