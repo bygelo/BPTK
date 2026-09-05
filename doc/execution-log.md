@@ -148,3 +148,24 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   recompiled crossing (the measured boundary is the raw WASM import call).
 - **Counts:** implemented 50 → 51; passing 0. Gate exit 0 (321 tests, 53 files).
 - **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-050 (memory64).
+
+## Cycle 8 — BPTK-139/140/142 (GS-095/096/098) perf bars vs the recompiler
+
+- **Done:** `lib/performance.mjs` gains three harnesses measured against the
+  real recompiled module:
+  - `benchmarkColdStart` (139): cold = recompile + WASM compile + instantiate;
+    warm = re-instantiate. ~2.5 ms cold / ~0.03 ms warm here.
+  - `benchmarkMemory` (140): recompiled linear memory is bounded and does not
+    grow between a short and a long run (~192 KB, well under the 2-GB ceiling);
+    guest-host crossing cost reused from lib/abi.mjs.
+  - `benchmarkStability` (142): repeats the workload, measures run-to-run jitter
+    and confirms memory returns to baseline.
+- **Evidence:** `test/performance.test.mjs` (+3, now 7) — warm ≤ cold and no
+  asset streaming (139); growth bounded + under ceiling + positive crossing
+  (140); positive median, non-negative jitter, memory-to-baseline (142); all
+  three keep is_bar_cleared false.
+- **Why still red:** 139 measures time-to-first-*executable*, not first frame
+  (no graphics/streaming runtime); 140's 2-GB ceiling is a whole-game figure;
+  142's 30-minute sustained bound needs a game runtime.
+- **Counts:** implemented 51 → 54; passing 0. Gate exit 0 (324 tests).
+- **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-050 (memory64).

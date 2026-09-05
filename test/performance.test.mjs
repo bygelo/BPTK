@@ -11,7 +11,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { benchmarkRecompiler, formatRecompilerBenchmark, PERFORMANCE_BAR } from "../lib/performance.mjs";
+import { benchmarkRecompiler, formatRecompilerBenchmark, PERFORMANCE_BAR, benchmarkColdStart, benchmarkMemory, benchmarkStability, START_BUDGET_MILLISECOND, MEMORY_CEILING_BYTE } from "../lib/performance.mjs";
 
 test("performance: the recompiled path computes the same result as the interpreter", () => {
   const report = benchmarkRecompiler({ instruction_budget_count: 500_000 });
@@ -47,4 +47,37 @@ test("performance: the report formats the measured throughput and the declared b
   assert.match(text, /Recompiled: [\d.]+ MIPS/);
   assert.match(text, /Speedup vs interpreter/);
   assert.match(text, /MIPS floor: 770/);
+});
+
+// BPTK-139 (GS-095) cold-start / time-to-first-executable.
+test("performance: cold start measures compile+instantiate and warm re-instantiate", () => {
+  const report = benchmarkColdStart();
+  assert.ok(report.cold_millisecond > 0);
+  assert.ok(report.warm_millisecond >= 0);
+  assert.ok(report.warm_millisecond <= report.cold_millisecond, "warm re-instantiate is not slower than cold");
+  assert.equal(report.includes_asset_streaming, false);
+  assert.equal(report.is_bar_cleared, false, "time-to-first-frame needs a graphics/streaming runtime");
+  assert.ok(report.blocker.length >= 2);
+  assert.equal(START_BUDGET_MILLISECOND.cold, 5000);
+});
+
+// BPTK-140 (GS-096) memory ceiling + guest-host boundary cost.
+test("performance: recompiled memory is bounded and does not grow with run length", () => {
+  const report = benchmarkMemory({ iteration: 200_000 });
+  assert.equal(report.is_growth_bounded, true, "a longer run must not grow the linear memory");
+  assert.equal(report.peak_memory_byte, report.short_run_memory_byte);
+  assert.ok(report.peak_memory_byte < MEMORY_CEILING_BYTE);
+  assert.ok(report.crossing_nanosecond > 0);
+  assert.equal(report.is_bar_cleared, false, "the whole-game ceiling needs a game runtime");
+});
+
+// BPTK-142 (GS-098) sustained-run stability / jitter.
+test("performance: a repeated run holds jitter and returns memory to baseline", () => {
+  const report = benchmarkStability({ repeat: 20, per_run_budget: 100_000 });
+  assert.equal(report.repeat, 20);
+  assert.ok(report.median_millisecond > 0);
+  assert.ok(report.jitter_millisecond >= 0);
+  assert.equal(report.memory_returns_to_baseline, true, "memory must return to baseline across runs");
+  assert.equal(report.is_bar_cleared, false, "a real 30-minute game run needs a game runtime");
+  assert.ok(report.blocker.length >= 1);
 });

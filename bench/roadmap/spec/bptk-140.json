@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No guest execution exists to measure crossing cost.",
+  "gate": "active",
+  "exclusion_reason": "The recompiled module's linear memory is bounded and does not grow with execution length, and the guest-host crossing cost is measured as the WebAssembly import call, but the 2-GB peak ceiling is a whole-game figure with no game runtime to reach it and the crossing bound is a reference-desktop figure, so the end-to-end ceiling is not certified.",
   "prerequisite": [],
-  "promotion_trigger": "Promote when peak memory and growth hold the ceiling and crossing cost holds the bound.",
-  "expected_failing_assertion": "No guest execution exists to measure.",
+  "promotion_trigger": "Promote to passing when peak memory and growth hold the 2-GB ceiling under a real game workload and crossing cost holds the bound on the pinned reference desktop.",
+  "expected_failing_assertion": "No whole-game workload exercises the ceiling and the crossing bound is a reference-desktop figure, so the peak-memory and crossing benchmark cannot be certified here.",
   "owner_item": "BPTK-140",
-  "active_gate_evidence": "The performance profile keeps package memory timing separate from runtime claims.",
+  "active_gate_evidence": "test/performance.test.mjs (benchmarkMemory) asserts the recompiled module's linear memory does not grow between a short and a long run (is_growth_bounded), that peak memory is under the 2-GB ceiling, that the guest-host crossing cost is a positive measured value, and that the whole-game ceiling stays red (is_bar_cleared false).",
   "fixture": [
     "FIX-016"
   ],
