@@ -1023,3 +1023,116 @@ test("RaiseException: an unhandled guest exception is a structured stop with the
   assert.equal(report.stop_reason, "guest_exception");
   assert.equal(report.exception.exception_code, 0xe000beef);
 });
+
+// --- msvcrt.dll C runtime (BPTK-010 i386 CLI corpus) ------------------------
+// The conformance oracle pins the return value; these prove the real memory
+// side effect the oracle does not inspect, so a served CRT function is a real
+// allocator / real byte operation, never a no-op.
+
+test("BPTK-010 msvcrt: malloc/realloc/free round-trip over the real process heap", () => {
+  const { guest, memory } = createConformanceMachine();
+  const block = invoke(guest, "msvcrt.dll", "malloc", [64]);
+  assert.ok(block !== 0, "malloc returns a live block");
+  memory.writeMemory(block, 4, 0xdeadbeef);
+  assert.equal(memory.readMemory(block, 4), 0xdeadbeef, "the block is writable guest memory");
+  assert.equal(guest.heapSize(guest.defaultHeapHandle(), 0, block), 64, "the block carries its real size");
+  const grown = invoke(guest, "msvcrt.dll", "realloc", [block, 128]);
+  assert.equal(memory.readMemory(grown, 4), 0xdeadbeef, "realloc preserves the prior bytes");
+  assert.equal(invoke(guest, "msvcrt.dll", "free", [grown]), 0);
+  const calloc = invoke(guest, "msvcrt.dll", "calloc", [4, 8]);
+  assert.equal(memory.readMemory(calloc, 4), 0, "calloc zeroes the block");
+});
+
+test("BPTK-010 msvcrt: the string family reads and writes real guest bytes", () => {
+  const { guest } = createConformanceMachine();
+  const a = guest.layout.arena_base + 0x40;
+  const b = guest.layout.arena_base + 0x80;
+  const dest = guest.layout.arena_base + 0xc0;
+  guest.writeAnsiString(a, "hello", 16);
+  assert.equal(invoke(guest, "msvcrt.dll", "strlen", [a]), 5);
+  guest.writeAnsiString(b, "help", 16);
+  assert.equal(invoke(guest, "msvcrt.dll", "strncmp", [a, b, 3]), 0, "equal 3-char prefix");
+  assert.ok((invoke(guest, "msvcrt.dll", "strcmp", [a, b]) | 0) < 0, "hello sorts before help (l < p)");
+  assert.equal(invoke(guest, "msvcrt.dll", "strchr", [a, 0x6c]), a + 2, "first l");
+  assert.equal(invoke(guest, "msvcrt.dll", "strrchr", [a, 0x6c]), a + 3, "last l");
+  invoke(guest, "msvcrt.dll", "strcpy", [dest, a]);
+  assert.equal(guest.readAnsiString(dest), "hello", "strcpy copied the bytes");
+  const dup = invoke(guest, "msvcrt.dll", "_strdup", [a]);
+  assert.notEqual(dup, a);
+  assert.equal(guest.readAnsiString(dup), "hello", "_strdup owns a real copy");
+});
+
+test("BPTK-010 msvcrt: atoi/_ultoa/rand compute real values", () => {
+  const { guest } = createConformanceMachine();
+  const text = guest.layout.arena_base + 0x40;
+  const out = guest.layout.arena_base + 0x80;
+  guest.writeAnsiString(text, "-273abc", 16);
+  assert.equal(invoke(guest, "msvcrt.dll", "atoi", [text]) | 0, -273);
+  assert.equal(invoke(guest, "msvcrt.dll", "_ultoa", [255, out, 16]), out);
+  assert.equal(guest.readAnsiString(out), "ff", "_ultoa wrote the hex text");
+  const first = invoke(guest, "msvcrt.dll", "rand", []);
+  const second = invoke(guest, "msvcrt.dll", "rand", []);
+  assert.ok(first >= 0 && first <= 0x7fff && first !== second, "rand advances a bounded state");
+});
+
+test("BPTK-010 msvcrt: stdout/stderr stdio captures real output byte", () => {
+  const { guest } = createConformanceMachine();
+  const stdout = guest.crtRuntime.iobBase + 32;
+  const text = guest.layout.arena_base + 0x40;
+  guest.writeAnsiString(text, "hi\n", 8);
+  assert.equal(invoke(guest, "msvcrt.dll", "fwrite", [text, 1, 3, stdout]), 3);
+  assert.equal(invoke(guest, "msvcrt.dll", "fputc", [0x21, stdout]), 0x21);
+  assert.equal(Buffer.from(guest.takeOutput()).toString("latin1"), "hi\n!", "the console captured the emitted byte");
+  assert.equal(invoke(guest, "msvcrt.dll", "_fileno", [stdout]), 1, "stdout is fd 1");
+});
+
+test("BPTK-010 msvcrt: _open/_write route real bytes into the virtual drive", () => {
+  const { guest } = createConformanceMachine();
+  const path = guest.layout.arena_base + 0x40;
+  const data = guest.layout.arena_base + 0x80;
+  guest.writeAnsiString(path, "c:\\note.txt", 16);
+  guest.writeAnsiString(data, "abcd", 8);
+  const fd = invoke(guest, "msvcrt.dll", "_open", [path, 0x0301, 0]); // _O_CREAT|_O_TRUNC|_O_RDWR
+  assert.ok((fd | 0) >= 3, "a real fd is bound");
+  assert.equal(invoke(guest, "msvcrt.dll", "_write", [fd, data, 4]), 4);
+  assert.equal(guest.virtualFileSize("c:\\note.txt"), 4, "the drive holds the written bytes");
+  assert.equal(invoke(guest, "msvcrt.dll", "_close", [fd]), 0);
+});
+
+test("BPTK-010 msvcrt: gmtime decomposes the one guest clock", () => {
+  const { guest, memory } = createConformanceMachine();
+  const cell = guest.layout.arena_base + 0x40;
+  memory.writeMemory(cell, 4, 1599763200); // 2020-09-10 18:40:00 UTC
+  const tm = invoke(guest, "msvcrt.dll", "gmtime", [cell]);
+  assert.equal(memory.readMemory(tm + 8, 4), 18, "tm_hour");
+  assert.equal(memory.readMemory(tm + 20, 4), 120, "tm_year is 2020-1900");
+  assert.equal(memory.readMemory(tm + 16, 4), 8, "tm_mon is September (0-based)");
+});
+
+test("BPTK-010 msvcrt: an x87 double return is a named structured refusal, not a no-op", () => {
+  const { guest } = createConformanceMachine();
+  assert.throws(() => invoke(guest, "msvcrt.dll", "acos", [0, 0]), /x87 double/);
+  assert.throws(() => invoke(guest, "msvcrt.dll", "qsort", [0, 0, 0, 0]), /callback/);
+  assert.throws(() => invoke(guest, "msvcrt.dll", "_beginthreadex", [0, 0, 0, 0, 0, 0]), /OS thread/);
+  assert.throws(() => invoke(guest, "msvcrt.dll", "longjmp", [0, 1]), /jmp_buf/);
+});
+
+test("BPTK-010 kernel32: the semaphore breadth counts and reports real state", () => {
+  const { guest, memory } = createConformanceMachine();
+  const previous = guest.layout.arena_base + 0x40;
+  const handle = invoke(guest, "kernel32.dll", "CreateSemaphoreA", [0, 1, 4, 0]);
+  assert.ok(handle !== 0);
+  assert.equal(invoke(guest, "kernel32.dll", "ReleaseSemaphore", [handle, 2, previous]), 1);
+  assert.equal(memory.readMemory(previous, 4), 1, "ReleaseSemaphore reports the prior count");
+  assert.equal(invoke(guest, "kernel32.dll", "ReleaseSemaphore", [handle, 99, previous]), 0, "an over-release past max fails");
+});
+
+test("BPTK-010 shlwapi: PathIsRelativeA classifies real paths", () => {
+  const { guest } = createConformanceMachine();
+  const rel = guest.layout.arena_base + 0x40;
+  const abs = guest.layout.arena_base + 0x80;
+  guest.writeAnsiString(rel, "sub\\a.txt", 16);
+  guest.writeAnsiString(abs, "c:\\a.txt", 16);
+  assert.equal(invoke(guest, "shlwapi.dll", "PathIsRelativeA", [rel]), 1);
+  assert.equal(invoke(guest, "shlwapi.dll", "PathIsRelativeA", [abs]), 0);
+});
