@@ -181,6 +181,39 @@ test("TranslateMessage posts WM_CHAR for a mapped key and nothing for an unmappe
   assert.equal(sink.message.w_param, 0x61); // 'a'
 });
 
+test("instantiateDialog creates the frame and every control, carrying the guest DlgProc", () => {
+  const user = createUserSubsystem();
+  const template = {
+    style: 0x80c800c0,
+    ex_style: 0,
+    x: 0, y: 0, cx: 200, cy: 100,
+    class_name: null, // the default dialog class
+    title: "Config",
+    item: [
+      { style: 0x50010001, ex_style: 0, x: 5, y: 5, cx: 40, cy: 14, id: 1, class_name: "Button", title: "OK" },
+      { style: 0x50000000, ex_style: 0, x: 5, y: 25, cx: 190, cy: 10, id: 2, class_name: "Static", title: "Label" },
+    ],
+  };
+  const dlgProc = 0x14000da10n;
+  const result = user.instantiateDialog(template, dlgProc, 0xabcd);
+  assert.notEqual(result.hwnd, 0, "the dialog frame window is created");
+  assert.equal(user.getGuestWndProc(result.hwnd), dlgProc, "the frame carries the guest DlgProc for the message pump");
+  assert.equal(result.control.length, 2, "both controls are instantiated as real windows");
+  assert.equal(user.getDlgItem(result.hwnd, 1), result.control[0].handle, "GetDlgItem resolves control id 1");
+  assert.equal(user.getDlgItem(result.hwnd, 2), result.control[1].handle, "GetDlgItem resolves control id 2");
+  assert.equal(result.focus_control, result.control[0].handle, "the first WS_TABSTOP control takes initial focus");
+  assert.equal(user.windowCount(), 3, "one frame plus two control windows exist");
+});
+
+test("registerClassGuest carries the guest WndProc to every window of the class", () => {
+  const user = createUserSubsystem();
+  const guestProc = 0x140000180n;
+  const atom = user.registerClassGuest("AppClass", guestProc, 0);
+  assert.equal(atom, FIRST_ATOM);
+  const handle = user.createWindowEx({ class_name: "AppClass", style: 0 });
+  assert.equal(user.getGuestWndProc(handle), guestProc, "the created window inherits the class guest WndProc");
+});
+
 // --- conformance: every served USER32 export carries a case -----------------
 
 // The conformance implementation drives a fresh subsystem per case, applies

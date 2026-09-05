@@ -305,6 +305,194 @@ test("_initterm_e stops the sequence when an initializer reports a non-zero erro
   assert.equal(image[0x80], 0, "the aborted sequence never ran the second initializer");
 });
 
+// --- the x86-64 window/dialog-creation path (BPTK-031) -----------------------
+// Two synthetic images prove: CreateDialogParam instantiates the real RT_DIALOG
+// template and dispatches WM_INITDIALOG to the guest DlgProc as real control
+// flow; and a bounded message loop pumps a scripted trace, re-entering the guest
+// WndProc for the dispatched message and terminating on the synthesized WM_QUIT.
+
+function u16le(value) {
+  return [value & 0xff, (value >> 8) & 0xff];
+}
+function u32le(value) {
+  return [value & 0xff, (value >> 8) & 0xff, (value >> 16) & 0xff, (value >> 24) & 0xff];
+}
+function wideZ(text) {
+  const byte = [];
+  for (const character of text) byte.push(...u16le(character.charCodeAt(0)));
+  byte.push(0, 0);
+  return byte;
+}
+// mov r64, imm64 for register index 0..15.
+const movImm64 = (reg, value) => [reg >= 8 ? 0x49 : 0x48, 0xb8 + (reg & 7), ...le8(BigInt(value))];
+
+// A one-control (WS_TABSTOP button) classic DLGTEMPLATE.
+function oneButtonTemplate() {
+  const byte = [
+    ...u32le(0x80c800c0), // style with DS_SETFONT
+    ...u32le(0),
+    ...u16le(1), // one control
+    ...u16le(0), ...u16le(0), ...u16le(160), ...u16le(80),
+    ...u16le(0), // menu none
+    ...u16le(0), // class none
+    ...wideZ("Synthetic"),
+    ...u16le(8), ...wideZ("MS Shell Dlg"),
+  ];
+  while ((byte.length & 3) !== 0) byte.push(0);
+  byte.push(
+    ...u32le(0x50010001), // WS_TABSTOP
+    ...u32le(0),
+    ...u16le(5), ...u16le(5), ...u16le(40), ...u16le(14),
+    ...u16le(1), // id
+    ...u16le(0xffff), ...u16le(0x0080), // Button
+    ...wideZ("OK"),
+    ...u16le(0),
+  );
+  while ((byte.length & 3) !== 0) byte.push(0);
+  return byte;
+}
+
+// Lay a one-dialog resource directory at `base` with the template just after it.
+function placeResource(image, base, dialogId, templateBytes) {
+  const dirHeader = (namedCount, idCount) => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u16le(namedCount), ...u16le(idCount)];
+  const templateRva = base + 0x60;
+  const put = (offset, bytes) => Buffer.from(bytes).copy(image, offset);
+  put(base + 0x00, [...dirHeader(0, 1), ...u32le(5), ...u32le(0x80000000 | 0x18)]);
+  put(base + 0x18, [...dirHeader(0, 1), ...u32le(dialogId), ...u32le(0x80000000 | 0x30)]);
+  put(base + 0x30, [...dirHeader(0, 1), ...u32le(0), ...u32le(0x48)]);
+  put(base + 0x48, [...u32le(templateRva), ...u32le(templateBytes.length), ...u32le(0), ...u32le(0)]);
+  put(templateRva, templateBytes);
+}
+
+test("CreateDialogParam instantiates the RT_DIALOG template and dispatches WM_INITDIALOG to the guest DlgProc", () => {
+  const image = Buffer.alloc(0x2000);
+  const at = (offset, bytes) => Buffer.from(bytes).copy(image, offset);
+  // entry: CreateDialogParamA(hInstance, id=100, parent=0, DlgProc, dwInitParam=0xABCD)
+  at(0x00, [
+    ...movImm64(1, loadBase),                 // rcx = hInstance
+    ...movImm64(2, 100),                      // rdx = template id
+    0x4d, 0x31, 0xc0,                         // xor r8,r8 -> parent 0
+    ...movImm64(9, loadBase + 0x100n),        // r9 = DlgProc
+    0x48, 0x83, 0xec, 0x28,                   // sub rsp,0x28
+    ...movImm64(0, 0xabcd),                   // rax = dwInitParam
+    0x48, 0x89, 0x44, 0x24, 0x20,             // mov [rsp+0x20], rax
+    ...movImm64(3, loadBase + 0x800n),        // rbx = IAT slot
+    0xff, 0x13,                               // call [rbx] -> CreateDialogParamA
+    0x48, 0x83, 0xc4, 0x28,                   // add rsp,0x28
+    ...movImm64(3, loadBase + 0x900n),        // rbx = marker
+    0x48, 0x8b, 0x0b,                         // mov rcx,[rbx]     -> dispatched message
+    0x48, 0x8b, 0x53, 0x08,                   // mov rdx,[rbx+8]   -> WM_INITDIALOG lParam
+    0xc3,                                     // ret
+  ]);
+  // DlgProc at 0x100: record the message and lParam, return TRUE.
+  at(0x100, [
+    ...movImm64(3, loadBase + 0x900n),        // rbx = marker
+    0x48, 0x89, 0x13,                         // mov [rbx], rdx    (message)
+    0x4c, 0x89, 0x4b, 0x08,                   // mov [rbx+8], r9   (lParam)
+    ...movImm64(0, 1),                        // rax = TRUE
+    0xc3,
+  ]);
+  placeResource(image, 0x1000, 100, oneButtonTemplate());
+  const mapped = {
+    image, input_path: "dialog.exe", load_base: loadBase, entry_rva: 0,
+    image_size_byte: image.length, section: [], tls_callback: [], relocation_count: 0,
+    resolution_blocker: [], runtime_blocker: [],
+    directory: [{ rva: 0 }, { rva: 0 }, { rva: 0x1000, size_byte: 0x200 }],
+    import: [{ library: "user32.dll", symbol: "CreateDialogParamA", ordinal: null, iat_slot_rva: 0x800 }],
+  };
+  const probe = executeProbe64(mapped, 100000);
+  assert.equal(probe.stop_reason, "entry_return", JSON.stringify(probe.exception));
+  assert.equal(probe.register.rcx, "0x110", "the guest DlgProc received WM_INITDIALOG (0x110)");
+  assert.equal(probe.register.rdx, "0xabcd", "WM_INITDIALOG carried dwInitParam as its lParam");
+  assert.notEqual(probe.register.rax, "0x0", "CreateDialogParam returned the real dialog HWND");
+});
+
+// A straight-line message pump (no guest branches): register a class carrying a
+// guest WndProc, create a window, post one scripted message, then GetMessage +
+// DispatchMessage once (which re-enters the guest WndProc), then GetMessage
+// again — the empty queue yields the synthesized WM_QUIT, the bounded terminator.
+function buildMessagePumpImage() {
+  const image = Buffer.alloc(0x2000);
+  const at = (offset, bytes) => Buffer.from(bytes).copy(image, offset);
+  // WNDCLASSA at 0x700: lpfnWndProc@8 = guest WndProc (0x180), lpszClassName@64.
+  Buffer.from(le8(loadBase + 0x180n)).copy(image, 0x700 + 8);
+  Buffer.from(le8(loadBase + 0x780n)).copy(image, 0x700 + 64);
+  at(0x780, [0x43, 0x00]); // ANSI class name "C"
+  at(0x00, [
+    0x48, 0x83, 0xec, 0x28,                   // sub rsp,0x28 (shadow space kept for every call)
+    // RegisterClassA(&WNDCLASSA)
+    ...movImm64(1, loadBase + 0x700n),
+    ...movImm64(3, loadBase + 0x810n), 0xff, 0x13,
+    // CreateWindowExA(exStyle=0, "C", name=0, style=0, ...)
+    ...movImm64(1, 0), ...movImm64(2, loadBase + 0x780n), 0x4d, 0x31, 0xc0, 0x4d, 0x31, 0xc9,
+    ...movImm64(3, loadBase + 0x820n), 0xff, 0x13,
+    0x48, 0x89, 0xc6,                         // mov rsi, rax  (save hwnd)
+    // PostMessageW(hwnd, WM_SIZE=5, 0, 0)
+    0x48, 0x89, 0xf1, ...movImm64(2, 5), 0x4d, 0x31, 0xc0, 0x4d, 0x31, 0xc9,
+    ...movImm64(3, loadBase + 0x830n), 0xff, 0x13,
+    // GetMessageA(&MSG at 0x600, 0, 0, 0) -> the posted message (rax=1)
+    ...movImm64(1, loadBase + 0x600n), ...movImm64(2, 0), 0x4d, 0x31, 0xc0, 0x4d, 0x31, 0xc9,
+    ...movImm64(3, loadBase + 0x840n), 0xff, 0x13,
+    // DispatchMessageA(&MSG) -> re-enters the guest WndProc (marker++)
+    ...movImm64(1, loadBase + 0x600n), ...movImm64(3, loadBase + 0x850n), 0xff, 0x13,
+    // GetMessageA(&MSG) again -> empty queue -> synthesized WM_QUIT (rax=0)
+    ...movImm64(1, loadBase + 0x600n), ...movImm64(2, 0), 0x4d, 0x31, 0xc0, 0x4d, 0x31, 0xc9,
+    ...movImm64(3, loadBase + 0x840n), 0xff, 0x13,
+    // return the observables in registers (the harness runs on a private image
+    // copy, so a memory marker would not be visible to the caller): rcx = the
+    // dispatch count the guest WndProc kept, rdx = the second GetMessage result.
+    0x48, 0x89, 0xc6,                         // mov rsi, rax  (WM_QUIT result)
+    ...movImm64(3, loadBase + 0x900n),        // rbx = marker
+    0x48, 0x8b, 0x0b,                         // mov rcx,[rbx] (dispatch count)
+    0x48, 0x89, 0xf2,                         // mov rdx, rsi  (WM_QUIT result)
+    0x48, 0x83, 0xc4, 0x28,                   // add rsp,0x28
+    0xc3,
+  ]);
+  // guest WndProc at 0x180: marker (0x900) ++ ; return 0
+  at(0x180, [
+    ...movImm64(3, loadBase + 0x900n),
+    0x48, 0x8b, 0x03,                         // mov rax,[rbx]
+    0x48, 0xff, 0xc0,                         // inc rax
+    0x48, 0x89, 0x03,                         // mov [rbx],rax
+    0x31, 0xc0,                               // xor eax,eax
+    0xc3,
+  ]);
+  return image;
+}
+
+const messagePumpImport = [
+  { library: "user32.dll", symbol: "RegisterClassA", ordinal: null, iat_slot_rva: 0x810 },
+  { library: "user32.dll", symbol: "CreateWindowExA", ordinal: null, iat_slot_rva: 0x820 },
+  { library: "user32.dll", symbol: "PostMessageW", ordinal: null, iat_slot_rva: 0x830 },
+  { library: "user32.dll", symbol: "GetMessageA", ordinal: null, iat_slot_rva: 0x840 },
+  { library: "user32.dll", symbol: "DispatchMessageA", ordinal: null, iat_slot_rva: 0x850 },
+];
+
+function runMessagePump() {
+  const image = buildMessagePumpImage();
+  const mapped = {
+    image, input_path: "msgloop.exe", load_base: loadBase, entry_rva: 0,
+    image_size_byte: image.length, section: [], tls_callback: [], relocation_count: 0,
+    resolution_blocker: [], runtime_blocker: [],
+    directory: [{ rva: 0 }, { rva: 0 }, { rva: 0 }],
+    import: messagePumpImport,
+  };
+  const probe = executeProbe64(mapped, 200000);
+  return probe;
+}
+
+test("a bounded message loop pumps a scripted trace and re-enters the guest WndProc", () => {
+  const first = runMessagePump();
+  assert.equal(first.stop_reason, "entry_return", JSON.stringify(first.exception));
+  assert.equal(first.register.rcx, "0x1", "DispatchMessage re-entered the guest WndProc exactly once for the posted message");
+  assert.equal(first.register.rdx, "0x0", "the second GetMessage returned 0 (the synthesized WM_QUIT terminator)");
+  // Determinism: a second, independent run reaches the identical outcome.
+  const second = runMessagePump();
+  assert.equal(second.stop_reason, "entry_return");
+  assert.equal(second.register.rcx, "0x1");
+  assert.equal(second.instruction_count, first.instruction_count, "two runs execute the identical instruction count");
+});
+
 test("PuTTY x64 executes past its first import through the served Win64 HLE", { skip: existsSync(puttyPath) ? false : "PuTTY x64 corpus package absent" }, () => {
   const mapped = mapPe64State(puttyPath);
   const probe = executeProbe64(mapped, 2000000);
