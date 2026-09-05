@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No translator exists whose support could bound the advertisement.",
+  "gate": "active",
+  "exclusion_reason": "The honest capability report is implemented: the advertisement derives from the compiled support table, and the by-construction check throws caps_exceed_support when an advertisement above support is assembled. The benchmark remains red because the doctor graphics surface does not yet carry the translator advertisement and the support corpus is unavailable.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the advertisement is derived from measured translator support and the inflated-advertisement case fails by construction.",
   "expected_failing_assertion": "The graphics doctor reports browser capability only and no translator bound exists.",
   "owner_item": "BPTK-065",
-  "active_gate_evidence": "The doctor keeps reason-bound blocking with observed capability and no support claim.",
+  "active_gate_evidence": "The shader suite asserts the advertisement equals support, and the inflated advertisement fails with caps_exceed_support by construction.",
   "fixture": [
     "FIX-010"
   ],

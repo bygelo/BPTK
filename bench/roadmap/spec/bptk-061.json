@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No shader translator or compiler exists for the corpus.",
+  "gate": "active",
+  "exclusion_reason": "The Direct3D 9 pixel-shader frontend is implemented for the shader-model 2 and 3 arithmetic core over the real token stream: version, opcode, operand, and swizzle decode into the unified representation, and an unsupported opcode is named in the refusal, never dropped. The benchmark remains red because the BPTK-020 corpus is unavailable while BPTK-002 remains red and the byte-identical corpus comparison needs the live adapter.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the declared corpus produces byte-identical output through the unified path and no standalone emitter remains.",
   "expected_failing_assertion": "No Direct3D 9 shader translation exists.",
   "owner_item": "BPTK-061",
-  "active_gate_evidence": "The roadmap keeps BPTK-020 red and the graphics probes report no translator.",
+  "active_gate_evidence": "The shader suite assembles a real token stream, decodes it to the named instruction, refuses an unsupported opcode by number, refuses a vertex stream and an above-support model, and lowers shader-model 3.0.",
   "fixture": [
     "FIX-013"
   ],

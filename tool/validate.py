@@ -191,6 +191,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/runtime.mjs"),
     Path("lib/run.mjs"),
     Path("lib/security.mjs"),
+    Path("lib/shader.mjs"),
     Path("lib/status.mjs"),
     Path("lib/storage.mjs"),
     Path("lib/toolchain.mjs"),
@@ -208,6 +209,7 @@ ALLOWED_MJS_PATH = {
     Path("test/policy.test.mjs"),
     Path("test/runtime.test.mjs"),
     Path("test/security.test.mjs"),
+    Path("test/shader.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -387,6 +389,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/runtime.mjs",
         "lib/run.mjs",
         "lib/security.mjs",
+        "lib/shader.mjs",
         "lib/status.mjs",
         "lib/storage.mjs",
         "lib/toolchain.mjs",
@@ -631,10 +634,25 @@ def validate_governance(error: list[str]) -> None:
     if codeownersPath.is_file() and "@" not in codeownersPath.read_text(encoding="utf-8"):
         error.append("code-owner record carries no owner")
 
+
+def validate_single_emitter(error: list[str]) -> None:
+    """The static audit (GS-018): exactly one WGSL emitter may exist in the tree."""
+    marker = "export function emitWgsl"
+    hit = []
+    for path in ROOT.rglob("*.mjs"):
+        relative = path.relative_to(ROOT)
+        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts:
+            continue
+        if marker in path.read_text(encoding="utf-8"):
+            hit.append(str(relative))
+    if len(hit) != 1:
+        error.append(f"single-emitter audit found {len(hit)} WGSL emitter: {hit}")
+
 def main() -> int:
     error: list[str] = []
     validate_path(error)
     validate_governance(error)
+    validate_single_emitter(error)
     validate_link(error)
     validate_claim(error)
     validate_license(error)

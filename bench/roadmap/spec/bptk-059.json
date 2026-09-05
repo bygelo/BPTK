@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No shader frontend or emitter exists yet; the translator and compiler surfaces are planned.",
+  "gate": "active",
+  "exclusion_reason": "The unified representation, the one WGSL emitter, and the static single-emitter audit in the planning gate are implemented; every frontend lowers into the one representation. The benchmark remains red because rendering on a live adapter needs the browser runtime and the declared corpus evidence.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the fixture corpus lowers through the unified representation and the static audit proves exactly one emitter.",
   "expected_failing_assertion": "No shader representation or emitter exists to audit.",
   "owner_item": "BPTK-059",
-  "active_gate_evidence": "The doctor graphics probe keeps reporting observed browser capability without claiming a translation layer.",
+  "active_gate_evidence": "The static audit in the planning gate counts exactly one WGSL emitter across the tree, and the shader suite lowers the same program deterministically through it.",
   "fixture": [
     "FIX-013"
   ],

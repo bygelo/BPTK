@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No rendered frame exists; the performance profile measures package integrity only.",
+  "gate": "active",
+  "exclusion_reason": "The frame-diff engine is implemented with a test-time reference generator, a weighted delta-E comparison, a declared tolerance, and an explicit committed_baseline false; the suite proves a rendering mutation is caught. The benchmark remains red because no rendered frame exists until the live backend renders.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the frame diff computes its reference at test time, distinguishes the declared metric set, and retains no committed baseline.",
   "expected_failing_assertion": "No rendered frame or frame comparison exists.",
   "owner_item": "BPTK-066",
-  "active_gate_evidence": "The benchmark runner keeps promotion content-addressed with no retained result.",
+  "active_gate_evidence": "The shader suite computes the reference at test time, passes a small drift, fails a rendering mutation, refuses a length mismatch, and records committed_baseline false.",
   "fixture": [
     "FIX-016"
   ],
