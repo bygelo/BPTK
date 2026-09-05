@@ -75,3 +75,22 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   the ≥50%-of-native fraction of GS-093 — so neither bar is *certified*.
 - **Counts:** implemented 45 → 47; passing 0. Gate exit 0 (306 tests).
 - **Next:** BPTK-048 (SMC hybrid fallback) or BPTK-052 (SSE/x87 breadth).
+
+## Cycle 4 — BPTK-055 (GS-010) CPU-deterministic record & replay
+
+- **Done:** `lib/replay.mjs` — `recordRun`/`replayRun`. A run is fully
+  determined by workload bytes + budget + pinned nondeterminism sources
+  (virtual-monotonic clock, no host RNG/input, single-thread schedule), none
+  read from the host. Recording captures the full architectural state hash
+  (8 GPR + EIP + EFLAGS + memory + stop) at instruction-count checkpoints via
+  the recompiler; replay re-derives them and hash-matches. Cross-engine check:
+  recompiler and interpreter agree at every checkpoint — the cross-machine
+  foundation (pure integer WASM is host-independent).
+- **Evidence:** `test/replay.test.mjs` (5) — two replays hash-match, cross-engine
+  match, host-source-free, tampered-checkpoint divergence detected, and the
+  second-machine + SMP legs declared red.
+- **Why still red:** the literal second-machine replay isn't run in-suite, and
+  multi-threaded schedule determinism (BPTK-051 guest SMP) is outside the
+  single-thread record.
+- **Counts:** implemented 47 → 48; passing 0. Gate exit 0 (311 tests, 52 files).
+- **Next:** BPTK-048 (SMC hybrid fallback) or BPTK-052 (SSE/x87 breadth).
