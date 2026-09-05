@@ -215,6 +215,7 @@ ALLOWED_MJS_PATH = {
     Path("test/emulator.test.mjs"),
     Path("test/extract.test.mjs"),
     Path("test/i386.test.mjs"),
+    Path("test/import.test.mjs"),
     Path("test/ingest.test.mjs"),
     Path("test/inspect.test.mjs"),
     Path("test/net.test.mjs"),

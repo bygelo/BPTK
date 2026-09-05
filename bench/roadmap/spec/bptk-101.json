@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The core kernel surface is absent and no module breadth exists.",
+  "gate": "active",
+  "exclusion_reason": "The Win32 module coverage census exists over the declared module set (kernel32/user32/gdi32 hosted; advapi32/ole32/oleaut32/comctl32/comdlg32/shell32/shlwapi/version/winmm/ws2_32/the CRT family/msvbvm hosted planned): a PE's import table is parsed and each imported module is tiered against the catalog under a ledger that counts hosted, planned, and unrecognized modules, with a fully-hosted flag that is necessary but not sufficient. The benchmark stays red because only the merged kernel32/user32/gdi32 lanes carry a passing conformance slice — a title on the broader module set cannot start until every imported module carries its slice, under the BPTK-002 corpus denominator.",
   "prerequisite": [
     "BPTK-076"
   ],
   "promotion_trigger": "Promote when every declared module passes its conformance slice with the ledger holding the gap budget.",
-  "expected_failing_assertion": "No breadth module exists.",
+  "expected_failing_assertion": "A title importing a planned module is flagged not-fully-hosted and the census stays blocked with no title started.",
   "owner_item": "BPTK-101",
-  "active_gate_evidence": "The conformance denominator stays empty and BPTK-010 remains red.",
+  "active_gate_evidence": "test/import.test.mjs asserts the hosted/planned/unrecognized tiering and ledger totals, the not-fully-hosted flag for a broader-module title, dedup/lowercase/order-independence, a real PE import-table census that stays blocked, and real-CLI reachability.",
   "fixture": [
     "FIX-003"
   ],

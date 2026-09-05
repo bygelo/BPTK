@@ -14,7 +14,7 @@ Converge-to-completion run over the P4 lane/routing/format scope. Verifier:
 | GS-048 | BPTK-093 | Web-native ingest under capability | implemented (pre-run) |
 | GS-049 | BPTK-094 | DOS/Win16/Win9x emulator lane | **implemented** |
 | GS-050 | BPTK-095 | Cross-lane fallback + confidence chain | **implemented** |
-| GS-057 | BPTK-101 | Win32 module breadth | planned |
+| GS-057 | BPTK-101 | Win32 module breadth | **implemented** |
 | GS-072 | BPTK-116 | Authoring SDK / runtime-target API | implemented (pre-run) |
 
 ## Cycle 1 — GS-045 / BPTK-090 (source build-system autodetect)
@@ -62,3 +62,19 @@ Converge-to-completion run over the P4 lane/routing/format scope. Verifier:
   recorded hop; unroutable input terminates bounded no-lane; CLI reachability.
 - Spec `bptk-095.json`: gate excluded → active; red because no candidate lane
   has a passing runtime. Counts: implemented 45 → 46; +2 SDK exports. Gate 0.
+
+## Cycle 4 — GS-057 / BPTK-101 (Win32 module coverage census)
+
+- `lib/import.mjs`: `classifyWin32Modules` (pure) tiers a set of imported
+  module names against the declared Win32 module catalog (kernel32/user32/gdi32
+  hosted; ole32/oleaut32/COM/CRT/msvbvm/… planned; else unrecognized) with a
+  ledger; `censusWin32Modules` parses a PE's import table (reusing census's
+  exported `parsePeImportNames`) and reports the coverage. `bptk modules
+  <input>` wired into the CLI. A hosted slice is necessary but not sufficient;
+  the census never claims a title starts.
+- `test/import.test.mjs` (new): tiering + ledger totals, not-fully-hosted for a
+  broader-module title, dedup/lowercase/order-independence, a real PE import
+  census (blocked), and CLI reachability. Registered in `tool/validate.py`.
+- Spec `bptk-101.json`: gate excluded → active; red until every imported module
+  carries a passing conformance slice. Counts: implemented 46 → 47; +3 SDK
+  exports. passing 0. Gate exit 0.
