@@ -105,7 +105,7 @@ baseline below was measured with an equivalent throwaway decoder.
 
 ### Ranking for the next cycle (from the committed sweep histogram)
 
-1. fs-relative addressing (OpenTTD carries 1,172 fs-override refusal) —
+1. fs-relative addressing (OpenTTD carries 1,171 fs-override refusal) —
    needs a declared thread-environment block page in the probe memory model,
    which pairs with the parallel thread subsystem.
 2. MMX (0f 6e/6f/7e/7f/70/73/ef/eb) — the largest real remaining integer
@@ -118,3 +118,67 @@ baseline below was measured with an equivalent throwaway decoder.
    mov/push family (0x06/0x07/0x8c/0x8e), BCD (0x27/0x2f/0x37/0x3f), and
    the string port family (0x6c-0x6f) — each honestly refused today and
    needed only when a real binary demands it.
+
+## 2026-09-05 — cycle 2: the MMX integer SIMD family + the 64-bit lane machine
+
+### Implemented (generic; no payload or title branch anywhere)
+
+- The bounded MMX integer subset over eight 64-bit lanes modeled directly
+  (lib/runtime.mjs `mm`, a BigUint64Array): data movement (0f 6e/7e movd,
+  0f 6f/7f movq through the checked memory so bounds, permission, and the
+  instruction undo log all hold on an mm/m64 access), packed logical (0f db
+  pand, 0f df pandn, 0f eb por, 0f ef pxor), packed add and sub in byte,
+  word, and dword lanes with per-lane wrap (0f fc/fd/fe, 0f f8/f9/fa),
+  packed equality compare (0f 74/75/76), the word/dword/qword shifts in both
+  the register form (0f d1/d2/d3 psrl, 0f e1/e2 psra, 0f f1/f2/f3 psll) and
+  the immediate group (0f 71/72/73 with /2 psrl, /4 psra, /6 psll — the
+  qword 0f 73 has no arithmetic /4), the four-word shuffle (0f 70 pshufw),
+  and EMMS (0f 77) as the x87 tag-word reset. The over-shift saturation
+  (count ≥ lane width → zero, or the sign fill for the arithmetic right
+  shift) matches the hardware exactly.
+- Honest bound: the physical mm/st aliasing is not modeled beyond EMMS
+  resetting the tag word — a declared limitation, since real MMX is integer
+  SIMD bracketed by EMMS and never reads st between mm writes. The
+  0x66-prefixed (128-bit SSE2) and 0xf2/0xf3-prefixed (SSE scalar) forms
+  stay structured `unsupported_opcode` refusals, never a silent 64-bit
+  identity.
+- The mm assignment is the commit-last step of every form (the faulting
+  memory or fetch access is evaluated first), so a fault rolls back cleanly
+  through the existing register/flag/memory undo without an mm shadow copy.
+
+### Proof
+
+- 13 new microprogram conformance cases (test/i386.test.mjs): every one
+  freezes the hand-derived 64-bit lane result and the probe now reports the
+  mm register file (`report.mm`, eight 16-hex-digit strings) so the
+  comparison is bit-exact on the full quadword, not just the low dword
+  reachable through movd. movd/movq round-trip, packed add/sub round-trip,
+  the equality mask, the qword immediate shifts, the arithmetic-right sign
+  fill, the bitwise trio, pshufw's 2-bit selects, the movq-to-memory
+  byte-exact reload through the general loads, EMMS preserving the lanes, and
+  the 0x66/0xf3 SSE refusals each carry a case.
+- The inventory-consistency contract (the ~560-microprogram walk) extends to
+  the MMX map: every declared-served 0f extension executes without the
+  unsupported stop, the reserved shift-group /reg forms and the prefixed
+  128-bit forms stop structured, and the decode sweep classifies 0f 77 as a
+  two-byte no-ModRM served form and 0f 70/71/72/73 with the trailing imm8.
+- Full suite: 175 test, 0 failing. `npm run gate` exit 0 in this worktree.
+
+### Measured delta on the real DRM-free corpus
+
+Same committed `sweepI386Text` method, identical binaries, before at HEAD
+(`b09b298`) vs this tree; payloads fetched to scratch, hash-verified against
+the pinned corpus sha256, and kept out of git.
+
+- Plink 0.74 i386 (win32): 94.04% → **95.26%** decode coverage (7,773 →
+  6,165 unsupported of ~130k decoded instruction; −1,608).
+- OpenTTD 1.10.3 i386 (win32): 95.12% → **95.23%** decode coverage (41,201 →
+  40,219 unsupported of ~844k decoded instruction; −982). OpenTTD carries
+  less MMX than Plink, so the lift is smaller but real.
+- `bptk corpus run`: both real i386 entry stay honestly at `loaded`
+  (import_present → BPTK-010); no HLE export was added, so the served-import
+  ledger is unchanged — the CPU metric is the decode sweep above.
+- Top remaining Plink gaps: 0xff indirect-call/jmp /reg breadth, 0xc4 les,
+  0xcc int3, 0xec port, 0x06/0x07 seg push/pop, and the 0f 10/13/38/62 SSE
+  map (next cycle). OpenTTD's lead gaps are 0xff, 0xcc, 0xec, the one-byte
+  0xf1 icebp, 0x06/0x07, and 0x64 fs-override (the thread lane's TEB job).

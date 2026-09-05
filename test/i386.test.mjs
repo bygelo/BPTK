@@ -81,6 +81,11 @@ function assertReferenceState(report, expected) {
     assert.equal(report.flag[name], value, `flag ${name}: ${report.flag[name]} != ${value}`);
   }
   if (expected.eflags !== undefined) assert.equal(report.flag.eflags, expected.eflags >>> 0, `eflags: 0x${report.flag.eflags.toString(16)} != 0x${(expected.eflags >>> 0).toString(16)}`);
+  const mm = expected.mm ?? {};
+  for (const [index, value] of Object.entries(mm)) {
+    const want = `0x${BigInt(value).toString(16).padStart(16, "0")}`;
+    assert.equal(report.mm[index], want, `mm${index}: ${report.mm[index]} != ${want}`);
+  }
 }
 
 test("microprogram: the byte al,imm8 column sets the exact flag of 0x7f+1", (context) => {
@@ -346,6 +351,90 @@ test("microprogram: the fs override, UD2, privileged instruction, and port input
   const inReport = runMicro(context, [0xe4, 0x60, 0xc3]);
   assert.equal(inReport.stop_reason, "unsupported_opcode");
   assert.match(inReport.exception.message, /port input/);
+});
+
+test("microprogram: MMX movd loads the low lane, movq copies the lane, and pxor of a lane with itself clears it", (context) => {
+  // mov eax,0x12345678; movd mm0,eax; movd mm1,eax; pxor mm0,mm0 (0f ef c0).
+  const report = runMicro(context, [0xb8, 0x78, 0x56, 0x34, 0x12, 0x0f, 0x6e, 0xc0, 0x0f, 0x6e, 0xc8, 0x0f, 0xef, 0xc0, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0n, 1: 0x12345678n } });
+});
+
+test("microprogram: PADDW wraps each word lane independently", (context) => {
+  // mm0 words (0x0001,0x0002); mm1 words (0xffff,0x0004); paddw wraps word0 to
+  // 0x0000 and sums word1 to 0x0006, the high two words staying zero.
+  const report = runMicro(context, [0xb8, 0x01, 0x00, 0x02, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0xff, 0xff, 0x04, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xfd, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x0000000000060000n } });
+});
+
+test("microprogram: PADDB then PSUBB by the same lane vector round-trips every byte lane", (context) => {
+  // bytes (0x01,0xff,0x7f,0x80) + (0x01,0x01,0x01,0x01) = (0x02,0x00,0x80,0x81);
+  // subtracting the same vector restores the original packed byte lanes.
+  const add = runMicro(context, [0xb8, 0x01, 0xff, 0x7f, 0x80, 0x0f, 0x6e, 0xc0, 0xb8, 0x01, 0x01, 0x01, 0x01, 0x0f, 0x6e, 0xc8, 0x0f, 0xfc, 0xc1, 0xc3]);
+  assertReferenceState(add, { mm: { 0: 0x0000000081800002n } });
+  const roundTrip = runMicro(context, [0xb8, 0x01, 0xff, 0x7f, 0x80, 0x0f, 0x6e, 0xc0, 0xb8, 0x01, 0x01, 0x01, 0x01, 0x0f, 0x6e, 0xc8, 0x0f, 0xfc, 0xc1, 0x0f, 0xf8, 0xc1, 0xc3]);
+  assertReferenceState(roundTrip, { mm: { 0: 0x00000000807fff01n } });
+});
+
+test("microprogram: PCMPEQW sets an all-ones mask on the equal word lanes and zero on the mismatch", (context) => {
+  // mm0 words (0x0003,0x0003); mm1 words (0x0003,0x0004). word0 and the two
+  // zero high words match (0xffff), word1 mismatches (0x0000).
+  const report = runMicro(context, [0xb8, 0x03, 0x00, 0x03, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0x03, 0x00, 0x04, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0x75, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0xffffffff0000ffffn } });
+});
+
+test("microprogram: the PSLLQ and PSRLQ immediate group shifts the whole 64-bit lane", (context) => {
+  // psllq mm0,32 lifts the low dword into the high dword; psrlq mm0,4 of a
+  // top-byte pattern shifts the whole quadword right by four.
+  const left = runMicro(context, [0xb8, 0xef, 0xbe, 0xad, 0xde, 0x0f, 0x6e, 0xc0, 0x0f, 0x73, 0xf0, 0x20, 0xc3]);
+  assertReferenceState(left, { mm: { 0: 0xdeadbeef00000000n } });
+  const right = runMicro(context, [0xb8, 0x00, 0x00, 0x00, 0xff, 0x0f, 0x6e, 0xc0, 0x0f, 0x73, 0xd0, 0x04, 0xc3]);
+  assertReferenceState(right, { mm: { 0: 0x000000000ff00000n } });
+});
+
+test("microprogram: PSRAW in the register form fills the shifted word lanes with the sign bit", (context) => {
+  // mm0 word0=0x8000 (negative), shift count mm1=4: arithmetic right shift
+  // gives 0xf800, the sign bit replicated into the vacated high bits.
+  const report = runMicro(context, [0xb8, 0x00, 0x80, 0x00, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0x04, 0x00, 0x00, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xe1, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x000000000000f800n } });
+});
+
+test("microprogram: PAND, POR, and PANDN combine the 64-bit lanes bitwise", (context) => {
+  const pand = runMicro(context, [0xb8, 0xff, 0xff, 0x00, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0x0f, 0x0f, 0x0f, 0x0f, 0x0f, 0x6e, 0xc8, 0x0f, 0xdb, 0xc1, 0xc3]);
+  assertReferenceState(pand, { mm: { 0: 0x0000000000000f0fn } });
+  const por = runMicro(context, [0xb8, 0xf0, 0x00, 0x00, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0x0f, 0x00, 0x00, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xeb, 0xc1, 0xc3]);
+  assertReferenceState(por, { mm: { 0: 0x00000000000000ffn } });
+  // pandn: (~mm0) & mm1 = (~0x0f0f) & 0xffff = 0xf0f0.
+  const pandn = runMicro(context, [0xb8, 0x0f, 0x0f, 0x00, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0xff, 0xff, 0x00, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xdf, 0xc1, 0xc3]);
+  assertReferenceState(pandn, { mm: { 0: 0x000000000000f0f0n } });
+});
+
+test("microprogram: PSHUFW selects each result word by the immediate's 2-bit field", (context) => {
+  // mm0 words (0x0021,0x0043,0,0); control 0x1b = 00|01|10|11 selects source
+  // words 3,2,1,0 into result words 0,1,2,3, reversing the loaded pair up.
+  const report = runMicro(context, [0xb8, 0x21, 0x00, 0x43, 0x00, 0x0f, 0x6e, 0xc0, 0x0f, 0x70, 0xc8, 0x1b, 0xc3]);
+  assertReferenceState(report, { mm: { 1: 0x0021004300000000n } });
+});
+
+test("microprogram: MOVQ stores a lane to memory and the general loads read it back byte-exact", (context) => {
+  // movd mm0,eax; psllq mm0,32; movq [0x401800],mm0; mov eax,[0x401800];
+  // mov edx,[0x401804] — the high dword lands in edx, the low dword is zero.
+  const report = runMicro(context, [0xb8, 0xef, 0xbe, 0xad, 0xde, 0x0f, 0x6e, 0xc0, 0x0f, 0x73, 0xf0, 0x20, 0x0f, 0x7f, 0x05, 0x00, 0x18, 0x40, 0x00, 0xa1, 0x00, 0x18, 0x40, 0x00, 0x8b, 0x15, 0x04, 0x18, 0x40, 0x00, 0xc3]);
+  assertReferenceState(report, { register: { eax: 0, edx: 0xdeadbeef }, mm: { 0: 0xdeadbeef00000000n } });
+});
+
+test("microprogram: EMMS runs as the x87 tag reset and leaves the mm lanes intact", (context) => {
+  // movd mm0,eax; emms; the lane value survives the tag-word reset.
+  const report = runMicro(context, [0xb8, 0x78, 0x56, 0x34, 0x12, 0x0f, 0x6e, 0xc0, 0x0f, 0x77, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x0000000012345678n } });
+});
+
+test("microprogram: the 0x66-prefixed and 0xf3-prefixed MMX forms stop as structured SSE refusals", (context) => {
+  const packed = runMicro(context, [0x66, 0x0f, 0x6f, 0xc1, 0xc3]);
+  assert.equal(packed.stop_reason, "unsupported_opcode");
+  assert.match(packed.exception.message, /128-bit SIMD/);
+  const scalar = runMicro(context, [0xf3, 0x0f, 0x7e, 0xc1, 0xc3]);
+  assert.equal(scalar.stop_reason, "unsupported_opcode");
+  assert.match(scalar.exception.message, /SSE scalar/);
 });
 
 test("microprogram: every declared-served opcode executes without the unsupported stop and every undeclared opcode stops structured", (context) => {
