@@ -238,6 +238,28 @@ function applyUserOp(user, symbol, argument) {
       return 1;
     case "GetSystemMetrics":
       return systemMetric[argument[0]] ?? 0;
+    case "FindWindowA":
+    case "GetCapture":
+    case "GetClipboardOwner":
+      return 0;
+    case "GetForegroundWindow":
+      return user.getActiveWindow();
+    case "GetQueueStatus": {
+      const sink = {};
+      return user.peekMessage(sink, false) === 1 ? ((argument[0] & 0xffff) << 16) >>> 0 : 0;
+    }
+    case "GetCursorPos":
+      return 1; // the cursor rests at the origin; the point write is exercised in the HLE test
+    case "MsgWaitForMultipleObjects": {
+      const sink = {};
+      return user.peekMessage(sink, false) === 1 ? (argument[0] >>> 0) : 0x102;
+    }
+    case "PeekMessageA": {
+      const sink = {};
+      return user.peekMessage(sink, (argument[4] & 1) === 1);
+    }
+    case "SendMessageA":
+      return user.sendMessage(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0);
     default:
       return null;
   }
@@ -300,6 +322,19 @@ function buildUserConformanceCase() {
   define("GetSystemMetrics", { argument: [0] }, { return_value: 1920, last_error: 0 });
   define("GetSystemMetrics", { argument: [1] }, { return_value: 1080, last_error: 0 });
   define("GetSystemMetrics", { argument: [99] }, { return_value: 0, last_error: 0 });
+
+  // Plink import-surface widening (BPTK-146): the window, input, and message
+  // queries the startup path probes. With no window and no host input device
+  // the answer is the honest empty result.
+  define("FindWindowA", { argument: [0, 0] }, { return_value: 0, last_error: 0 });
+  define("GetCapture", { argument: [] }, { return_value: 0, last_error: 0 });
+  define("GetClipboardOwner", { argument: [] }, { return_value: 0, last_error: 0 });
+  define("GetForegroundWindow", { argument: [] }, { return_value: 0, last_error: 0 });
+  define("GetQueueStatus", { argument: [0x1ff] }, { return_value: 0, last_error: 0 });
+  define("GetCursorPos", { argument: [0] }, { return_value: 1, last_error: 0 });
+  define("MsgWaitForMultipleObjects", { argument: [0, 0, 0, 0, 0x1ff] }, { return_value: 0x102, last_error: 0 });
+  define("PeekMessageA", { scenario: [registerStep, createStep], argument: [0, 0, 0, 0, 1] }, { return_value: 0, last_error: 0 });
+  define("SendMessageA", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, windowMessage.WM_NULL, 0, 0] }, { return_value: 0, last_error: 0 });
 
   return caseList;
 }
