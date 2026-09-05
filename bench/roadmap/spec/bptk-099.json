@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No transport or mediation exists; the network command validates policy only.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the session and lockstep fixture (FIX-019) needs a consented, allowlisted relay peer and the WebRTC/WebSocket transport binding plus DirectPlay session semantics, none of which run in this worktree — the default instance grants no consent, so every dial is refused (deny-by-default). The ws2_32 lifecycle slice is bound generically in lib/hle.mjs over the mediated Winsock in lib/net.mjs: WSAStartup writing WSADATA and WSACleanup, WSAGetLastError, socket and closesocket over the handle table, bind and connect marshaling sockaddr_in through the consent gate, send and recv, ioctlsocket FIONBIO, and the pure htons/htonl/ntohs/ntohl and inet_addr helpers.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the session fixture holds semantics with zero off-allowlist attempt.",
-  "expected_failing_assertion": "No transport exists to mediate.",
+  "expected_failing_assertion": "No consented, allowlisted relay peer or WebRTC/WebSocket transport is bound, so the session and lockstep fixture cannot establish a link.",
   "owner_item": "BPTK-099",
-  "active_gate_evidence": "The network command keeps deny-by-default with consent required and zero attempt recorded.",
+  "active_gate_evidence": "The conformance suite carries a case for every served ws2_32 export (a new served surface of 15), and a dedicated test proves WSAStartup marshals WSADATA, the socket handle table serves socket/closesocket, an offline dial is refused with WSAEACCES (deny-by-default), and htons/htonl/inet_addr are byte-exact; the existing net suite keeps the offline transport failing every send with the network-down contract. The full suite stays green.",
   "fixture": [
     "FIX-019"
   ],

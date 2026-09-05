@@ -9,7 +9,7 @@
     "accepted": 145,
     "rejected": 8,
     "deferred": 6,
-    "implemented": 55,
+    "implemented": 65,
     "passing": 0
   },
   "item": [
@@ -261,7 +261,7 @@
         "SRC-003",
         "SRC-009"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-012",
@@ -279,7 +279,7 @@
         "SRC-003",
         "SRC-012"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-013",
@@ -2032,7 +2032,7 @@
         "SRC-019",
         "SRC-021"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-097",
@@ -2049,7 +2049,7 @@
         "SRC-003",
         "SRC-009"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-098",
@@ -2068,7 +2068,7 @@
         "SRC-022",
         "SRC-023"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-099",
@@ -2085,7 +2085,7 @@
         "SRC-010",
         "SRC-017"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-100",
@@ -2101,7 +2101,7 @@
         "SRC-033",
         "SRC-037"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-101",
@@ -2121,7 +2121,7 @@
         "SRC-012",
         "SRC-013"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-102",
@@ -2137,7 +2137,7 @@
         "SRC-033",
         "SRC-036"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-103",
@@ -2169,7 +2169,7 @@
       "source_evidence": [
         "SRC-035"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-088",

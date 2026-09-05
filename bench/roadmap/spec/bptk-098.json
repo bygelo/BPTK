@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The copy-on-write overlay and registry service are unavailable per the roadmap truth.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the copy-on-write overlay with quota rollback and the persistent OPFS bridge are not built, so a base-byte-for-byte rollback across a session cannot be proven, and the real-corpus path-alias fixture is not staged in this worktree. The registry fidelity slice exists generically in the HLE core (lib/hle.mjs) over one bounded in-memory hive under the real predefined root handle: RegOpenKeyExA and the wide RegOpenKeyExW, RegCreateKeyExA/W reporting REG_CREATED_NEW_KEY versus REG_OPENED_EXISTING_KEY through the disposition pointer, RegQueryValueExA/W and RegSetValueExA/W with the more-data and insufficient-buffer contracts, RegDeleteValueA/W and RegDeleteKeyA/W (the delete-key refusing a key that still has subkeys with access-denied), and RegFlushKey, all keyed and bounded by the declared key and value counts.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the registry and path fixture match the oracle and rollback restores the base exactly.",
-  "expected_failing_assertion": "No registry or path-semantics surface exists.",
+  "expected_failing_assertion": "The copy-on-write overlay and its byte-for-byte quota rollback are absent, so a session-crossing rollback cannot restore the base.",
   "owner_item": "BPTK-098",
-  "active_gate_evidence": "The storage boundary keeps the base read-only with no overlay created yet.",
+  "active_gate_evidence": "The conformance suite carries a case for every served advapi32 registry export (served advapi32 surface 6 to 16), and a dedicated fidelity test proves create reports the correct disposition, a value round-trips byte-exactly through set and query, a value delete succeeds then reports not-found, and a key with a live subkey refuses deletion; the FIX-008 storage exerciser still round-trips a registry value through the runtime and the full suite stays green.",
   "fixture": [
     "FIX-008"
   ],

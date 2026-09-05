@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No browser input bridge exists.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the DirectInput (dinput8) device-enumeration COM surface, the pointer-lock and touch bridge, and the live browser Gamepad-API feed that drives real controller state are not wired — so the declared device set is not exercised end to end from a browser event trace. The XInput gamepad core exists generically in lib/input.mjs and its lib/hle.mjs registration: createGamepadSubsystem models four disconnected slots that a browser Gamepad state injects, with the XInput packet-number contract (advancing only on a state change), field clamping, and rumble; XInputGetState/XInputSetState/XInputGetCapabilities/XInputEnable marshal the XINPUT_STATE, XINPUT_VIBRATION, and XINPUT_CAPABILITIES structs and report ERROR_DEVICE_NOT_CONNECTED for an empty or out-of-range slot rather than a fabricated pad. The keyboard and pointer translation to WM_* messages is served by the USER32 slice.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the trace replay matches the oracle across the declared device set.",
-  "expected_failing_assertion": "No input bridge exists.",
+  "expected_failing_assertion": "The DirectInput enumeration, pointer-lock/touch bridge, and the live browser Gamepad feed are absent, so the full device-set trace replay cannot run.",
   "owner_item": "BPTK-097",
-  "active_gate_evidence": "The control command validates profile selection without a bridge.",
+  "active_gate_evidence": "The conformance suite carries a case for every served xinput1_3.dll export (a new served surface of 4), and a dedicated test proves XInput reports no controller by default, reflects an injected gamepad state into XINPUT_STATE byte-exactly, advances the packet number only on a change, serves capabilities and rumble once connected, and returns to not-connected on disconnect. The full suite stays green.",
   "fixture": [
     "FIX-020"
   ],

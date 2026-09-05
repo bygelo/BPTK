@@ -16,6 +16,7 @@ import {
   userExportTable,
   windowMessage,
   showCommand,
+  systemMetric,
 } from "../lib/user.mjs";
 
 const FIRST_ATOM = 0xc000;
@@ -215,6 +216,28 @@ function applyUserOp(user, symbol, argument) {
       return user.getFocus();
     case "IsWindow":
       return user.isWindow(argument[0]) ? 1 : 0;
+    case "GetMessageW": {
+      const sink = {};
+      return user.getMessage(sink);
+    }
+    case "PeekMessageW": {
+      const sink = {};
+      return user.peekMessage(sink, (argument[0] & 1) === 1);
+    }
+    case "TranslateMessage":
+      return user.translateMessage(argument[0]);
+    case "DispatchMessageW":
+      return user.dispatchMessage(argument[0]);
+    case "GetClientRect":
+      return user.clientRect(argument[0]) === null ? 0 : 1;
+    case "GetWindowRect":
+      return user.windowRect(argument[0]) === null ? 0 : 1;
+    case "MoveWindow":
+      return user.moveWindow(argument[0], argument[1], argument[2], argument[3], argument[4]);
+    case "AdjustWindowRect":
+      return 1;
+    case "GetSystemMetrics":
+      return systemMetric[argument[0]] ?? 0;
     default:
       return null;
   }
@@ -258,6 +281,25 @@ function buildUserConformanceCase() {
   define("GetActiveWindow", { scenario: [registerStep, createStep, showStep], argument: [] }, { return_value: FIRST_HANDLE, last_error: 0 });
   define("GetFocus", { scenario: [registerStep, createStep, showStep], argument: [] }, { return_value: FIRST_HANDLE, last_error: 0 });
   define("IsWindow", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
+
+  // message loop and geometry (BPTK-011)
+  const postStep = ["PostMessageW", [FIRST_HANDLE, 0x0400, 1, 2]]; // WM_USER
+  define("GetMessageW", { scenario: [registerStep, createStep, postStep], argument: [] }, { return_value: 1, last_error: 0 });
+  define("GetMessageW", { scenario: [registerStep, createStep, ["PostQuitMessage", [0]]], argument: [] }, { return_value: 0, last_error: 0 });
+  define("GetMessageW", { scenario: [registerStep, createStep], argument: [] }, { return_value: (-1) >>> 0, last_error: 0 });
+  define("PeekMessageW", { scenario: [registerStep, createStep, postStep], argument: [1] }, { return_value: 1, last_error: 0 });
+  define("PeekMessageW", { scenario: [registerStep, createStep], argument: [1] }, { return_value: 0, last_error: 0 });
+  define("TranslateMessage", { argument: [{ handle: 0, message: windowMessage.WM_KEYDOWN, w_param: 0x41, l_param: 1 }] }, { return_value: 1, last_error: 0 });
+  define("TranslateMessage", { argument: [{ handle: 0, message: windowMessage.WM_NULL, w_param: 0, l_param: 0 }] }, { return_value: 0, last_error: 0 });
+  define("DispatchMessageW", { scenario: [registerStep, createStep], argument: [{ handle: FIRST_HANDLE, message: windowMessage.WM_NULL, w_param: 0, l_param: 0 }] }, { return_value: 0, last_error: 0 });
+  define("GetClientRect", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
+  define("GetWindowRect", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
+  define("GetClientRect", { argument: [0xdeadbeef] }, { return_value: 0, last_error: 0 });
+  define("MoveWindow", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, 10, 20, 100, 200, 1] }, { return_value: 1, last_error: 0 });
+  define("AdjustWindowRect", { argument: [0, 0, 0] }, { return_value: 1, last_error: 0 });
+  define("GetSystemMetrics", { argument: [0] }, { return_value: 1920, last_error: 0 });
+  define("GetSystemMetrics", { argument: [1] }, { return_value: 1080, last_error: 0 });
+  define("GetSystemMetrics", { argument: [99] }, { return_value: 0, last_error: 0 });
 
   return caseList;
 }

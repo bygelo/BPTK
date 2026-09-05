@@ -18,6 +18,10 @@ import {
   listAudioExport,
   audioMessage,
   constantPowerPan,
+  compute3dSourceGain,
+  distanceAttenuation,
+  azimuthPan,
+  createFmvTimeline,
   createAudioClock,
   createAudioRing,
   createAudioSystem,
@@ -301,4 +305,69 @@ test("DirectSound pause holds the cursor and resume continues from it", () => {
   system.render(200);
   assert.ok(buffer.getCurrentPosition().play_cursor_byte > held, "resume must continue from the held cursor");
   buffer.release();
+});
+
+test("BPTK-096: distance attenuation follows the DS3D inverse-distance rolloff", () => {
+  assert.equal(distanceAttenuation(0.5, 1, 100, 1), 1, "inside the minimum distance is unity");
+  assert.equal(distanceAttenuation(1, 1, 100, 1), 1, "at the minimum distance is unity");
+  // At twice the minimum distance the inverse rolloff halves the gain.
+  assert.ok(Math.abs(distanceAttenuation(2, 1, 100, 1) - 0.5) < 1e-9);
+  // A larger rolloff factor attenuates faster.
+  assert.ok(distanceAttenuation(5, 1, 100, 2) < distanceAttenuation(5, 1, 100, 1));
+  // Beyond the maximum distance the gain holds at the max-distance value.
+  assert.equal(distanceAttenuation(1000, 1, 10, 1), distanceAttenuation(10, 1, 10, 1));
+});
+
+test("BPTK-096: azimuth pan places an emitter left, right, or centered relative to the listener", () => {
+  const listener = { position: { x: 0, y: 0, z: 0 }, forward: { x: 0, y: 0, z: 1 }, up: { x: 0, y: 1, z: 0 } };
+  // Facing +z with up +y, the right axis is +x, so a +x emitter pans right.
+  assert.ok(azimuthPan(listener, { position: { x: 10, y: 0, z: 0 } }) > 0.99);
+  assert.ok(azimuthPan(listener, { position: { x: -10, y: 0, z: 0 } }) < -0.99);
+  assert.equal(azimuthPan(listener, { position: { x: 0, y: 0, z: 5 } }), 0, "straight ahead is centered");
+  assert.equal(azimuthPan(listener, { position: { x: 0, y: 0, z: 0 } }), 0, "coincident is centered");
+});
+
+test("BPTK-096: the 3D source gain combines attenuation and constant-power pan", () => {
+  const listener = { position: { x: 0, y: 0, z: 0 }, forward: { x: 0, y: 0, z: 1 }, up: { x: 0, y: 1, z: 0 } };
+  const near = compute3dSourceGain(listener, { position: { x: 1, y: 0, z: 0 } }, { min_distance: 1, max_distance: 100 });
+  assert.ok(near.gain_right > near.gain_left, "an emitter on the right is louder on the right");
+  const far = compute3dSourceGain(listener, { position: { x: 50, y: 0, z: 0 } }, { min_distance: 1, max_distance: 100 });
+  assert.ok(far.gain_right < near.gain_right, "a farther emitter is quieter");
+  const center = compute3dSourceGain(listener, { position: { x: 0, y: 0, z: 1 } }, { min_distance: 1, max_distance: 100 });
+  assert.ok(Math.abs(center.gain_left - center.gain_right) < 1e-9, "a centered emitter is balanced");
+});
+
+test("BPTK-100: the FMV timeline locks the picture to the audio master clock", () => {
+  const fmv = createFmvTimeline({ fps: 10, frame_count: 100 }); // 100ms per frame
+  assert.equal(fmv.frameIndexAt(0), 0);
+  assert.equal(fmv.frameIndexAt(50), 0, "mid-frame stays on the current frame");
+  assert.equal(fmv.frameIndexAt(150), 1);
+  // On-cadence presents advance one frame at a time with no drop.
+  assert.equal(fmv.present(50).frame_index, 0);
+  assert.equal(fmv.present(150).dropped, 0);
+  assert.equal(fmv.present(250).frame_index, 2);
+  // A stall in the audio master clock drops the frames it skipped.
+  const stalled = fmv.present(650);
+  assert.equal(stalled.frame_index, 6);
+  assert.equal(stalled.dropped, 3, "frames 3, 4, 5 were skipped");
+  assert.equal(stalled.is_in_sync, false);
+  // The frame index never runs past the last frame.
+  assert.equal(fmv.frameIndexAt(1_000_000), 99);
+});
+
+test("BPTK-100: subtitle cues resolve by the playback time", () => {
+  const fmv = createFmvTimeline({
+    fps: 30,
+    frame_count: 300,
+    subtitle: [
+      { start_ms: 1000, end_ms: 2000, text: "hello" },
+      { start_ms: 2500, end_ms: 3000, text: "world" },
+    ],
+  });
+  assert.equal(fmv.activeSubtitle(500), null, "before the first cue");
+  assert.equal(fmv.activeSubtitle(1500), "hello");
+  assert.equal(fmv.activeSubtitle(2000), null, "the cue is exclusive of its end");
+  assert.equal(fmv.activeSubtitle(2200), null, "between cues");
+  assert.equal(fmv.activeSubtitle(2750), "world");
+  assert.equal(fmv.present(1500).subtitle, "hello", "present carries the active subtitle");
 });

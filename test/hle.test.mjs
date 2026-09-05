@@ -15,7 +15,7 @@ import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
-import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile } from "../lib/hle.mjs";
+import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile, createConformanceMachine } from "../lib/hle.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -414,6 +414,253 @@ test("conformance: every Win32 core HLE export carries case and matches the orac
   assert.equal(report.is_coverage_complete, true, "a served export without case is a coverage hole");
   assert.equal(report.fail_count, 0, report.result.filter((entry) => !entry.pass).map((entry) => `${entry.case_id}: ${entry.mismatch.join("; ")}`).join("\n"));
   assert.equal(report.pass_count, caseTable.length);
+});
+
+// The conformance suite compares return_value and last_error; these cases
+// prove the memory side effects of the BPTK-101 breadth slice, which the
+// oracle does not inspect.
+function invoke(guest, library, symbol, argument) {
+  return guest.invokeExport(guest.lookupExport(library, symbol), argument);
+}
+
+test("BPTK-101: interlocked atomics read-modify-write the guest dword and honor the return contract", () => {
+  const { guest, memory } = createConformanceMachine();
+  const cell = guest.layout.arena_base + 0x40;
+  memory.writeMemory(cell, 4, 5);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedIncrement", [cell]), 6);
+  assert.equal(memory.readMemory(cell, 4), 6);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedDecrement", [cell]), 5);
+  assert.equal(memory.readMemory(cell, 4), 5);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedExchange", [cell, 99]), 5, "Exchange returns the prior value");
+  assert.equal(memory.readMemory(cell, 4), 99);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedExchangeAdd", [cell, 1]), 99, "ExchangeAdd returns the prior value");
+  assert.equal(memory.readMemory(cell, 4), 100);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedCompareExchange", [cell, 7, 100]), 100, "a matching comparand stores the exchange");
+  assert.equal(memory.readMemory(cell, 4), 7);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedCompareExchange", [cell, 42, 999]), 7, "a mismatched comparand leaves the cell");
+  assert.equal(memory.readMemory(cell, 4), 7);
+});
+
+test("BPTK-101: the kernel32 string family copies and concatenates bytes into guest memory", () => {
+  const { guest } = createConformanceMachine();
+  const src = guest.layout.arena_base + 0x80;
+  const dest = guest.layout.arena_base + 0x120;
+  guest.writeAnsiString(src, "hello", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "lstrcpyA", [dest, src]), dest);
+  assert.equal(guest.readAnsiString(dest), "hello");
+  guest.writeAnsiString(src, "world", 16);
+  invoke(guest, "kernel32.dll", "lstrcpynA", [dest, src, 3]);
+  assert.equal(guest.readAnsiString(dest), "wo", "lstrcpynA copies at most n-1 characters and terminates");
+  guest.writeAnsiString(dest, "ab", 16);
+  guest.writeAnsiString(src, "cd", 16);
+  invoke(guest, "kernel32.dll", "lstrcatA", [dest, src]);
+  assert.equal(guest.readAnsiString(dest), "abcd");
+});
+
+test("BPTK-101: MulDiv rounds half away from zero and refuses a zero denominator", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [10, 3, 4]), 8);
+  assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [1, 1, 3]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [10, 3, 0]) | 0, -1, "a zero denominator returns -1");
+});
+
+test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clock", () => {
+  const { guest, memory } = createConformanceMachine();
+  const buffer = guest.layout.arena_base + 0x200;
+  invoke(guest, "kernel32.dll", "GetSystemTime", [buffer]);
+  const field = guest.readSystemTime(buffer);
+  assert.deepEqual(field, guest.guestSystemTime());
+  assert.ok(field.month >= 1 && field.month <= 12);
+  assert.ok(field.hour >= 0 && field.hour < 24);
+  // GetSystemInfo reports one declared processor and the 64 KiB granularity.
+  const info = guest.layout.arena_base + 0x180;
+  invoke(guest, "kernel32.dll", "GetSystemInfo", [info]);
+  assert.equal(memory.readMemory(info + 4, 4), 4096, "dwPageSize");
+  assert.equal(memory.readMemory(info + 20, 4), 1, "dwNumberOfProcessors");
+  assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
+});
+
+test("BPTK-101: GetEnvironmentVariable and ExpandEnvironmentStrings resolve over the environment map", () => {
+  const { guest } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const name = base + 0x40;
+  const value = base + 0x80;
+  const out = base + 0xc0;
+  const src = base + 0x140;
+  guest.writeAnsiString(name, "PATH", 16);
+  guest.writeAnsiString(value, "C:\\bin", 16);
+  invoke(guest, "kernel32.dll", "SetEnvironmentVariableA", [name, value]);
+  assert.equal(invoke(guest, "kernel32.dll", "GetEnvironmentVariableA", [name, out, 64]), "C:\\bin".length);
+  assert.equal(guest.readAnsiString(out), "C:\\bin");
+  // A too-small buffer returns the required size including the null.
+  assert.equal(invoke(guest, "kernel32.dll", "GetEnvironmentVariableA", [name, out, 2]), "C:\\bin".length + 1);
+  // A missing variable is the env-not-found contract.
+  guest.writeAnsiString(name, "MISSING", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetEnvironmentVariableA", [name, out, 64]), 0);
+  assert.equal(guest.getLastError(), 203);
+  // Expansion substitutes a known variable and keeps an unknown one literal.
+  guest.writeAnsiString(src, "d=%PATH%;%NOPE%", 32);
+  const expandedLen = invoke(guest, "kernel32.dll", "ExpandEnvironmentStringsA", [src, out, 64]);
+  assert.equal(guest.readAnsiString(out), "d=C:\\bin;%NOPE%");
+  assert.equal(expandedLen, "d=C:\\bin;%NOPE%".length + 1);
+});
+
+test("BPTK-097: XInput reports no controller by default and reflects an injected gamepad state", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const stateBuf = base + 0x40;
+  const capsBuf = base + 0x80;
+  const vibBuf = base + 0xc0;
+  // By default every slot is disconnected.
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [0, stateBuf]), 1167);
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetCapabilities", [0, 0, capsBuf]), 1167);
+  // Inject a controller state (the browser Gamepad bridge feeds this).
+  guest.gamepad.injectGamepad(0, { buttons: 0x1000, left_trigger: 255, thumb_lx: -32768, thumb_ry: 32767 });
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [0, stateBuf]), 0);
+  assert.equal(memory.readMemory(stateBuf + 4, 2), 0x1000, "wButtons: A pressed");
+  assert.equal(memory.readMemory(stateBuf + 6, 1), 255, "bLeftTrigger");
+  assert.equal(memory.readMemory(stateBuf + 8, 2), 0x8000, "sThumbLX -32768 as unsigned");
+  assert.equal(memory.readMemory(stateBuf + 14, 2), 0x7fff, "sThumbRY 32767");
+  assert.ok(memory.readMemory(stateBuf + 0, 4) > 0, "the packet number advanced");
+  // Capabilities and vibration are served once connected.
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetCapabilities", [0, 0, capsBuf]), 0);
+  assert.equal(memory.readMemory(capsBuf + 0, 1), 1, "Type gamepad");
+  memory.writeMemory(vibBuf, 2, 40000);
+  memory.writeMemory(vibBuf + 2, 2, 20000);
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputSetState", [0, vibBuf]), 0);
+  assert.deepEqual(guest.gamepad.getVibration(0), { left_motor: 40000, right_motor: 20000 });
+  // An out-of-range slot is not connected.
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [7, stateBuf]), 1167);
+  // The packet number only advances when the state actually changes.
+  const before = guest.gamepad.getState(0).packet_number;
+  guest.gamepad.injectGamepad(0, { buttons: 0x1000, left_trigger: 255, thumb_lx: -32768, thumb_ry: 32767 });
+  assert.equal(guest.gamepad.getState(0).packet_number, before, "an identical state does not bump the packet number");
+  guest.gamepad.injectGamepad(0, { buttons: 0x2000 });
+  assert.ok(guest.gamepad.getState(0).packet_number > before, "a changed state bumps the packet number");
+  // A disconnect returns the slot to not-connected.
+  guest.gamepad.disconnectGamepad(0);
+  assert.equal(invoke(guest, "xinput1_3.dll", "XInputGetState", [0, stateBuf]), 1167);
+});
+
+test("BPTK-102: the virtual drive geometry reports a fixed C: and a read-only optical D:", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const path = base + 0x40;
+  const out = base + 0x80;
+  assert.equal(invoke(guest, "kernel32.dll", "GetLogicalDrives", []), 0x0c, "C: and D: are present");
+  guest.writeAnsiString(path, "C:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDriveTypeA", [path]), 3, "DRIVE_FIXED");
+  guest.writeAnsiString(path, "D:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDriveTypeA", [path]), 5, "DRIVE_CDROM");
+  guest.writeAnsiString(path, "Z:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDriveTypeA", [path]), 1, "DRIVE_NO_ROOT_DIR for an absent drive");
+  // The optical volume label, serial, and CDFS name round-trip.
+  guest.writeAnsiString(path, "D:\\", 16);
+  const serialPtr = out + 0x40;
+  assert.equal(invoke(guest, "kernel32.dll", "GetVolumeInformationA", [path, out, 32, serialPtr, 0, 0, 0, 0]), 1);
+  assert.equal(guest.readAnsiString(out), "BPTK_MEDIA");
+  assert.equal(memory.readMemory(serialPtr, 4), 0x4344524f);
+  // The optical volume reports zero free bytes (read-only media).
+  guest.writeAnsiString(path, "D:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDiskFreeSpaceExA", [path, out, out + 8, out + 16]), 1);
+  assert.equal(memory.readMemory(out, 4), 0, "free-to-caller low dword");
+  assert.equal(memory.readMemory(out + 8, 4), 0x28000000, "total low dword");
+});
+
+test("BPTK-099: the ws2_32 lifecycle marshals WSADATA, serves the handle table, and refuses an offline dial", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const wsaData = base + 0x40;
+  const sockAddr = base + 0x220;
+  // Before startup a socket is refused; WSAStartup then writes the WSADATA.
+  assert.equal(invoke(guest, "ws2_32.dll", "socket", [2, 1, 6]) | 0, -1, "socket before WSAStartup fails");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAStartup", [0x0202, wsaData]), 0);
+  assert.equal(memory.readMemory(wsaData + 0, 2), 0x0202, "wVersion");
+  assert.equal(memory.readMemory(wsaData + 2, 2), 0x0202, "wHighVersion");
+  const socket = invoke(guest, "ws2_32.dll", "socket", [2, 1, 6]);
+  assert.equal(socket, 1);
+  // The offline default has no consent, so bind and connect are refused.
+  memory.writeMemory(sockAddr + 0, 2, 2);
+  memory.writeMemory(sockAddr + 2, 1, 0x1f); memory.writeMemory(sockAddr + 3, 1, 0x90);
+  [1, 2, 3, 4].forEach((octet, index) => memory.writeMemory(sockAddr + 4 + index, 1, octet));
+  assert.equal(invoke(guest, "ws2_32.dll", "connect", [socket, sockAddr]) | 0, -1, "an unconsented dial is refused");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAGetLastError", []), 10013, "WSAEACCES");
+  assert.equal(invoke(guest, "ws2_32.dll", "closesocket", [socket]), 0);
+  // Byte-order and address helpers are pure and always served.
+  assert.equal(invoke(guest, "ws2_32.dll", "htons", [0x1234]), 0x3412);
+  assert.equal(invoke(guest, "ws2_32.dll", "htonl", [0x12345678]), 0x78563412);
+  guest.writeAnsiString(base + 0x300, "127.0.0.1", 16);
+  assert.equal(invoke(guest, "ws2_32.dll", "inet_addr", [base + 0x300]), 0x7f000001);
+});
+
+test("BPTK-011: the message loop and geometry exports marshal MSG and RECT through guest memory", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  const msgBuffer = base + 0x140;
+  const rectBuffer = base + 0x180;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  memory.writeMemory(classStruct + 0, 4, 0); // style
+  memory.writeMemory(classStruct + 4, 4, 0); // wndProc -> DefWindowProc fallback
+  memory.writeMemory(classStruct + 36, 4, classNamePtr); // lpszClassName
+  invoke(guest, "user32.dll", "RegisterClassW", [classStruct]);
+  const window = invoke(guest, "user32.dll", "CreateWindowExW", [0, classNamePtr, 0, 0, 0, 0, 320, 240, 0, 0, 0, 0]);
+  assert.ok(window !== 0);
+  // A posted message round-trips through GetMessageW into the MSG struct.
+  invoke(guest, "user32.dll", "PostMessageW", [window, 0x0400, 7, 9]);
+  assert.equal(invoke(guest, "user32.dll", "GetMessageW", [msgBuffer, 0, 0, 0]), 1);
+  assert.equal(memory.readMemory(msgBuffer + 0, 4), window);
+  assert.equal(memory.readMemory(msgBuffer + 4, 4), 0x0400);
+  assert.equal(memory.readMemory(msgBuffer + 8, 4), 7);
+  assert.equal(memory.readMemory(msgBuffer + 12, 4), 9);
+  // The client rect is origin-anchored at the created extent.
+  assert.equal(invoke(guest, "user32.dll", "GetClientRect", [window, rectBuffer]), 1);
+  assert.deepEqual([0, 1, 2, 3].map((i) => memory.readMemory(rectBuffer + i * 4, 4)), [0, 0, 320, 240]);
+  // MoveWindow updates the geometry the window rect then reports.
+  assert.equal(invoke(guest, "user32.dll", "MoveWindow", [window, 10, 20, 100, 200, 1]), 1);
+  invoke(guest, "user32.dll", "GetWindowRect", [window, rectBuffer]);
+  assert.deepEqual([0, 1, 2, 3].map((i) => memory.readMemory(rectBuffer + i * 4, 4)), [10, 20, 110, 220]);
+  assert.equal(invoke(guest, "user32.dll", "GetSystemMetrics", [0]), 1920);
+});
+
+test("BPTK-098: registry create reports disposition, round-trips a value, and refuses deleting a key with subkeys", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const resultPtr = base + 0x40;
+  const dispPtr = base + 0x44;
+  const dataPtr = base + 0x60;
+  const readPtr = base + 0x80;
+  const lenPtr = base + 0xa0;
+  // Creating a fresh key reports REG_CREATED_NEW_KEY (1).
+  assert.equal(guest.registryCreate(0x80000001, "Soft\\A", resultPtr, dispPtr), 0);
+  assert.equal(memory.readMemory(dispPtr, 4), 1);
+  const handle = memory.readMemory(resultPtr, 4);
+  // Re-creating the same key reports REG_OPENED_EXISTING_KEY (2).
+  guest.registryCreate(0x80000001, "Soft\\A", resultPtr, dispPtr);
+  assert.equal(memory.readMemory(dispPtr, 4), 2);
+  // Set then query the value byte-exactly.
+  memory.writeMemory(dataPtr, 4, 0x2a2a2a2a);
+  assert.equal(guest.registrySet(handle, "V", 1, dataPtr, 4), 0);
+  memory.writeMemory(lenPtr, 4, 64);
+  assert.equal(guest.registryQuery(handle, "V", 0, readPtr, lenPtr), 0);
+  assert.equal(memory.readMemory(lenPtr, 4), 4);
+  assert.equal(memory.readMemory(readPtr, 4), 0x2a2a2a2a);
+  // A parent key with a child cannot be deleted.
+  assert.equal(guest.registryDeleteKey(0x80000001, "Soft"), 5);
+  // Deleting the value twice: first succeeds, then reports not-found.
+  assert.equal(guest.registryDeleteValue(handle, "V"), 0);
+  assert.equal(guest.registryDeleteValue(handle, "V"), 2);
+  // The leaf key deletes once no child remains.
+  assert.equal(guest.registryDeleteKey(0x80000001, "Soft\\A"), 0);
+  assert.equal(guest.registryDeleteKey(0x80000001, "Soft"), 0);
+});
+
+test("BPTK-101: SetErrorMode returns the previous mode", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "SetErrorMode", [0x8000]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "SetErrorMode", [0x0001]), 0x8000);
+  assert.equal(invoke(guest, "kernel32.dll", "GetErrorMode", []), 0x0001);
 });
 
 test("FIX-003: the core API exerciser starts, synchronizes, allocates, times, calls COM, and exits with the golden trace", (context) => {

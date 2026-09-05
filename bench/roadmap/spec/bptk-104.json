@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No frame loop exists to pace and the clock layer serves the probe only.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because FIX-016 also measures jitter against a budget on a real running frame loop and the yield-not-spin property of the busy-wait under the async browser present path (requestAnimationFrame + the AudioWorklet clock), which does not run in this worktree — there is no live frame loop to pace yet. The pacer core exists generically in lib/clock.mjs over the one monotonic guest clock: createFramePacer resolves a frame ready at a guest time onto the next vertical-blank boundary at the declared refresh rate, counts presented frames, and reports the vblanks a stall skipped as dropped rather than absorbing them — speed follows the one clock, so it is host-throughput independent by construction.",
   "prerequisite": [],
   "promotion_trigger": "Promote when cadence, speed independence, and the yield-not-spin property all hold on the fixture.",
-  "expected_failing_assertion": "No frame scheduler exists.",
+  "expected_failing_assertion": "No live browser frame loop drives the pacer, so jitter against the budget and the yield-not-spin busy-wait cannot be measured.",
   "owner_item": "BPTK-104",
-  "active_gate_evidence": "The clock layer keeps one monotonic source with clamped delta.",
+  "active_gate_evidence": "Tests prove the pacer syncs a frame to the next vblank boundary, counts presented frames, reports the dropped vblanks on a stall, and reads its present time from the one guest clock so cadence is host-independent; the clock keeps one monotonic source with clamped delta. The full suite stays green.",
   "fixture": [
     "FIX-016"
   ],

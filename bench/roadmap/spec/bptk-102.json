@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The installer extractor handles payload only and no drive emulation exists.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the mounted-image path is not built: there is no ISO/CUE sector read that hash-matches a source image, no in-sync CD digital-audio track, and DRM-protected images are still refused by identity — so no image is actually mounted behind the optical letter. The virtual drive geometry exists generically in lib/hle.mjs: a declared fixed C: (DRIVE_FIXED, NTFS) and read-only optical D: (DRIVE_CDROM, CDFS, zero free bytes) served through GetLogicalDrives, GetDriveTypeA/W, GetVolumeInformationA/W (label, serial, filesystem name, read-only flags), GetDiskFreeSpaceExA, and GetDiskFreeSpaceA over one host-neutral capacity profile.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the mounted image serves hash-matching sector read and in-sync disc audio, refusing protected image.",
-  "expected_failing_assertion": "No optical mount exists.",
+  "expected_failing_assertion": "No image is mounted behind the optical letter, so a hash-matching sector read and in-sync disc audio cannot be served.",
   "owner_item": "BPTK-102",
-  "active_gate_evidence": "The extractor keeps refusing protected and encrypted input with identity.",
+  "active_gate_evidence": "The conformance suite carries a case for every served drive-geometry export (served kernel32 surface 130 to 137), and a dedicated test proves GetLogicalDrives reports C: and D:, GetDriveType returns DRIVE_FIXED/DRIVE_CDROM/DRIVE_NO_ROOT_DIR, the optical volume label and serial round-trip, and the read-only optical volume reports zero free bytes. The extractor keeps refusing protected and encrypted input by identity, and the full suite stays green.",
   "fixture": [
     "FIX-009"
   ],

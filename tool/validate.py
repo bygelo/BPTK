@@ -211,6 +211,7 @@ ALLOWED_MJS_PATH = {
     Path("script/status.mjs"),
     Path("test/abi.test.mjs"),
     Path("test/audio.test.mjs"),
+    Path("test/clock.test.mjs"),
     Path("test/cli.test.mjs"),
     Path("test/corpus.test.mjs"),
     Path("test/benchmark.test.mjs"),

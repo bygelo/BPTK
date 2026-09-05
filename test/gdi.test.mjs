@@ -22,6 +22,7 @@ import {
   pack555,
   unpack555,
   rasterOp,
+  rasterOp2,
   backgroundMode,
   stockObject,
 } from "../lib/gdi.mjs";
@@ -115,6 +116,27 @@ test("TextOut renders a stock glyph in the text color over the background", () =
   const litCount = gdi.surfacePixel(dc).filter((pixel) => pixel[0] === 255).length;
   assert.ok(litCount > 0, "the glyph lit no pixel");
   assert.equal(gdi.getPixel(dc, 0, 0), rgb(0, 0, 0)); // corner is background in OPAQUE mode
+});
+
+test("PatBlt fills the region with the selected brush and GetDeviceCaps reports the declared display", () => {
+  const gdi = createGdiSubsystem();
+  const dc = gdi.createDC(4, 4);
+  gdi.fillRect(dc, { left: 0, top: 0, right: 4, bottom: 4 }, gdi.createSolidBrush(rgb(200, 0, 0)));
+  gdi.selectObject(dc, gdi.createSolidBrush(rgb(10, 20, 30)));
+  assert.equal(gdi.patBlt(dc, 1, 1, 2, 2, rasterOp.PATCOPY), 1);
+  assert.equal(gdi.getPixel(dc, 1, 1), rgb(10, 20, 30));
+  assert.equal(gdi.getPixel(dc, 2, 2), rgb(10, 20, 30));
+  assert.equal(gdi.getPixel(dc, 0, 0), rgb(200, 0, 0), "outside the blit keeps the prior fill");
+  // BLACKNESS ignores the brush and paints black.
+  gdi.patBlt(dc, 0, 0, 4, 4, rasterOp.BLACKNESS);
+  assert.equal(gdi.getPixel(dc, 0, 0), rgb(0, 0, 0));
+  // The device caps are the declared virtual display, independent of the DC.
+  assert.equal(gdi.getDeviceCaps(dc, 8), 1920); // HORZRES
+  assert.equal(gdi.getDeviceCaps(dc, 10), 1080); // VERTRES
+  assert.equal(gdi.getDeviceCaps(dc, 12), 32); // BITSPIXEL
+  // ROP2 round-trips through the DC state.
+  assert.equal(gdi.setRop2(dc, rasterOp2.R2_WHITE), rasterOp2.R2_COPYPEN);
+  assert.equal(gdi.getRop2(dc), rasterOp2.R2_WHITE);
 });
 
 test("a logical palette resolves the nearest index and reads back its entry", () => {
@@ -214,6 +236,16 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.realizePalette(argument[0]);
     case "GetNearestPaletteIndex":
       return gdi.getNearestPaletteIndex(argument[0], argument[1]);
+    case "FillRect":
+      return gdi.fillRect(argument[0], argument[1], argument[2]);
+    case "PatBlt":
+      return gdi.patBlt(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5]);
+    case "GetDeviceCaps":
+      return gdi.getDeviceCaps(argument[0], argument[1]);
+    case "SetROP2":
+      return gdi.setRop2(argument[0], argument[1]);
+    case "GetROP2":
+      return gdi.getRop2(argument[0]);
     default:
       return null;
   }
@@ -268,6 +300,15 @@ function buildGdiConformanceCase() {
   define("SelectPalette", { scenario: [dcStep, createPaletteStep], argument: [FIRST_HANDLE, secondHandle] }, { return_value: 0, last_error: 0 });
   define("RealizePalette", { scenario: [dcStep, createPaletteStep, ["SelectPalette", [FIRST_HANDLE, secondHandle]]], argument: [FIRST_HANDLE] }, { return_value: 2, last_error: 0 });
   define("GetNearestPaletteIndex", { scenario: [createPaletteStep], argument: [FIRST_HANDLE, rgb(250, 10, 10)] }, { return_value: 1, last_error: 0 });
+
+  // rect fill, pattern blit, raster op, device caps (BPTK-012)
+  define("FillRect", { scenario: [dcStep, brushStep], argument: [FIRST_HANDLE, { left: 0, top: 0, right: 1, bottom: 1 }, secondHandle] }, { return_value: 1, last_error: 0 });
+  define("PatBlt", { scenario: [dcStep], argument: [FIRST_HANDLE, 0, 0, 1, 1, rasterOp.PATCOPY] }, { return_value: 1, last_error: 0 });
+  define("GetDeviceCaps", { argument: [0, 8] }, { return_value: 1920, last_error: 0 });
+  define("GetDeviceCaps", { argument: [0, 12] }, { return_value: 32, last_error: 0 });
+  define("GetDeviceCaps", { argument: [0, 999] }, { return_value: 0, last_error: 0 });
+  define("SetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE, rasterOp2.R2_WHITE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
+  define("GetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
 
   return caseList;
 }

@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No frame or audio bridge exists to decode into.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because there is no video decode path — the proprietary FMV codecs (Bink, Smacker) stay refused by identity and no redistributable decoder is wired, and seek/pause are not driven end to end from a running decoder — so the timeline has no real frames to present. The A/V-sync core exists generically in lib/audio.mjs: createFmvTimeline locks the picture to the one audio master clock (the shown frame derives from that clock), counts the frames a stall skipped as dropped rather than playing them late, clamps to the last frame, and resolves subtitle cues by time (end-exclusive), which the present path carries alongside the frame.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the FMV fixture holds the drift budget across seek and pause with on-time cue.",
-  "expected_failing_assertion": "No FMV decode path exists.",
+  "expected_failing_assertion": "No redistributable video decoder is wired and proprietary FMV codecs stay refused, so the timeline has no decoded frames to hold against the drift budget across seek and pause.",
   "owner_item": "BPTK-100",
-  "active_gate_evidence": "The roadmap keeps proprietary codec refusal in place and BPTK-040 red.",
+  "active_gate_evidence": "Two tests prove the sync core: the FMV timeline locks the frame index to the audio master clock, advances on cadence, drops the frames a stall skipped, and clamps to the last frame; and subtitle cues resolve by playback time (end-exclusive) with the present path carrying the active cue. The roadmap keeps proprietary codec refusal in place and the full suite stays green.",
   "fixture": [
     "FIX-007"
   ],
