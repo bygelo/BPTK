@@ -106,6 +106,71 @@ test("microprogram: CMP then SETcc records the ordered comparison and a taken co
   assertState(report, { register: { rax: 3n, rcx: 1n } });
 });
 
+test("microprogram: SHRD Ev,Gv,imm8 shifts dst right and fills from src with exact flags", () => {
+  // mov eax,0x12345678; mov ecx,0xaabbccdd; shrd eax,ecx,8; ret
+  // result = (0x12345678 >> 8) | (0xaabbccdd << 24) = 0xdd123456; the last bit
+  // shifted out of dst (bit 7 = 0) is CF; SF/PF follow the result; OF is the
+  // destination sign-bit change (0 -> 1).
+  const report = run([0xb8, 0x78, 0x56, 0x34, 0x12, 0xb9, 0xdd, 0xcc, 0xbb, 0xaa, 0x0f, 0xac, 0xc8, 0x08, 0xc3]);
+  assertState(report, {
+    register: { rax: 0xdd123456n, rcx: 0xaabbccddn },
+    flag: { cf: false, pf: true, af: false, zf: false, sf: true, of: true },
+  });
+});
+
+test("microprogram: SHLD Ev,Gv,imm8 shifts dst left and fills from src with exact flags", () => {
+  // mov eax,0x12345678; mov ecx,0xaabbccdd; shld eax,ecx,8; ret
+  // result = (0x12345678 << 8) | (0xaabbccdd >> 24) = 0x345678aa; CF is bit
+  // (size-count = 24) of dst (0); OF is unchanged sign (0 -> 0).
+  const report = run([0xb8, 0x78, 0x56, 0x34, 0x12, 0xb9, 0xdd, 0xcc, 0xbb, 0xaa, 0x0f, 0xa4, 0xc8, 0x08, 0xc3]);
+  assertState(report, {
+    register: { rax: 0x345678aan, rcx: 0xaabbccddn },
+    flag: { cf: false, pf: true, af: false, zf: false, sf: false, of: false },
+  });
+});
+
+test("microprogram: a REX.W SHRD shifts the full 64-bit destination and masks the count to 0x3f", () => {
+  // mov rax,0x123456789abcdef0; mov rcx,0xfedcba987654321f; shrd rax,rcx,4; ret
+  // result = (rax >> 4) | (rcx << 60) = 0xf123456789abcdef.
+  const report = run([
+    0x48, 0xb8, 0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
+    0x48, 0xb9, 0x1f, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe,
+    0x48, 0x0f, 0xac, 0xc8, 0x04,
+    0xc3,
+  ]);
+  assertState(report, {
+    register: { rax: 0xf123456789abcdefn, rcx: 0xfedcba987654321fn },
+    flag: { cf: false, pf: false, af: false, zf: false, sf: true, of: true },
+  });
+});
+
+test("microprogram: SHLD Ev,Gv,CL takes the count from CL and shifts src bits into dst", () => {
+  // mov edx,0xff; mov ebx,0xff000000; mov ecx,4; shld edx,ebx,cl; ret
+  // result = (0xff << 4) | (0xff000000 >> 28) = 0xfff.
+  const report = run([
+    0xba, 0xff, 0x00, 0x00, 0x00,
+    0xbb, 0x00, 0x00, 0x00, 0xff,
+    0xb9, 0x04, 0x00, 0x00, 0x00,
+    0x0f, 0xa5, 0xda,
+    0xc3,
+  ]);
+  assertState(report, {
+    register: { rdx: 0xfffn, rbx: 0xff000000n, rcx: 4n },
+    flag: { cf: false, pf: true, af: false, zf: false, sf: false, of: false },
+  });
+});
+
+test("microprogram: a zero-count SHRD leaves the destination and every flag untouched", () => {
+  // mov eax,0x12345678; mov ecx,0xdeadbeef; xor edx,edx; shrd eax,ecx,0; ret.
+  // The XOR sets a known flag state (ZF=PF=1, the rest clear); a zero count is
+  // architecturally a no-op, so both the destination and that flag state survive.
+  const report = run([0xb8, 0x78, 0x56, 0x34, 0x12, 0xb9, 0xef, 0xbe, 0xad, 0xde, 0x31, 0xd2, 0x0f, 0xac, 0xc8, 0x00, 0xc3]);
+  assertState(report, {
+    register: { rax: 0x12345678n, rcx: 0xdeadbeefn, rdx: 0n },
+    flag: { cf: false, pf: true, af: false, zf: true, sf: false, of: false },
+  });
+});
+
 // A little-endian imm64 encoding and the `mov rax, imm64` that loads it, used to
 // seed an xmm register through `movq xmm, rax`; the SSE end state is read back
 // out to a GPR (movq / pmovmskb) so the frozen reference is an integer literal.
