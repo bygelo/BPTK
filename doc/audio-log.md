@@ -71,9 +71,34 @@ activation.
   into the mix-source gain. `test/audio.test.mjs` now 13 case, green. `npm run
   gate` exits 0.
 
+- **Cycle 3** — audio conformance surface over the repo's generic apparatus
+  (`lib/conformance.mjs`): `listAudioExport` declares twelve exports
+  (`winmm!waveOut{Open,Write,Reset,Close}`, `dsound!IDirectSoundBuffer::{Play,
+  Stop,SetVolume,SetPan,GetCurrentPosition}`, `xaudio2!IXAudio2SourceVoice::
+  {SubmitSourceBuffer,Start,Stop}`), each with a deterministic mini-scenario
+  oracle. The suite passes with `is_coverage_complete === true` — zero
+  uncovered audio exports for this subsystem. `test/audio.test.mjs` now 14 case,
+  green. `npm run gate` exits 0 (178 test).
+
+## HLE registration is deferred (honest)
+
+`lib/hle.mjs` does **not** import the peer subsystems (graphics, shader, clock)
+— they are standalone, self-tested modules, and audio follows that pattern.
+Registering the guest audio exports into `win32HleExportTable` requires
+guest-memory marshalling of `WAVEFORMATEX`, PCM buffers at guest addresses, and
+cross-thread callback posting; the HLE conformance test asserts
+`is_coverage_complete === true`, so a bare registration without those
+guest-memory-backed cases would either break the gate or fabricate a case (a
+false green). That marshalling depends on the thread/runtime seam. This lane
+therefore keeps the audio core self-contained and defers the `lib/hle.mjs`
+export rows to the rebase-onto-thread step, exactly as the lane's dependency
+note anticipates. The audio subsystem exposes an injected
+`dispatch(callback, message, param)` so that seam is a one-function swap.
+
 ## Next
 
-- Conformance case table for the audio exports (`winmm!waveOut*`,
-  `dsound!*`, `xaudio2!*`), then register the exports in `lib/hle.mjs`.
+- On rebase onto thread: wire `dispatch` to the guest-thread poster and add the
+  `winmm`/`dsound`/`xaudio2` export rows to `lib/hle.mjs` with guest-memory
+  cases.
 - Promote BPTK-014 `planned → implemented` via the 8-file contract, keeping the
   live BENCH-014 red and every count reconciled.

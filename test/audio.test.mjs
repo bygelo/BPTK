@@ -10,8 +10,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createGuestClock } from "../lib/clock.mjs";
+import { runConformanceSuite } from "../lib/conformance.mjs";
 import {
   audioBound,
+  buildAudioConformanceCaseTable,
+  createAudioConformanceImplementation,
+  listAudioExport,
   audioMessage,
   constantPowerPan,
   createAudioClock,
@@ -264,6 +268,15 @@ test("an XAudio2 infinite-loop buffer never ends and voice volume scales the mix
   voice.stop();
   system.render(100);
   assert.equal(voice.getState().buffer_queued_count, 1); // stop does not dequeue
+});
+
+test("every declared audio export carries a conformance case and passes its oracle", () => {
+  const caseTable = buildAudioConformanceCaseTable();
+  const report = runConformanceSuite(caseTable, createAudioConformanceImplementation(), { served_export: listAudioExport() });
+  assert.equal(report.fail_count, 0, `conformance failure: ${report.result.filter((entry) => !entry.pass).map((entry) => entry.case_id).join(", ")}`);
+  assert.equal(report.pass_count, report.case_count);
+  assert.equal(report.is_coverage_complete, true, "an audio export without a case is a coverage hole");
+  assert.equal(report.uncovered_export.length, 0);
 });
 
 test("DirectSound pause holds the cursor and resume continues from it", () => {
