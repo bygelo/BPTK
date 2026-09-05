@@ -24,6 +24,7 @@
     "lib/doctor.mjs",
     "lib/engine.mjs",
     "lib/emulator.mjs",
+    "lib/exec64.mjs",
     "lib/extract.mjs",
     "lib/foundation.mjs",
     "lib/gdi.mjs",
