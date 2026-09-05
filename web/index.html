@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!-- Copyright 2026 Maphy Technologies · SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BPTK — browser display</title>
+<style>
+  body { font: 14px/1.5 ui-monospace, monospace; margin: 1.5rem; background: #101216; color: #e6e6e6; }
+  h1 { font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem; }
+  p.note { color: #8a8f98; margin: 0 0 1rem; }
+  #screen { image-rendering: pixelated; border: 1px solid #333; background: #000; max-width: 100%; }
+  .row { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  button, label.file { background: #1f6feb; color: #fff; border: 0; border-radius: 4px; padding: 0.35rem 0.7rem; cursor: pointer; }
+  input[type=number] { width: 6rem; background: #1b1e24; color: #e6e6e6; border: 1px solid #333; border-radius: 4px; padding: 0.3rem; }
+  #status { color: #9ad; margin-top: 0.75rem; white-space: pre-wrap; }
+  input[type=file] { display: none; }
+</style>
+<!-- Native browser ESM: node: specifiers resolve to the zero-dep shims. -->
+<script type="importmap">
+{
+  "imports": {
+    "node:fs": "./shim/fs.mjs",
+    "node:path": "./shim/path.mjs",
+    "node:crypto": "./shim/crypto.mjs",
+    "node:buffer": "./shim/buffer.mjs"
+  }
+}
+</script>
+</head>
+<body>
+  <h1>BPTK — browser display</h1>
+  <p class="note">Runs a Windows PE through the bounded runtime in your browser and draws the runtime's own GDI surface. Nothing is a screenshot of real Windows; the canvas is the bytes the runtime paints. Not a compatibility or playability claim.</p>
+  <div class="row">
+    <label class="file">Choose .exe<input type="file" id="file" accept=".exe"></label>
+    <button id="sample">Run sample (putty.exe)</button>
+    <label>budget <input type="number" id="budget" value="2000000" min="1" max="10000000"></label>
+  </div>
+  <canvas id="screen" width="640" height="480"></canvas>
+  <div id="status">loading…</div>
+  <!-- Install the Buffer global before the runtime modules load, then boot. -->
+  <script type="module">
+    import { Buffer } from "./shim/buffer.mjs";
+    globalThis.Buffer = Buffer;
+    await import("./host.mjs");
+  </script>
+</body>
+</html>

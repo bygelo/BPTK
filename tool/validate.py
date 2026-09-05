@@ -259,6 +259,7 @@ ALLOWED_MJS_PATH = {
     Path("test/user.test.mjs"),
     Path("test/present.test.mjs"),
     Path("test/x64decode.test.mjs"),
+    Path("web/host.mjs"),
     Path("web/shim/buffer.mjs"),
     Path("web/shim/crypto.mjs"),
     Path("web/shim/fs.mjs"),
