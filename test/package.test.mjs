@@ -41,6 +41,24 @@ test("HTML and React host preserve one generated package identity", (context) =>
   assert.match(readFileSync(join(reactReport.output_path, "BptkHost.mjs"), "utf8"), new RegExp(assetReport.package_id));
 });
 
+test("stream plan splits prefetch from deferred and absent reads never block", (context) => {
+  const payload = Buffer.from("BPTK range streaming payload. ".repeat(120000));
+  const value = createProject(context, payload);
+  assert.equal(run(["package", value.project_path, "--asset-mode", "stream", "--json"]).status, 0);
+  const planRun = run(["package", value.package_path, "--stream-plan", "--prefetch", "1", "--json"]);
+  assert.equal(planRun.status, 0);
+  const plan = JSON.parse(planRun.stdout);
+  assert.ok(plan.block_count > 1);
+  assert.equal(plan.prefetch_count, 1);
+  assert.equal(plan.deferred_count, plan.block_count - 1);
+  assert.equal(plan.is_interactive_partly_unfetched, true);
+  assert.equal(plan.is_absent_read_blocking, false);
+  assert.equal(plan.absent_block_read.state, "pending");
+  // A second run with the same package is byte-identical (deterministic plan).
+  const planRun2 = run(["package", value.package_path, "--stream-plan", "--prefetch", "1", "--json"]);
+  assert.equal(planRun2.stdout, planRun.stdout);
+});
+
 test("every host shape carries one identity, a release path, and a sandboxed frame", (context) => {
   const value = createProject(context);
   const assetReport = JSON.parse(run(["package", value.project_path, "--asset-mode", "stream", "--json"]).stdout);

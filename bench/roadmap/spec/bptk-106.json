@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No streaming runtime or guest input-output service exists.",
+  "gate": "active",
+  "exclusion_reason": "Range/block streaming with prefetch and async guest I/O is implemented: the plan orders every content block deterministically, splits a prefetch set from a lazily-streamed deferred set, and a guest read of an absent deferred block returns a non-blocking pending descriptor. The benchmark stays red because measuring time-to-interactive and confirming zero frame stall on the absent-block read needs the absent browser streaming runtime.",
   "prerequisite": [
     "BPTK-105"
   ],
   "promotion_trigger": "Promote when the fixture reaches interactive partly unfetched with no frame stall on absent-block read.",
   "expected_failing_assertion": "No range streaming exists.",
   "owner_item": "BPTK-106",
-  "active_gate_evidence": "The packaging timing surface keeps chunk integrity measurement without a runtime claim.",
+  "active_gate_evidence": "test/package.test.mjs asserts the plan splits prefetch from deferred, interactive starts partly unfetched, an absent-block read is non-blocking and pending, and the plan is byte-deterministic across runs.",
   "fixture": [
     "FIX-015"
   ],
