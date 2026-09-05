@@ -50,5 +50,36 @@ drawn; the frontier is the SDL video/hint/query surface (and, beyond it, the WAD
 file I/O + a staged Freedoom IWAD, not yet reached).
 
 Corpus: 9 at entry, 2 loaded — unchanged (no regression). `npm run gate` green
-(584 pass, 1 skip, 0 fail). Freedoom WAD: not yet staged (frontier is upstream
-of W_Init).
+(584 pass, 1 skip, 0 fail).
+
+## Cycle 2 — serve the banner/stdio + heap so Doom passes Z_Init
+
+Continuing the same run, serving what Doom reaches after entering `main`:
+- `SDL_SetHint`/`SDL_SetHintWithPriority` (advisory, accepted).
+- `putchar`/`puts`, and a full-width-pointer fix for `__stdio_common_vsprintf`/
+  `__stdio_common_vfprintf` (they truncated their format/destination pointers to
+  a dword; on x64 those are .rdata/stack addresses above 4 GiB). Doom now prints
+  its real banner and the `Z_Init` messages.
+- **Process default heap size** (hle): the default heap was 64 KiB, but Doom's
+  `Z_Init` zone allocator asks for several MiB in one `malloc` and gave up
+  ("Unable to allocate %i MiB of RAM for zone", exit -1). The default heap now
+  sizes to ¾ of the arena (≈24 MiB in the real 32 MiB arena; ≈1.5 MiB in the
+  2 MiB conformance arena). The heap base is the arena cursor, independent of
+  size, so no allocation address moves and conformance is unchanged. Doom's zone
+  now allocates ("zone memory: %p, %x allocated for zone") and it proceeds.
+
+### Result and exact frontier
+Chocolate Doom now runs its real startup through `Z_Init`: banner + zone
+allocator succeed. It stops at **`unsupported_opcode 0x0f12` — `F2 0F 12`
+MOVDDUP (SSE3), at RVA 0x25334**, ~2338 instructions in. MOVDDUP is outside the
+served x86-64 lift subset, and the SSE decoder (lib/lift64.mjs, lib/simd.mjs,
+lib/x64decode.mjs) is off-limits to Lane Z — this is a handoff to the lift/simd
+lane, not an exec64/hle gap.
+
+Because the SSE3 stop is **upstream of `W_Init`** (WAD loading), the WAD file
+I/O and a staged Freedoom IWAD are not yet reachable by Doom, and no SDL window
+is created. Freedoom is therefore not staged this cycle (it would be untestable
+against Doom's real path while the SSE3 gap stands). No synthesized frame, no
+faked WAD: the stop is the real MOVDDUP.
+
+Corpus: 9 at entry, 2 loaded — unchanged. `npm run gate` green (584 pass).
