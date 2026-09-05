@@ -15,6 +15,7 @@
     "lib/census.mjs",
     "lib/clock.mjs",
     "lib/cli.mjs",
+    "lib/conformance.mjs",
     "lib/corpus.mjs",
     "lib/doctor.mjs",
     "lib/engine.mjs",

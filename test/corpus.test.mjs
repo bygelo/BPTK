@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 import { acquireCorpus, computeGeneralizationDelta, loadAcquisitionManifest, loadRunRecords, runCorpus } from "../lib/corpus.mjs";
 import { ingestInput } from "../lib/ingest.mjs";
 import { createExtractionBound, assertChunkRatioBound } from "../lib/bound.mjs";
+import { buildExportLedger } from "../lib/corpus.mjs";
+import { runConformanceSuite } from "../lib/conformance.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -290,4 +292,50 @@ test("loadRunRecords refuses a file without a record array", (context) => {
   const badPath = join(root, "bad.json");
   writeFileSync(badPath, JSON.stringify({ no_record: true }));
   assert.throws(() => loadRunRecords(badPath), (error) => error.input_code === "run_record_invalid");
+});
+
+test("the export-coverage ledger joins corpus import against the empty emulated set", (context) => {
+  const stage = mkdtempSync(join(tmpdir(), "bptk-coverage-"));
+  context.after(() => rmSync(stage, { recursive: true, force: true }));
+  const entryDir = join(stage, "corpus-904");
+  const packageDir = join(entryDir, "package");
+  mkdirSync(packageDir, { recursive: true });
+  const payload = createPe32();
+  writeFileSync(join(packageDir, "payload.exe"), payload);
+  writeFileSync(join(packageDir, "bptk.json"), JSON.stringify({ schema_version: 1, executable: "payload.exe" }));
+  const manifestPath = join(stage, "corpus.json");
+  writeFileSync(manifestPath, JSON.stringify({
+    schema_version: 1,
+    record: [{ entry_id: "CORPUS-904", title: "coverage fixture", kind: "program", source_url: "https://corpus.invalid/fixture/payload.exe", license: "MIT", redistribution_basis: "Generated in-test fixture", size_byte: payload.length, sha256: createHash("sha256").update(payload).digest("hex"), game_loop: false, state: "acquired" }],
+  }));
+  process.env.BPTK_ACQUISITION_PATH = manifestPath;
+  context.after(() => { delete process.env.BPTK_ACQUISITION_PATH; });
+  const report = buildExportLedger({ stage });
+  assert.equal(report.record[0].status, "mapped");
+  assert.ok(report.symbol_count >= 1);
+  assert.equal(report.covered_count, 0);
+  assert.equal(report.absent_count, report.symbol_count);
+  assert.equal(report.is_within_budget, false);
+  assert.ok(report.ledger.some((entry) => /^kernel32\.dll!/i.test(entry.key)));
+});
+
+test("the conformance engine fails a zero-case export and passes an oracle match", () => {
+  const stub = (library, symbol) => {
+    if (library === "KERNEL32.dll" && symbol === "GetStdHandle") return { return_value: 42, last_error: 0 };
+    if (library === "KERNEL32.dll" && symbol === "ExitProcess") return { return_value: null, last_error: 0 };
+    return { return_value: null, last_error: "absent" };
+  };
+  const cases = [
+    { case_id: "C1", library: "KERNEL32.dll", symbol: "GetStdHandle", input: [-11], expected: { return_value: 42, last_error: 0 } },
+    { case_id: "C2", library: "KERNEL32.dll", symbol: "ExitProcess", input: [0], expected: { return_value: null, last_error: 0 } },
+  ];
+  const covered = runConformanceSuite(cases, stub, { served_export: ["KERNEL32.dll!GetStdHandle", "KERNEL32.dll!ExitProcess"] });
+  assert.equal(covered.pass_count, 2);
+  assert.equal(covered.is_coverage_complete, true);
+  const uncovered = runConformanceSuite(cases, stub, { served_export: ["KERNEL32.dll!GetStdHandle", "KERNEL32.dll!ExitProcess", "USER32.dll!MessageBoxA"] });
+  assert.equal(uncovered.is_coverage_complete, false);
+  assert.deepEqual(uncovered.uncovered_export, ["USER32.dll!MessageBoxA"]);
+  const wrong = runConformanceSuite([{ case_id: "C3", library: "KERNEL32.dll", symbol: "GetStdHandle", input: [-11], expected: { return_value: 7, last_error: 0 } }], stub);
+  assert.equal(wrong.fail_count, 1);
+  assert.match(wrong.result[0].mismatch[0], /return_value/);
 });

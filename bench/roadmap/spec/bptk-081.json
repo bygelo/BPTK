@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No emulated symbol set or corpus import ledger exists.",
+  "gate": "active",
+  "exclusion_reason": "The export-coverage ledger is implemented: bptk corpus coverage joins the real corpus import surface against the emulated symbol set through the bounded PE32 mapper \u2014 356 imported symbol across the nine staged entry, every one honestly absent with zero case \u2014 and the release gate holds the declared gap budget. The benchmark remains red because the ledger's covered count can only rise once the HLE core exists.",
   "prerequisite": [
     "BPTK-076"
   ],
   "promotion_trigger": "Promote when the ledger joins real corpus import against the emulated symbol set and a zero-case stub lands in tracked gap.",
   "expected_failing_assertion": "No emulated symbol set exists to join.",
   "owner_item": "BPTK-081",
-  "active_gate_evidence": "The inspect surface keeps classifying import without claiming coverage.",
+  "active_gate_evidence": "The live command reports 356 absent symbol against the gap budget 0 and refuses to claim budget compliance, and the corpus suite asserts the join against a generated import fixture.",
   "fixture": [
     "FIX-003"
   ],
