@@ -701,20 +701,20 @@ test("FIX-003: repeated exerciser run keeps the call trace, output, and memory h
 });
 
 test("unserved import: the refusal names the exact unserved surface instead of executing", (context) => {
-  // CreateThread is a kernel32 export the single-threaded core never honestly serves.
-  const imports = [{ library: "kernel32.dll", symbol: "CreateThread" }];
+  // GetSystemPowerStatus is a kernel32 export outside the served HLE surface.
+  const imports = [{ library: "kernel32.dll", symbol: "GetSystemPowerStatus" }];
   const packagePath = createHlePackage(context, "unserved.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
   assert.equal(report.is_executed, false);
   assert.equal(report.stop_reason, "import_present");
   assert.equal(report.hle ?? null, null);
-  assert.match(report.exception.message, /CreateThread|kernel32\.dll/);
+  assert.match(report.exception.message, /GetSystemPowerStatus|kernel32\.dll/);
 });
 
 test("unserved import: a partially served surface reports the served fraction", (context) => {
   const imports = [
     { library: "kernel32.dll", symbol: "GetLastError" },
-    { library: "kernel32.dll", symbol: "CreateThread" },
+    { library: "kernel32.dll", symbol: "GetSystemPowerStatus" },
   ];
   const packagePath = createHlePackage(context, "partial.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
@@ -938,6 +938,70 @@ test("FIX-008 slice: repeated storage exerciser run keeps trace and memory hashe
   const second = readRun(createHlePackage(context, "fix008.exe", build().file));
   assert.equal(first.hle.trace_sha256, second.hle.trace_sha256);
   assert.equal(first.memory_sha256, second.memory_sha256);
+});
+
+test("BPTK-146: the widened Plink surface serves the ANSI file and kernel objects over bounded state", () => {
+  const { guest, memory } = createConformanceMachine();
+  const scratch = guest.layout.arena_base + 0x00050000;
+  const dest = scratch + 0x100;
+
+  // CreateFileA opens the same virtual drive as CreateFileW, then GetFileAttributesExA
+  // reports the file, and DeleteFileA removes it so a re-query fails closed.
+  guest.writeAnsiString(scratch, "C:\\note.dat", 64);
+  const fileHandle = invoke(guest, "kernel32.dll", "CreateFileA", [scratch, 0xc0000000, 0, 0, 2, 0, 0]);
+  assert.notEqual(fileHandle, 0xffffffff, "CreateFileA opens a virtual-drive file");
+  assert.equal(invoke(guest, "kernel32.dll", "CloseHandle", [fileHandle]), 1);
+  assert.equal(invoke(guest, "kernel32.dll", "GetFileAttributesExA", [scratch, 0, dest]), 1);
+  assert.equal(memory.readMemory(dest, 4) & 0x80, 0x80, "a normal file reports FILE_ATTRIBUTE_NORMAL");
+  assert.equal(invoke(guest, "kernel32.dll", "DeleteFileA", [scratch]), 1);
+  assert.equal(invoke(guest, "kernel32.dll", "DeleteFileA", [scratch]), 0, "a removed file cannot be deleted twice");
+  assert.equal(guest.getLastError(), 2);
+
+  // A mutex is a real ownership object: releasing an owned mutex succeeds, a
+  // second release under-flows and reports ERROR_NOT_OWNER.
+  const mutex = invoke(guest, "kernel32.dll", "CreateMutexA", [0, 1, 0]);
+  assert.equal(invoke(guest, "kernel32.dll", "ReleaseMutex", [mutex]), 1);
+  assert.equal(invoke(guest, "kernel32.dll", "ReleaseMutex", [mutex]), 0);
+  assert.equal(guest.getLastError(), 288);
+
+  // An anonymous file mapping is zero-filled guest memory; the mapped view is
+  // readable and UnmapViewOfFile flushes it back into the mapping.
+  const mapping = invoke(guest, "kernel32.dll", "CreateFileMappingA", [0xffffffff, 0, 4, 0, 4096, 0]);
+  const view = invoke(guest, "kernel32.dll", "MapViewOfFile", [mapping, 0, 0, 0, 64]);
+  assert.notEqual(view, 0, "MapViewOfFile returns a guest-addressable view");
+  memory.writeMemory(view, 4, 0x41424344);
+  assert.equal(invoke(guest, "kernel32.dll", "UnmapViewOfFile", [view]), 1);
+
+  // CreateThread and CreateProcessA are the confined probe's honest refusals.
+  assert.equal(invoke(guest, "kernel32.dll", "CreateThread", [0, 0, 0x401000, 0, 0, dest]), 0);
+  assert.equal(guest.getLastError(), 164);
+  assert.equal(invoke(guest, "kernel32.dll", "CreateProcessA", [0, scratch, 0, 0, 0, 0, 0, 0, dest, dest + 16]), 0);
+  assert.equal(guest.getLastError(), 5);
+});
+
+test("BPTK-146: the advapi32 SID surface builds and compares over bounded guest memory", () => {
+  const { guest, memory } = createConformanceMachine();
+  const authority = guest.layout.arena_base + 0x00050000;
+  const sidPointer = authority + 0x40;
+  const otherPointer = authority + 0x80;
+
+  // AllocateAndInitializeSid builds a one-sub-authority SID; GetLengthSid reads
+  // its declared length, and CopySid + EqualSid round-trip it byte for byte.
+  memory.writeBlock(authority, Buffer.from([0, 0, 0, 0, 0, 5])); // SECURITY_NT_AUTHORITY
+  assert.equal(invoke(guest, "advapi32.dll", "AllocateAndInitializeSid", [authority, 1, 0x20, 0, 0, 0, 0, 0, 0, 0, sidPointer]), 1);
+  const sid = memory.readMemory(sidPointer, 4);
+  assert.equal(invoke(guest, "advapi32.dll", "GetLengthSid", [sid]), 12);
+  assert.equal(invoke(guest, "advapi32.dll", "CopySid", [64, otherPointer, sid]), 1);
+  assert.equal(invoke(guest, "advapi32.dll", "EqualSid", [sid, otherPointer]), 1);
+
+  // The security descriptor records its Revision, DACL-present bit, and owner.
+  const sd = otherPointer + 0x40;
+  assert.equal(invoke(guest, "advapi32.dll", "InitializeSecurityDescriptor", [sd, 1]), 1);
+  assert.equal(memory.readMemory(sd, 1), 1);
+  assert.equal(invoke(guest, "advapi32.dll", "SetSecurityDescriptorDacl", [sd, 1, 0, 0]), 1);
+  assert.equal(memory.readMemory(sd + 2, 2) & 0x0004, 0x0004, "SE_DACL_PRESENT is set");
+  assert.equal(invoke(guest, "advapi32.dll", "SetSecurityDescriptorOwner", [sd, sid, 0]), 1);
+  assert.equal(memory.readMemory(sd + 4, 4), sid, "the owner pointer is recorded");
 });
 
 test("RaiseException: an unhandled guest exception is a structured stop with the guest code", (context) => {
