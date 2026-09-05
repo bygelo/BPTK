@@ -19,7 +19,7 @@ mechanism that is testable before a second human joins.
 
 ## Recovery drill
 
-The recovery path is exercised, not prose. The drill, runtable for a
+The recovery path is exercised, not prose. The drill is runnable today by a
 single-maintainer project and required before any release:
 
 1. Clone the repository fresh into an empty directory.

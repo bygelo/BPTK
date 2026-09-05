@@ -206,7 +206,7 @@ P3 turns the first package into an externally testable platform without weakenin
 
 ## P4 — Research modern-game expansion without promising it
 
-P4 is evidence generation. Each item must result in a bounded implementation proposal, continued defer, or rejection.
+P4 is evidence generation. Each item must result in a bounded implementation proposal, continued defer, or rejection. The current prototype-or-defer verdict for every promoted P4 item is recorded in [the P4 deferral report](doc/research-p4-deferral.md).
 
 | ID | Behavior | Surface | Benchmark | Source | Tier | Dependency · Owner |
 |---|---|---|---|---|---|---|
