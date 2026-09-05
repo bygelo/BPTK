@@ -187,3 +187,41 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   report-only per the lane brief — no support claim, left planned. BPTK-138
   (frame budget) and 141 (audio/input latency) need a graphics/audio/input
   runtime that does not exist, so they are not honestly implementable here.
+
+## Cycle 10 — P4 feasibility reports (GS-004/005, GS-012/013)
+
+- **Done:** `doc/research-x86-64-memory64.md` and `doc/research-console-lane.md`
+  — feasibility + prototype paths for x86-64/memory64 and the PowerPC/MIPS
+  console lanes. Per the lane brief these are **report/prototype only, no
+  support claim**: the roadmap rows stay `planned`, passing stays 0, and the
+  legal detect-and-refuse rail is restated as absolute for console content.
+
+## Lane close-out summary
+
+Execution core (Pillar 1) + performance bars (Pillar 10). Implemented 43 → 55
+(+12), passing 0 (honest — no real end-to-end benchmark passes yet). Every
+promoted item carries real code + an active red contract + gate-green tests.
+
+Moat landed and measured:
+- GS-001 BPTK-046 static x86-PE→WASM recompiler (bit-exact vs the interpreter
+  oracle across the register-and-stack integer subset; hard refusal, no silent
+  fallback).
+- GS-002 BPTK-047 CFG + indirect-branch (jump-table) recovery.
+- GS-003 BPTK-048 hybrid fallback for self-modifying code (per-instruction
+  decode-cache invalidation).
+- GS-006 BPTK-051 guest SMP determinism harness.
+- GS-007 BPTK-052 SSE packed-SIMD strict-fallback conformance.
+- GS-010 BPTK-055 CPU-deterministic record & replay.
+- GS-011 BPTK-056 guest↔host ABI / import-thunk lowering.
+- GS-092/093 BPTK-136/137 recompiled throughput + speedup (measured ~68× over
+  the interpreter here — the moat metric).
+- GS-095/096/098 BPTK-139/140/142 cold-start, memory ceiling, sustained jitter.
+
+Left honestly unimplemented:
+- BPTK-138 (frame budget) / BPTK-141 (audio-underrun + input latency): need a
+  graphics/audio/input runtime owned by other lanes; not measurable here.
+- BPTK-049/050 (x86-64, memory64) / BPTK-057/058 (console): P4 report-only per
+  the brief — feasibility documented, no support claim.
+
+Verifier: `npm run gate` exit 0 at every commit; final 326 tests, 54 packaged
+files, passing 0.
