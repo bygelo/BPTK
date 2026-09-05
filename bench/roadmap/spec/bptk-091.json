@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No approved adapter or Wasm engine build exists.",
+  "gate": "active",
+  "exclusion_reason": "The engine lane is no longer a bare census label: the host fingerprints the asset's engine family, pairs it to the declared open-reimplementation build for that family (PrBoom+, EDuke32, QuakeSpasm, ScummVM, Sarien) under a rights boundary that keeps the user-owned asset held separate, and refuses a requested engine that contradicts the fingerprint as a mislabel. The benchmark stays red because no embedded Wasm engine build exists and no rights are attested, so the host produces a pairing plan but never reads the asset or runs anything, under the BPTK-002 corpus denominator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the matched title runs on its Wasm engine with separated asset and the no-rights case is blocked.",
-  "expected_failing_assertion": "No engine runtime host exists.",
+  "expected_failing_assertion": "The host produces a pairing plan but stays blocked because no Wasm build is embedded and no rights are attested, so nothing runs.",
   "owner_item": "BPTK-091",
-  "active_gate_evidence": "The engine census keeps routing to named reimplementation without bundling code.",
+  "active_gate_evidence": "test/engine.test.mjs asserts a fingerprinted asset paired to its reimplementation with the asset held separate, a mislabel refusal for a contradicting engine, the blocked-until-build-and-rights terminal state, an unfingerprinted asset pairing with nothing, and real-CLI reachability that never copies the asset.",
   "fixture": [
     "FIX-022"
   ],

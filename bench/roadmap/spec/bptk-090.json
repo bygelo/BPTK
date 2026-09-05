@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The port surface reports the missing toolchain and adapter without a scaffold.",
+  "gate": "active",
+  "exclusion_reason": "The source lane autodetects the build system generically from marker files: a CMake, Meson, autotools, premake, SCons, MSBuild, or Make tree is recognized, the most-declarative system is ranked first, the pinned Emscripten adapter patch set is declared, and a reproducibility digest over the detected inputs plus the pinned patch set is stable across runs and moves when the tree changes. The benchmark stays red because the clean-environment browser build cannot be produced or byte-compared until Emscripten is present and the SDL/OpenGL adapter lands under the BPTK-002 corpus denominator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when each declared build system is detected and the pinned patch set builds reproducibly from clean checkout.",
-  "expected_failing_assertion": "No build-system detection exists.",
+  "expected_failing_assertion": "No compiled browser artifact is emitted and the source lane reports blocked because emcc and the adapter are absent.",
   "owner_item": "BPTK-090",
-  "active_gate_evidence": "The port surface keeps reporting the missing Emscripten and adapter step honestly.",
+  "active_gate_evidence": "test/port.test.mjs asserts CMake, Make, and Meson detection at the port surface, the specificity ranking that outranks a plain Makefile, a reproducibility digest stable across two runs and sensitive to the input tree, and the honest blocked terminal state with no package emitted.",
   "fixture": [
     "FIX-014"
   ],

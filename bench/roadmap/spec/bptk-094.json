@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The census refuses DOS and 16-bit input with identity and no emulator lane exists.",
+  "gate": "active",
+  "exclusion_reason": "The pre-Win32 emulator lane exists as a header-signature boundary: DOS (plain MZ), Win16 (NE), and the LE/LX linear family are admitted to the emulator lane under a declared sandbox confinement contract that denies all host reach, while a Win32 PE32/PE32+ image is refused and kept on the binary lane. The benchmark stays red because no emulator core is embedded — admission never becomes execution — until the sandboxed core lands under the BPTK-002 corpus denominator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when pre-Win32 fixture route to the lane and the PE32 fixture never does.",
-  "expected_failing_assertion": "The front door refuses pre-Win32 input with no lane target.",
+  "expected_failing_assertion": "No emulator core is embedded, so an admitted pre-Win32 input stays blocked and is never executed.",
   "owner_item": "BPTK-094",
-  "active_gate_evidence": "The ingest path keeps refusing DOS, 16-bit, and archive input with structured reason.",
+  "active_gate_evidence": "test/emulator.test.mjs asserts DOS/Win16/LE admission with host-reach-denied sandbox, PE32 refusal onto the binary lane, the never-executed blocked terminal state, and reachability at the real CLI keeping PE32 out.",
   "fixture": [
     "FIX-001"
   ],

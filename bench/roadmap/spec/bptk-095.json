@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No lane chain exists; the run surface reports the missing runtime only.",
+  "gate": "active",
+  "exclusion_reason": "The cross-lane fallback chain consumes the front-door ranking and walks candidate lanes in confidence order: each lane's structural precondition is evaluated (a refused binary, an undetected build system, an absent engine fingerprint, a non-pre-Win32 image), the first lane whose precondition holds becomes the carried candidate, every skipped lane records its per-hop reason, and an exhausted chain terminates in a bounded no-lane state. The benchmark stays red because a carried candidate is a structural lane match only — no candidate lane has a passing runtime, so no title is actually carried to a running state, under the BPTK-002 corpus denominator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the fallback chain hops on the declared precondition failure with recorded reason and terminates bounded.",
-  "expected_failing_assertion": "No fallback chain exists.",
+  "expected_failing_assertion": "A carried candidate is a structural match; no lane has a passing runtime, so the chain never proves a title runs.",
   "owner_item": "BPTK-095",
-  "active_gate_evidence": "The graphics doctor keeps reason-bound blocking, which is the same recorded-reason discipline.",
+  "active_gate_evidence": "test/ingest.test.mjs asserts a plain PE32 carried as a binary-lane candidate, a refused binary falling to the engine lane with a recorded hop, a bounded no-lane terminal state for an unroutable input, and real-CLI reachability that never asserts the title runs.",
   "fixture": [
     "FIX-010"
   ],
