@@ -15,7 +15,29 @@ import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
-import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile, createConformanceMachine } from "../lib/hle.mjs";
+import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
+
+// A bounded machine with a read-only host-file store and an initial
+// environment, for the file-read + WAD-search path (the corpus-007 lane). The
+// clock is the one deterministic virtual source the HLE requires.
+function createHostMachine(hostFile, environment) {
+  const memory = createIsolatedWin32Memory();
+  let guestMs = 0;
+  const clock = {
+    mode: "virtual_monotonic",
+    elapsedGuestMs: () => guestMs,
+    advanceVirtualMs: (delta) => { guestMs += delta; },
+    tickCount: () => Math.floor(guestMs) >>> 0,
+    qpc: () => Math.floor(guestMs * hleProfile.qpc_frequency_hz / 1000),
+    rdtsc: () => Math.floor(guestMs * 1000000 / 1000),
+    describe: () => ({ source: "one_monotonic_clock", mode: "virtual_monotonic" }),
+  };
+  return { memory, guest: createWin32Hle(memory, memory.layout, { executable_name: "game.exe", clock, host_file: hostFile, environment }) };
+}
+
+function invokeHost(guest, library, symbol, argument) {
+  return guest.invokeExport(guest.lookupExport(library, symbol), argument);
+}
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -455,6 +477,117 @@ test("BPTK-101: the kernel32 string family copies and concatenates bytes into gu
   guest.writeAnsiString(src, "cd", 16);
   invoke(guest, "kernel32.dll", "lstrcatA", [dest, src]);
   assert.equal(guest.readAnsiString(dest), "abcd");
+});
+
+test("BPTK-031: the ucrt formatted-output backend expands a real x64 va_list", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const format = base + 0x40;
+  const dest = base + 0x100;
+  const valist = base + 0x200;
+  const strArg = base + 0x300;
+  guest.writeAnsiString(format, "n=%d h=%x s=%s c=%c%%", 40);
+  guest.writeAnsiString(strArg, "OK", 8);
+  // The va_list is eight-byte slots in argument order: 42, 0xbeef, &"OK", 'Z'.
+  memory.writeMemory(valist + 0, 4, 42); memory.writeMemory(valist + 4, 4, 0);
+  memory.writeMemory(valist + 8, 4, 0xbeef); memory.writeMemory(valist + 12, 4, 0);
+  memory.writeMemory(valist + 16, 4, strArg); memory.writeMemory(valist + 20, 4, 0);
+  memory.writeMemory(valist + 24, 4, 0x5a); memory.writeMemory(valist + 28, 4, 0);
+  const written = invoke(guest, "api-ms-win-crt-stdio-l1-1-0.dll", "__stdio_common_vsprintf", [0, dest, 64, format, 0, valist]);
+  assert.equal(guest.readAnsiString(dest), "n=42 h=beef s=OK c=Z%");
+  assert.equal(written, "n=42 h=beef s=OK c=Z%".length, "the return is the full conversion length");
+});
+
+test("BPTK-031: printf width, precision, zero-fill, and sign flags render like C", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const format = base + 0x40;
+  const dest = base + 0x100;
+  const valist = base + 0x200;
+  guest.writeAnsiString(format, "[%05d][%+d][%8.3f][%-4d|]", 40);
+  memory.writeMemory(valist + 0, 4, 0xffffffd6); memory.writeMemory(valist + 4, 4, 0xffffffff); // -42 (int, sign-extended low dword)
+  memory.writeMemory(valist + 8, 4, 7); memory.writeMemory(valist + 12, 4, 0);
+  memory.writeMemory(valist + 16, 8, 0); // 3.14159 as a double, written below
+  memory.writeMemory(valist + 24, 4, 5); memory.writeMemory(valist + 28, 4, 0);
+  const buf = Buffer.alloc(8); buf.writeDoubleLE(3.14159, 0);
+  memory.writeBlock(valist + 16, buf);
+  invoke(guest, "api-ms-win-crt-stdio-l1-1-0.dll", "__stdio_common_vsprintf", [0, dest, 64, format, 0, valist]);
+  assert.equal(guest.readAnsiString(dest), "[-0042][+7][   3.142][5   |]");
+});
+
+test("BPTK-031: fopen honors its mode string — a read of an absent file never creates it", () => {
+  const { guest } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const path = base + 0x40;
+  const modeRead = base + 0x80;
+  const modeWrite = base + 0x90;
+  guest.writeAnsiString(path, "c:\\iwad.wad", 16);
+  guest.writeAnsiString(modeRead, "rb", 4);
+  guest.writeAnsiString(modeWrite, "wb", 4);
+  assert.equal(invoke(guest, "msvcrt.dll", "fopen", [path, modeRead]), 0, "a read of an absent file returns NULL");
+  assert.equal(guest.virtualFileSize("c:\\iwad.wad"), null, "and does not fabricate the file");
+  const stream = invoke(guest, "msvcrt.dll", "fopen", [path, modeWrite]);
+  assert.notEqual(stream, 0, "a write mode creates the file and returns a stream");
+  assert.equal(guest.virtualFileSize("c:\\iwad.wad"), 0, "the created file exists at zero length");
+});
+
+test("BPTK-031: a staged host file reads its real bytes through fopen/fseek/ftell/fread", () => {
+  const wad = Buffer.from("IWAD\x02\x00\x00\x00payloadbytes");
+  const { guest, memory } = createHostMachine(new Map([["c:\\game\\freedoom1.wad", wad]]), { DOOMWADDIR: "C:\\game" });
+  const base = guest.layout.arena_base;
+  const path = base + 0x40;
+  const mode = base + 0x80;
+  const buffer = base + 0x100;
+  guest.writeAnsiString(path, "C:\\game\\freedoom1.wad", 40);
+  guest.writeAnsiString(mode, "rb", 4);
+  // The file exists at its real size before any read, and never mutates the host.
+  assert.equal(guest.virtualFileSize("c:\\game\\freedoom1.wad"), wad.length);
+  const stream = invokeHost(guest, "msvcrt.dll", "fopen", [path, mode]);
+  assert.notEqual(stream, 0, "the staged file opens for read");
+  assert.equal(invokeHost(guest, "msvcrt.dll", "fseek", [stream, 0, 2]), 0, "seek to end");
+  assert.equal(invokeHost(guest, "msvcrt.dll", "ftell", [stream]), wad.length, "ftell reports the real size");
+  assert.equal(invokeHost(guest, "msvcrt.dll", "fseek", [stream, 0, 0]), 0, "seek back to start");
+  const count = invokeHost(guest, "msvcrt.dll", "fread", [buffer, 1, 8, stream]);
+  assert.equal(count, 8, "fread returns the item count");
+  assert.equal(memory.readBlock(buffer, 8).toString("latin1"), "IWAD\x02\x00\x00\x00", "the real header bytes land in the guest buffer");
+});
+
+test("BPTK-031: DOOMWADDIR is served through _wgetenv from the initial environment", () => {
+  const { guest } = createHostMachine(new Map(), { DOOMWADDIR: "C:\\game" });
+  const name = guest.layout.arena_base + 0x40;
+  guest.writeWideString(name, "DOOMWADDIR", 16);
+  const pointer = invokeHost(guest, "msvcrt.dll", "_wgetenv", [name]);
+  assert.notEqual(pointer, 0, "a seeded variable resolves");
+  assert.equal(guest.readWideString(pointer), "C:\\game");
+});
+
+test("BPTK-031: the scanf engine parses a %s word and a %d integer from a string", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const buffer = base + 0x40;
+  const format = base + 0x80;
+  const word = base + 0x100;
+  const number = base + 0x180;
+  const valist = base + 0x200;
+  guest.writeAnsiString(buffer, "Frame 419", 16);
+  guest.writeAnsiString(format, "%19s %d", 16);
+  memory.writeMemory(valist + 0, 4, word); memory.writeMemory(valist + 4, 4, 0);
+  memory.writeMemory(valist + 8, 4, number); memory.writeMemory(valist + 12, 4, 0);
+  const assigned = invoke(guest, "api-ms-win-crt-stdio-l1-1-0.dll", "__stdio_common_vsscanf", [0, buffer, 16, format, 0, valist]);
+  assert.equal(assigned, 2, "both fields assign");
+  assert.equal(guest.readAnsiString(word), "Frame");
+  assert.equal(memory.readMemory(number, 4), 419);
+});
+
+test("BPTK-031: _wmkdir over a valid c:\\ path succeeds and feof tracks a real file position", () => {
+  const { guest } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const dir = base + 0x40;
+  guest.writeWideString(dir, "c:\\game\\cfg", 16);
+  assert.equal(invoke(guest, "msvcrt.dll", "_wmkdir", [dir]), 0, "a valid directory path succeeds");
+  const bad = base + 0x100;
+  guest.writeWideString(bad, "d:\\notallowed", 20);
+  assert.equal(invoke(guest, "msvcrt.dll", "_wmkdir", [bad]) | 0, -1, "an out-of-tree path is refused");
 });
 
 test("BPTK-101: MulDiv rounds half away from zero and refuses a zero denominator", () => {
