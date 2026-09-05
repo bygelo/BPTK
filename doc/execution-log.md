@@ -130,3 +130,21 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   deployed on the run surface.
 - **Counts:** implemented 49 → 50; passing 0. Gate exit 0 (316 tests).
 - **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-056 (ABI thunk lowering).
+
+## Cycle 7 — BPTK-056 (GS-011) guest↔host ABI / import-thunk lowering
+
+- **Done:** `lib/abi.mjs` — `lowerThunk`/`verifyStackCleanup` for cdecl,
+  stdcall, fastcall, thiscall (register split + correct callee/caller stack
+  cleanup), and `measureCrossing` which times the real recompiled-guest↔host
+  boundary as a WebAssembly import call (a tiny hand-built module calling an
+  imported host function N times). ~4.9 ns/crossing here, every crossing
+  reaching host emulation.
+- **Evidence:** `test/abi.test.mjs` (5) — every convention balances the stack
+  across arg counts, stdcall/cdecl cleanup sides correct, register conventions
+  pass the first args in registers, the crossing reaches host every call, and
+  the cost is reported against the bar honestly red.
+- **Why still red:** the crossing-cost bar is a BPTK-002 reference-desktop
+  figure (not this host), and the whole Win32 HLE isn't wired into the
+  recompiled crossing (the measured boundary is the raw WASM import call).
+- **Counts:** implemented 50 → 51; passing 0. Gate exit 0 (321 tests, 53 files).
+- **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-050 (memory64).
