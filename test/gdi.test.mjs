@@ -218,7 +218,7 @@ function buildGdiConformanceCase() {
   let caseNumber = 0;
   function define(symbol, input, expected) {
     caseNumber += 1;
-    caseList.push({ case_id: `GDI-${String(caseNumber).padStart(3, "0")}`, library: "GDI32.dll", symbol, input, expected });
+    caseList.push({ case_id: `GDI-${String(caseNumber).padStart(3, "0")}`, library: "gdi32.dll", symbol, input, expected });
   }
   const dcStep = ["CreateCompatibleDC", [0]]; // yields FIRST_HANDLE, a 1x1 surface
   const dc2Step = ["CreateCompatibleDC", [0]]; // yields FIRST_HANDLE + 4

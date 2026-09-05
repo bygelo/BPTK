@@ -238,7 +238,7 @@ function buildUserConformanceCase() {
   let caseNumber = 0;
   function define(symbol, input, expected) {
     caseNumber += 1;
-    caseList.push({ case_id: `USER-${String(caseNumber).padStart(3, "0")}`, library: "USER32.dll", symbol, input, expected });
+    caseList.push({ case_id: `USER-${String(caseNumber).padStart(3, "0")}`, library: "user32.dll", symbol, input, expected });
   }
   const registerStep = ["RegisterClassW", ["AppClass", 0]];
   const createStep = ["CreateWindowExW", ["AppClass", 0]];

@@ -20,22 +20,25 @@ All three contracts are **green**: contracts 1 and 3 as of cycle 1
 
 The subsystem depends on the thread core (the message queue is per-thread) and
 the SEH core. Neither `lib/thread.mjs` nor `lib/seh.mjs` exists in this
-worktree yet — they are built in sibling lanes and merged threads-first. So:
+worktree yet — they are built in sibling lanes and merged threads-first. The
+USER32/GDI export logic does not depend on either file (it operates on the
+guest memory model), so it is registered now; two bindings remain for the
+rebase:
 
 - The per-thread message queue keys on the single declared guest thread id
-  (`userBound.thread_id_default`) instead of a live thread registry. When the
-  thread core lands and this lane rebases onto it, the queue keys on the real
-  registry — a one-line change in `createUserSubsystem`.
-- The USER32 export table (`userExportTable` in `lib/user.mjs`) is authored but
-  **not yet registered** into `lib/hle.mjs`. Registering it edits the guest
-  literal in the shared HLE file; that edit is held until after the
-  threads-first rebase to avoid a premature merge conflict. Until then the
-  live corpus export-coverage ledger is unchanged (the surface is real code
-  with a green module contract, but not yet reachable from a guest PE).
+  (`hleProfile.thread_id`) instead of a live thread registry. When the thread
+  core lands and this lane rebases onto it, the queue keys on the real
+  registry — a one-line change where `createUserSubsystem` is constructed.
+- The class `WndProc` field is a guest code pointer, stored as a number, so the
+  window manager falls back to `DefWindowProc` for every message. When the CPU
+  core lands, dispatch invokes the real guest procedure through it. The HLE
+  conformance measures the DefWindowProc-observable result, which is exact.
 
 The honest consequence: **0 passing corpus benchmark stays 0.** No real `.exe`
-stage moves until the whole thread → seh → cpu → user/gdi block lands. Cycle 1
-delivers verifiable generic logic and its acceptance fixtures, not a playable.
+stage moves until the whole thread → seh → cpu → user/gdi block lands and a
+game's WndProc actually runs. What is real now: a guest PE that imports
+`user32.dll` / `gdi32.dll` binds its IAT to these thunks and dispatches through
+the subsystem, and the HLE conformance covers every one of the served exports.
 
 ## Cycle 1 — USER32 window class, lifecycle, message loop, input
 
@@ -120,12 +123,43 @@ computed in the suite from the same declared scene, `committed_baseline` is
 
 Gate: `npm run gate` exits 0 (185 tests pass; 46-file package manifest).
 
+## Cycle 3 — register the surface into the Win32 HLE
+
+`lib/hle.mjs` (registration/wiring only), `lib/user.mjs`, `lib/gdi.mjs`.
+
+Delivered:
+
+- `userExportTable` and `gdiExportTable` are spread into the HLE export
+  registry; the `user` and `gdi` subsystems are attached to the per-run guest;
+  `user32.dll` and `gdi32.dll` join the module table so `GetModuleHandle` /
+  `GetProcAddress` resolve them.
+- The `RegisterClass(Ex)W` rows parse the WNDCLASS(EX)W struct from guest
+  memory; `TextOutW` reads the explicit `cchString` count; `MoveToEx` writes
+  the previous point back to the guest `LPPOINT`. The dll names are lowercase
+  to match the case-sensitive import join the core uses.
+- The HLE conformance case table (`buildConformanceCaseTable`) gains a case for
+  every registered USER32/GDI export, driven through real guest memory, so
+  `test/hle.test.mjs`'s coverage-complete assertion now covers this surface.
+
+Coverage delta on the served Win32 surface:
+
+| | Served export |
+| --- | --- |
+| Before | 118 |
+| After | 150 (+14 user32, +18 gdi32) |
+
+The **live corpus benchmark coverage is still 0 passing** — a served export is
+reachable and conformance-covered, but no real game reaches a passing state
+until the whole thread → seh → cpu → user/gdi block lands. The gain here is
+that the USER/GDI surface is now honestly served and measured, not stubbed.
+
+Gate: `npm run gate` exits 0 (185 tests pass; 46-file package manifest).
+
 ## Next
 
-- Post-rebase: register `userExportTable` and `gdiExportTable` into
-  `lib/hle.mjs`, attach the `user` and `gdi` subsystems to the guest, key the
-  message queue on the real thread registry, and record the live corpus
-  export-coverage delta here.
+- On the threads-first rebase: key the message queue on the real thread
+  registry, and route `WndProc` dispatch through the CPU core so a guest's own
+  window procedure runs.
 - Deepen the surface as the corpus demands: `GetMessage` blocking against the
   timer slice, `WM_TIMER` from `SetTimer`, palette animation, and the DIB
   section bit-depth paths (8-bit palettized alongside 555/565).
