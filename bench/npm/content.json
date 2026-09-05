@@ -45,6 +45,7 @@
     "lib/shader.mjs",
     "lib/status.mjs",
     "lib/storage.mjs",
+    "lib/thread.mjs",
     "lib/toolchain.mjs",
     "package.json"
   ]
