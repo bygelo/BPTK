@@ -75,6 +75,7 @@
     "packageHost",
     "parseD3d9PixelShader",
     "probeGraphics",
+    "prototypeDxbcCoverage",
     "readPrefix",
     "referenceProjectiveTexgenFrame",
     "renderProjectiveTexgenFrame",

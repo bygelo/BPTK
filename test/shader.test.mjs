@@ -24,6 +24,7 @@ import {
   generateProjectiveTexgen,
   generateReferenceFrame,
   parseD3d9PixelShader,
+  prototypeDxbcCoverage,
   referenceProjectiveTexgenFrame,
   renderProjectiveTexgenFrame,
 } from "../lib/shader.mjs";
@@ -183,6 +184,51 @@ test("the containment enforces the size and instruction budget", () => {
   const valid = containShaderInput(new Uint8Array(assemblePixelShader(0x0200, [[1, [destTemp(0), srcConstant(0)]]]).buffer));
   assert.equal(valid.refused, false);
   assert.equal(valid.model, "2.0");
+});
+
+function assembleDxbc(fourcc, chunkDword) {
+  const header = 8 + 20 + 4; // magic + checksum + version/size/count fields, one chunk offset
+  const chunkOffset = 32 + 4;
+  const chunkByteLength = 8 + chunkDword.length * 4;
+  const total = chunkOffset + chunkByteLength;
+  const byte = new Uint8Array(total);
+  const view = new DataView(byte.buffer);
+  byte.set([0x44, 0x58, 0x42, 0x43]); // "DXBC"
+  view.setUint32(20, 1, true); // version
+  view.setUint32(24, total, true); // total size
+  view.setUint32(28, 1, true); // chunk count
+  view.setUint32(32, chunkOffset, true); // chunk offset
+  for (let index = 0; index < 4; index += 1) byte[chunkOffset + index] = fourcc.charCodeAt(index);
+  view.setUint32(chunkOffset + 4, chunkByteLength - 8, true); // chunk size
+  for (const [index, dword] of chunkDword.entries()) view.setUint32(chunkOffset + 8 + index * 4, dword, true);
+  return byte;
+}
+
+const dxbcInstruction = (opcode) => (opcode & 0x7ff) | (1 << 24);
+
+test("the DXBC prototype reader emits a complete named-opcode coverage table", () => {
+  // versionToken, dwordCount, then add(0), mad(50), sample(69), unknown(700)
+  const instruction = [dxbcInstruction(0), dxbcInstruction(50), dxbcInstruction(69), dxbcInstruction(700)];
+  const chunk = [0x00000050, instruction.length, ...instruction];
+  const report = prototypeDxbcCoverage(assembleDxbc("SHEX", chunk));
+  assert.equal(report.is_prototype, true);
+  assert.equal(report.shader_chunk, "SHEX");
+  assert.equal(report.is_complete, true, "every encountered opcode must be named");
+  const names = report.coverage.map((entry) => entry.name);
+  assert.deepEqual(names, ["add", "mad", "sample", "unsupported_opcode_700"]);
+  assert.ok(report.named_blocked.includes("sample"), "sample is enumerated but named-blocked");
+  assert.ok(report.named_blocked.includes("unsupported_opcode_700"), "the unknown opcode is named, not dropped");
+  assert.equal(report.lowerable_count, 2, "add and mad are lowerable");
+});
+
+test("the DXBC prototype names DXIL bitcode as blocked and refuses a non-DXBC container", () => {
+  const dxil = prototypeDxbcCoverage(assembleDxbc("DXIL", [0, 0]));
+  assert.equal(dxil.is_dxil_bitcode, true);
+  assert.deepEqual(dxil.named_blocked, ["dxil_bitcode_lowering"]);
+  const notDxbc = new Uint8Array(64);
+  notDxbc.set([0x46, 0x4f, 0x4f, 0x00]);
+  assert.throws(() => prototypeDxbcCoverage(notDxbc), (error) => error.input_code === "not_a_dxbc_container");
+  assert.throws(() => prototypeDxbcCoverage(new Uint8Array(8)), (error) => error.input_code === "dxbc_container_truncated");
 });
 
 test("the frame diff computes its reference at test time with no committed baseline", (context) => {
