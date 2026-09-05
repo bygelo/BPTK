@@ -24,9 +24,12 @@ import {
   generateProjectiveTexgen,
   generateReferenceFrame,
   parseD3d9PixelShader,
+  prototypeComputeDispatch,
   prototypeDxbcCoverage,
+  prototypeTileResolve,
   referenceProjectiveTexgenFrame,
   renderProjectiveTexgenFrame,
+  tileFramebuffer,
 } from "../lib/shader.mjs";
 
 function assemblePixelShader(model, instructions) {
@@ -229,6 +232,34 @@ test("the DXBC prototype names DXIL bitcode as blocked and refuses a non-DXBC co
   notDxbc.set([0x46, 0x4f, 0x4f, 0x00]);
   assert.throws(() => prototypeDxbcCoverage(notDxbc), (error) => error.input_code === "not_a_dxbc_container");
   assert.throws(() => prototypeDxbcCoverage(new Uint8Array(8)), (error) => error.input_code === "dxbc_container_truncated");
+});
+
+test("the console tile-resolve prototype round-trips a tiled framebuffer to linear", () => {
+  const width = 40;
+  const height = 40;
+  const pixel = Array.from({ length: width * height }, (_, index) => index % 251);
+  const tiled = tileFramebuffer({ width, height, tile_size: 32, pixel });
+  const resolved = prototypeTileResolve(tiled);
+  assert.equal(resolved.is_prototype, true);
+  assert.equal(resolved.is_device_measured, false);
+  assert.deepEqual(resolved.linear, pixel, "the resolve must round-trip the tiled memory to linear");
+  assert.equal(resolved.webgpu_resolve.target, "texture_2d");
+  assert.throws(() => prototypeTileResolve({ width: 0, height: 4, tiled: [] }), (error) => error.input_code === "invalid_framebuffer");
+});
+
+test("the compute prototype computes the reference and names above-limit content", () => {
+  const within = prototypeComputeDispatch({ op: "add", operand: 3, workgroup_size: 64, input: [1, 2, 3, 4] });
+  assert.equal(within.within_limit, true);
+  assert.deepEqual(within.reference_output, [4, 5, 6, 7]);
+  assert.equal(within.is_device_bit_identical, false);
+  assert.equal(within.dispatch_count, 1);
+  const oversized = prototypeComputeDispatch({ op: "add", operand: 1, workgroup_size: 1024, input: [1] });
+  assert.equal(oversized.within_limit, false);
+  assert.match(oversized.named_blocked[0], /workgroup size 1024/);
+  const badOp = prototypeComputeDispatch({ op: "raytrace", input: [1] });
+  assert.equal(badOp.within_limit, false);
+  assert.match(badOp.named_blocked.join(" "), /raytrace/);
+  assert.throws(() => prototypeComputeDispatch({ op: "add", input: "not-an-array" }), (error) => error.input_code === "invalid_compute_input");
 });
 
 test("the frame diff computes its reference at test time with no committed baseline", (context) => {

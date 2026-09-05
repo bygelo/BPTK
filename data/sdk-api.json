@@ -75,13 +75,16 @@
     "packageHost",
     "parseD3d9PixelShader",
     "probeGraphics",
+    "prototypeComputeDispatch",
     "prototypeDxbcCoverage",
+    "prototypeTileResolve",
     "readPrefix",
     "referenceProjectiveTexgenFrame",
     "renderProjectiveTexgenFrame",
     "runBenchmark",
     "runCli",
     "runConformanceSuite",
-    "runPackage"
+    "runPackage",
+    "tileFramebuffer"
   ]
 }
