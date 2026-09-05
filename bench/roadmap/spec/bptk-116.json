@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No SDK surface exists.",
+  "gate": "active",
+  "exclusion_reason": "The authoring SDK surface is implemented as the package entry export set with a committed semver manifest, and the planning gate fails when the live entry exports differ from the committed API. The benchmark remains red because the four-host invariant proof needs the web-component and iframe host shapes that are still absent.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the SDK-only game runs in every host shape under the invariant and the semver contract is enforced in CI.",
   "expected_failing_assertion": "No public SDK exists.",
   "owner_item": "BPTK-116",
-  "active_gate_evidence": "The source-port diagnosis and host emission keep the surface records an SDK can bind to.",
+  "active_gate_evidence": "The corpus suite compares the live entry exports with the committed manifest exactly, and the SDK contract check in the planning gate fails on any removal or rename.",
   "fixture": [
     "FIX-017"
   ],

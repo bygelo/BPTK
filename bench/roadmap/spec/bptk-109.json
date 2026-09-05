@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The thread command selects configuration but no header emission or isolation-measured selection exists.",
+  "gate": "active",
+  "exclusion_reason": "The hosting-constraint emission is implemented: every host emission carries the declared cross-origin header set with the expected isolation and the single-thread fallback statement. The benchmark remains red because measuring the served document on the declared host needs the hosting environment that is absent.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the emitted constraint yields isolation on the declared host and the absent-isolation case selects the single-thread bundle.",
   "expected_failing_assertion": "No header emission exists.",
   "owner_item": "BPTK-109",
-  "active_gate_evidence": "The thread command keeps atomic configuration with honest isolation observation.",
+  "active_gate_evidence": "The corpus suite asserts the constraint fields on the real package host emission through the CLI.",
   "fixture": [
     "FIX-018"
   ],

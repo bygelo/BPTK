@@ -158,6 +158,7 @@ ALLOWED_MJS_PATH = {
     Path("bin/bptk.mjs"),
     Path("data/corpus.json"),
     Path("data/corpus-run.json"),
+    Path("data/sdk-api.json"),
     Path("data/coverage-ratchet.json"),
     Path("MAINTAINERS.md"),
     Path(".github/CODEOWNERS"),
@@ -359,6 +360,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "data/corpus.json",
         "data/corpus-run.json",
         "data/coverage-ratchet.json",
+        "data/sdk-api.json",
         "data/status.json",
         "lib/benchmark.mjs",
         "lib/bound.mjs",
@@ -648,11 +650,28 @@ def validate_single_emitter(error: list[str]) -> None:
     if len(hit) != 1:
         error.append(f"single-emitter audit found {len(hit)} WGSL emitter: {hit}")
 
+
+def validate_sdk_contract(error: list[str]) -> None:
+    """The authoring SDK contract (GS-072): the committed API manifest matches the live entry exports."""
+    manifestPath = ROOT / "data/sdk-api.json"
+    nodeScript = "import('./lib/index.mjs').then(m => process.stdout.write(JSON.stringify(Object.keys(m).sort())))"
+    listing = subprocess.run(["node", "--input-type=module", "-e", nodeScript], capture_output=True, text=True, cwd=ROOT)
+    if listing.returncode != 0:
+        error.append("sdk contract: the package entry failed to import")
+        return
+    live = json.loads(listing.stdout)
+    declared = json.loads(manifestPath.read_text(encoding="utf-8"))
+    if sorted(declared.get("api", [])) != live:
+        removed = sorted(set(declared.get("api", [])) - set(live))
+        added = sorted(set(live) - set(declared.get("api", [])))
+        error.append(f"sdk contract: the entry exports differ from the committed manifest; removed {removed}, added {added}")
+
 def main() -> int:
     error: list[str] = []
     validate_path(error)
     validate_governance(error)
     validate_single_emitter(error)
+    validate_sdk_contract(error)
     validate_link(error)
     validate_claim(error)
     validate_license(error)

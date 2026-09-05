@@ -10,6 +10,7 @@
     "data/corpus.json",
     "data/corpus-run.json",
     "data/coverage-ratchet.json",
+    "data/sdk-api.json",
     "data/status.json",
     "lib/benchmark.mjs",
     "lib/bound.mjs",

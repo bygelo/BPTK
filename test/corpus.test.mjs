@@ -339,3 +339,26 @@ test("the conformance engine fails a zero-case export and passes an oracle match
   assert.equal(wrong.fail_count, 1);
   assert.match(wrong.result[0].mismatch[0], /return_value/);
 });
+
+test("the committed SDK API manifest matches the live package entry exactly", async () => {
+  const fs = await import("node:fs");
+  const manifest = JSON.parse(fs.readFileSync(new URL("../data/sdk-api.json", import.meta.url), "utf8"));
+  assert.equal(manifest.contract, "semver");
+  const live = Object.keys(await import("../lib/index.mjs")).sort();
+  assert.deepEqual(live, [...manifest.api].sort());
+});
+
+test("the host emission carries the declared cross-origin constraint", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-host-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const projectPath = join(rootPath, "project");
+  mkdirSync(projectPath);
+  writeFileSync(join(projectPath, "asset.txt"), "asset");
+  const result = run(["package", projectPath, "--host", "html", "--json"]);
+  assert.equal(result.status, 0);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.hosting_constraint.cross_origin_embedder_policy, "require-corp");
+  assert.equal(report.hosting_constraint.cross_origin_opener_policy, "same-origin");
+  assert.equal(report.hosting_constraint.cross_origin_isolation_expected, true);
+  assert.match(report.hosting_constraint.fallback, /single-thread bundle/);
+});
