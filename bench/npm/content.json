@@ -32,6 +32,7 @@
     "lib/index.mjs",
     "lib/inspect.mjs",
     "lib/legal.mjs",
+    "lib/net.mjs",
     "lib/package.mjs",
     "lib/performance.mjs",
     "lib/platform.mjs",
