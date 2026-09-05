@@ -454,20 +454,20 @@ test("FIX-003: repeated exerciser run keeps the call trace, output, and memory h
 });
 
 test("unserved import: the refusal names the exact unserved surface instead of executing", (context) => {
-  // IsBadReadPtr is a kernel32 export the Win32 core HLE does not serve.
-  const imports = [{ library: "kernel32.dll", symbol: "IsBadReadPtr" }];
+  // CreateThread is a kernel32 export the single-threaded core never honestly serves.
+  const imports = [{ library: "kernel32.dll", symbol: "CreateThread" }];
   const packagePath = createHlePackage(context, "unserved.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
   assert.equal(report.is_executed, false);
   assert.equal(report.stop_reason, "import_present");
   assert.equal(report.hle ?? null, null);
-  assert.match(report.exception.message, /IsBadReadPtr|kernel32\.dll/);
+  assert.match(report.exception.message, /CreateThread|kernel32\.dll/);
 });
 
 test("unserved import: a partially served surface reports the served fraction", (context) => {
   const imports = [
     { library: "kernel32.dll", symbol: "GetLastError" },
-    { library: "kernel32.dll", symbol: "IsBadReadPtr" },
+    { library: "kernel32.dll", symbol: "CreateThread" },
   ];
   const packagePath = createHlePackage(context, "partial.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);

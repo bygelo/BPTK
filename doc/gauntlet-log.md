@@ -118,10 +118,29 @@ override and SSE, so real binaries cannot reach `entry` until both widen.
   import surface (OpenTTD i386 serves 89 of 302 import, Plink i386 75 of 142).
   Reached stage of the two i386 entry stays honestly at `loaded`.
 
+## 2026-09-05 — cycle 4
+
+### Implemented: BPTK-010 slice 2 — module loading and the memory/time probe
+
+- The unserved ledger ranked module loading next (LoadLibraryA, FreeLibrary,
+  each imported by both real i386 entry), so the cycle extended the Win32 core
+  HLE inside BPTK-010's own surface: LoadLibraryA/W/ExW over a declared
+  known-DLL set with real refcount and a no-file-system refusal for anything
+  else, FreeLibrary, IsBadReadPtr implemented the honest way (probe the range,
+  any fault answers bad), Sleep as declared guest time only, GetThreadTimes
+  from the one monotonic clock, and system DLL file names resolving to the
+  declared system directory.
+- Proof: 14 new conformance case (147 total, all 105 served export covered);
+  full suite 121 test, 0 failing.
+- Real payload: coverage ledger 93 → **100 covered** of the real 356-symbol
+  import surface (OpenTTD i386 serves 96 of 302 import, Plink i386 79 of 142).
+  Reached stage of the two i386 entry stays honestly at `loaded`.
+
 ### State after the commit
 
-- Implemented 37 → 40 across the three cycle; passing stays 0 (no benchmark
+- Implemented 37 → 40 across the four cycle; passing stays 0 (no benchmark
   runner exists yet).
-- Next highest-leverage target: module loading (LoadLibraryA, FreeLibrary)
-  inside the BPTK-010 surface, then the BPTK-009 instruction-subset widening
-  (operand-size override first) toward a real binary reaching `entry`.
+- Next highest-leverage target: the BPTK-009 instruction-subset widening
+  (operand-size override first) toward a real binary reaching `entry`, since
+  the remaining unserved families (threads, SEH unwind) need the thread and
+  exception models those item own.
