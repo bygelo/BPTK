@@ -217,11 +217,37 @@ test("lockstep stalls until every player's command for the turn is present", () 
   assert.equal(engine.turn_index(), 1);
 });
 
+test("an offline transport fails every send with the network-down contract and no fallback", () => {
+  const policy = createTransportPolicy({ allowlist: ["relay:a", "relay:b"], is_consented: true });
+  const relay = createMediatedRelay(policy);
+  relay.attach("relay:a");
+  relay.attach("relay:b");
+  relay.setOffline(true);
+  const result = relay.deliver("relay:a", "relay:b", deliveryChannel.reliable_ordered, "x");
+  assert.equal(result.is_delivered, false);
+  assert.equal(result.reason, "transport_offline");
+  assert.equal(result.wsa_error, wsaError.WSAENETDOWN);
+  assert.equal(relay.drain("relay:b", deliveryChannel.reliable_ordered).length, 0);
+  relay.setOffline(false);
+  assert.equal(relay.deliver("relay:a", "relay:b", deliveryChannel.reliable_ordered, "x").is_delivered, true);
+});
+
+test("the relay stamps the declared hop latency on a delivered frame", () => {
+  const policy = createTransportPolicy({ allowlist: ["relay:a", "relay:b"], is_consented: true });
+  const relay = createMediatedRelay(policy, { hop_latency_ms: 40 });
+  relay.attach("relay:a");
+  relay.attach("relay:b");
+  relay.deliver("relay:a", "relay:b", deliveryChannel.reliable_ordered, "x");
+  assert.equal(relay.drain("relay:b", deliveryChannel.reliable_ordered)[0].latency_ms, 40);
+});
+
 test("the two-instance fixture is accepted with zero off-allowlist and un-consented connection", () => {
   const report = runTwoInstanceFixture();
   assert.equal(report.is_ordered_in_order, true);
   assert.equal(report.is_unordered_multiset_match, true);
   assert.equal(report.is_lockstep_synced, true);
+  assert.equal(report.is_offline_disclosed, true);
+  assert.equal(report.round_trip_latency_ms, 50);
   assert.equal(report.off_allowlist_connection_count, 0);
   assert.equal(report.unconsented_connection_count, 0);
   assert.equal(report.host_socket_opened, false);
