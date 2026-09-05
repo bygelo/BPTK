@@ -18,16 +18,18 @@ import {
   mapFaultToException,
   mapToExnref,
   nestExceptionRecord,
+  planTlsCallback,
   raiseException,
   runTlsCallback,
   tlsReason,
 } from "../lib/seh.mjs";
+import { mapPe32 } from "../lib/pe.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
 // A minimal executable PE32 that runs the supplied byte at entry, so a real CPU
 // fault flows through executeProbe into the enriched exception report.
-function createPe32(code) {
+function createPe32(code, option = {}) {
   const file = Buffer.alloc(0x800);
   file.writeUInt16LE(0x5a4d, 0);
   file.writeUInt32LE(0x80, 0x3c);
@@ -53,6 +55,16 @@ function createPe32(code) {
   file.writeUInt32LE(0x600, sectionOffset + 16);
   file.writeUInt32LE(0x200, sectionOffset + 20);
   Buffer.from(code).copy(file, 0x200);
+  if (option.tls_callback) {
+    // TLS directory at RVA 0x1200 (24 byte), AddressOfCallBacks -> RVA 0x1140,
+    // a callback table of two executable-section entries then a terminator.
+    file.writeUInt32LE(0x1200, 0x98 + 96 + 9 * 8);
+    file.writeUInt32LE(24, 0x98 + 96 + 9 * 8 + 4);
+    file.writeUInt32LE(0x00401140, 0x200 + 0x1200 - 0x1000 + 12);
+    file.writeUInt32LE(0x00401000, 0x200 + 0x1140 - 0x1000);
+    file.writeUInt32LE(0x00401002, 0x200 + 0x1144 - 0x1000);
+    file.writeUInt32LE(0, 0x200 + 0x1148 - 0x1000);
+  }
   return file;
 }
 
@@ -334,6 +346,23 @@ test("a real CPU access violation carries the guest AV status code, access type,
   assert.equal(report.exception.guest_exception_code, exceptionCode.access_violation);
   assert.equal(report.exception.access_type, 0);
   assert.equal(report.exception.fault_address, 0);
+});
+
+test("the TLS callback plan fires the real mapper's callbacks in table order before entry", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-seh-tls-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const imagePath = join(rootPath, "game.exe");
+  writeFileSync(imagePath, createPe32([0xc3], { tls_callback: true }));
+  const report = mapPe32(imagePath);
+  // The mapper reports the two declared callbacks, still unexecuted.
+  assert.equal(report.tls_callback_count, 2);
+  const plan = planTlsCallback(report);
+  assert.equal(plan.callback_count, 2);
+  assert.deepEqual(plan.step.map((entry) => entry.address), [0x00401000, 0x00401002]);
+  assert.equal(plan.step[0].reason, tlsReason.process_attach);
+  assert.equal(plan.entry_address, report.entry_address);
+  assert.equal(plan.is_before_entry, true);
+  assert.equal(plan.is_executed, false);
 });
 
 test("a legacy delivery maps onto an exnref tag when the substrate declares one", () => {
