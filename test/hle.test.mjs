@@ -1075,6 +1075,93 @@ test("BPTK-010 msvcrt: atoi/_ultoa/rand compute real values", () => {
   assert.ok(first >= 0 && first <= 0x7fff && first !== second, "rand advances a bounded state");
 });
 
+test("BPTK-031 CRT ctype: the C-locale classification is served on the ucrt string api-set and msvcrt", () => {
+  const { guest } = createConformanceMachine();
+  const api = "api-ms-win-crt-string-l1-1-0.dll";
+  // isspace: space and the \t..\r whitespace run classify; a letter does not.
+  // This is the exact frontier Dwarf Fortress reached (isspace on the api-set).
+  for (const library of [api, "msvcrt.dll"]) {
+    assert.ok(invoke(guest, library, "isspace", [0x20]) !== 0, `${library} isspace(' ')`);
+    assert.ok(invoke(guest, library, "isspace", [0x09]) !== 0, `${library} isspace('\\t')`);
+    assert.equal(invoke(guest, library, "isspace", [0x41]), 0, `${library} isspace('A') is zero`);
+    assert.ok(invoke(guest, library, "isdigit", [0x37]) !== 0, `${library} isdigit('7')`);
+    assert.equal(invoke(guest, library, "isdigit", [0x41]), 0, `${library} isdigit('A') is zero`);
+    assert.ok(invoke(guest, library, "isalpha", [0x41]) !== 0, `${library} isalpha('A')`);
+    assert.ok(invoke(guest, library, "isalpha", [0x7a]) !== 0, `${library} isalpha('z')`);
+    assert.equal(invoke(guest, library, "isalpha", [0x39]), 0, `${library} isalpha('9') is zero`);
+    assert.ok(invoke(guest, library, "isalnum", [0x39]) !== 0, `${library} isalnum('9')`);
+    assert.ok(invoke(guest, library, "isupper", [0x41]) !== 0 && invoke(guest, library, "isupper", [0x61]) === 0);
+    assert.ok(invoke(guest, library, "islower", [0x61]) !== 0 && invoke(guest, library, "islower", [0x41]) === 0);
+    assert.ok(invoke(guest, library, "isxdigit", [0x66]) !== 0 && invoke(guest, library, "isxdigit", [0x67]) === 0, `${library} isxdigit f vs g`);
+    assert.ok(invoke(guest, library, "ispunct", [0x2e]) !== 0 && invoke(guest, library, "ispunct", [0x41]) === 0, `${library} ispunct('.')`);
+    assert.ok(invoke(guest, library, "iscntrl", [0x00]) !== 0 && invoke(guest, library, "iscntrl", [0x41]) === 0);
+    // isgraph excludes the space; isprint includes it. isgraph was DF's second
+    // ctype import from the api-set.
+    assert.ok(invoke(guest, library, "isgraph", [0x41]) !== 0 && invoke(guest, library, "isgraph", [0x20]) === 0, `${library} isgraph`);
+    assert.ok(invoke(guest, library, "isprint", [0x20]) !== 0, `${library} isprint(' ')`);
+    // The _l locale-tagged variant ignores its locale argument (the "C" locale).
+    assert.equal(invoke(guest, library, "isspace_l", [0x20, 0]), invoke(guest, library, "isspace", [0x20]));
+    assert.equal(invoke(guest, library, "isdigit_l", [0x37, 0]), invoke(guest, library, "isdigit", [0x37]));
+    // _isctype tests an arbitrary class mask over the same table (_ALPHA 0x100).
+    assert.ok(invoke(guest, library, "_isctype", [0x41, 0x100]) !== 0 && invoke(guest, library, "_isctype", [0x39, 0x100]) === 0);
+  }
+});
+
+test("BPTK-031 CRT ctype: toupper/tolower transform over the C locale on the api-set", () => {
+  const { guest } = createConformanceMachine();
+  for (const library of ["api-ms-win-crt-string-l1-1-0.dll", "api-ms-win-crt-convert-l1-1-0.dll", "msvcrt.dll"]) {
+    assert.equal(invoke(guest, library, "toupper", [0x61]), 0x41, `${library} toupper('a')`);
+    assert.equal(invoke(guest, library, "toupper", [0x41]), 0x41, `${library} toupper('A') is idempotent`);
+    assert.equal(invoke(guest, library, "toupper", [0x39]), 0x39, `${library} toupper('9') unchanged`);
+    assert.equal(invoke(guest, library, "tolower", [0x5a]), 0x7a, `${library} tolower('Z')`);
+    assert.equal(invoke(guest, library, "tolower", [0x7a]), 0x7a, `${library} tolower('z') is idempotent`);
+    assert.equal(invoke(guest, library, "_tolower_l", [0x41, 0]), 0x61, `${library} _tolower_l ignores locale`);
+  }
+});
+
+test("BPTK-031 CRT convert: strtol/strtoul/_itoa parse and format over the convert api-set", () => {
+  const { guest } = createConformanceMachine();
+  const api = "api-ms-win-crt-convert-l1-1-0.dll";
+  const text = guest.layout.arena_base + 0x40;
+  const endptr = guest.layout.arena_base + 0x80;
+  const out = guest.layout.arena_base + 0xc0;
+  // strtol: leading whitespace, sign, base-10 digit run; endptr at the first
+  // unconsumed byte.
+  guest.writeAnsiString(text, "  -42xyz", 16);
+  assert.equal(invoke(guest, api, "strtol", [text, endptr, 10]) | 0, -42);
+  assert.equal(guest.memory.readMemory(endptr, 4), text + 5, "strtol endptr points past -42");
+  // strtoul with a 0x prefix under base 16.
+  guest.writeAnsiString(text, "0xFF", 8);
+  assert.equal(invoke(guest, api, "strtoul", [text, 0, 16]), 255);
+  // strtol base 0 auto-detects octal.
+  guest.writeAnsiString(text, "0755", 8);
+  assert.equal(invoke(guest, api, "strtol", [text, 0, 0]), 0o755);
+  // _itoa is signed for base 10, an unsigned bit pattern for base 16.
+  assert.equal(invoke(guest, api, "_itoa", [-5, out, 10]), out);
+  assert.equal(guest.readAnsiString(out), "-5", "_itoa base 10 is signed");
+  assert.equal(invoke(guest, api, "_itoa", [255, out, 16]), out);
+  assert.equal(guest.readAnsiString(out), "ff", "_itoa base 16 is an unsigned pattern");
+  // srand reseeds the deterministic rand LCG on the utility api-set.
+  invoke(guest, "api-ms-win-crt-utility-l1-1-0.dll", "srand", [1]);
+  const first = invoke(guest, "api-ms-win-crt-utility-l1-1-0.dll", "rand", []);
+  invoke(guest, "api-ms-win-crt-utility-l1-1-0.dll", "srand", [1]);
+  assert.equal(invoke(guest, "api-ms-win-crt-utility-l1-1-0.dll", "rand", []), first, "srand(1) makes rand replay");
+});
+
+test("BPTK-031 CRT string: strrchr/strstr return a full-width x64 pointer", () => {
+  const { guest } = createConformanceMachine();
+  // vcruntime140 exports these intrinsics; Dwarf Fortress reached strrchr here.
+  const text = guest.layout.arena_base + 0x40;
+  guest.writeAnsiString(text, "a/b/c", 8);
+  assert.equal(invoke(guest, "vcruntime140.dll", "strrchr", [text, 0x2f]), text + 3, "last '/' at index 3");
+  assert.equal(invoke(guest, "vcruntime140.dll", "strchr", [text, 0x2f]), text + 1, "first '/' at index 1");
+  const hay = guest.layout.arena_base + 0x80;
+  const needle = guest.layout.arena_base + 0xc0;
+  guest.writeAnsiString(hay, "hello", 8);
+  guest.writeAnsiString(needle, "ll", 4);
+  assert.equal(invoke(guest, "vcruntime140.dll", "strstr", [hay, needle]), hay + 2, "strstr finds 'll'");
+});
+
 test("BPTK-010 msvcrt: stdout/stderr stdio captures real output byte", () => {
   const { guest } = createConformanceMachine();
   const stdout = guest.crtRuntime.iobBase + 32;
