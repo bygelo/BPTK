@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "BPTK-002 corpus freezing remains red and no capture pipeline exists.",
+  "gate": "active",
+  "exclusion_reason": "The trace-corpus admission gate is implemented as one canonical serialization plus a per-trace verifier that rejects incomplete provenance, an unproven or leaking redaction, and a non-byte-stable canonical form, exercised against synthetic traces. The benchmark stays red because the real captured traces come from the absent Win32 runtime (BPTK-010), so the corpus carries no real oracle trace to freeze.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every corpus trace carries provenance and redaction proof and regenerates byte-stably.",
   "expected_failing_assertion": "No captured trace exists in the corpus.",
   "owner_item": "BPTK-077",
-  "active_gate_evidence": "The corpus command publishes no denominator without approval.",
+  "active_gate_evidence": "The trace-corpus suite covers the admitted well-formed trace, the incomplete-provenance rejection, the leaked personal-data rejection, the mismatched-proof rejection, and the order-independent byte-stability of the canonical form.",
   "fixture": [
     "FIX-021"
   ],

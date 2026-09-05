@@ -13,7 +13,7 @@ import { acquireCorpus, computeGeneralizationDelta, loadAcquisitionManifest, loa
 import { ingestInput } from "../lib/ingest.mjs";
 import { createExtractionBound, assertChunkRatioBound } from "../lib/bound.mjs";
 import { buildExportLedger } from "../lib/corpus.mjs";
-import { runConformanceSuite } from "../lib/conformance.mjs";
+import { canonicalizeTrace, runConformanceSuite, verifyTrace, verifyTraceCorpus } from "../lib/conformance.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -346,6 +346,38 @@ test("the conformance engine fails a zero-case export and passes an oracle match
   const wrong = runConformanceSuite([{ case_id: "C3", library: "KERNEL32.dll", symbol: "GetStdHandle", input: [-11], expected: { return_value: 7, last_error: 0 } }], stub);
   assert.equal(wrong.fail_count, 1);
   assert.match(wrong.result[0].mismatch[0], /return_value/);
+});
+
+test("the trace corpus admits a well-formed trace and rejects each defect class", () => {
+  const call = { library: "KERNEL32.dll", symbol: "GetStdHandle", input: [-11], return_value: 42, last_error: 0 };
+  const proof = createHash("sha256").update(canonicalizeTrace(call)).digest("hex");
+  const provenance = { source_id: "SRC-002", capture_method: "synthetic", revision: "sha256:abc", tool_version: "0.1.0", captured_at: "2026-09-05" };
+  const good = { trace_id: "T1", provenance, redaction: { method: "field_strip", proof_sha256: proof }, call };
+  const corpus = verifyTraceCorpus([good]);
+  assert.equal(corpus.is_corpus_admissible, true);
+  assert.equal(corpus.provenance_complete, true);
+  assert.equal(corpus.redaction_proven, true);
+  assert.equal(corpus.byte_stable, true);
+
+  // Missing a provenance field is rejected.
+  const noProvenance = verifyTrace({ trace_id: "T2", provenance: { ...provenance, revision: "" }, redaction: { method: "field_strip", proof_sha256: proof }, call });
+  assert.equal(noProvenance.is_admitted, false);
+  assert.match(noProvenance.reason.join(" "), /provenance missing revision/);
+
+  // A leaked personal-data byte is caught even when a proof is offered.
+  const leakCall = { ...call, note: "PERSONAL_DATA_MARKER" };
+  const leakProof = createHash("sha256").update(canonicalizeTrace(leakCall)).digest("hex");
+  const leak = verifyTrace({ trace_id: "T3", provenance, redaction: { method: "field_strip", proof_sha256: leakProof }, call: leakCall });
+  assert.equal(leak.is_admitted, false);
+  assert.match(leak.reason.join(" "), /redaction leak: personal_data/);
+
+  // A proof hash that does not match the canonical byte is rejected.
+  const staleProof = verifyTrace({ trace_id: "T4", provenance, redaction: { method: "field_strip", proof_sha256: "0".repeat(64) }, call });
+  assert.equal(staleProof.has_redaction_proof, false);
+  assert.equal(staleProof.is_admitted, false);
+
+  // Canonicalization is order-independent, which is what makes it byte-stable.
+  assert.equal(canonicalizeTrace({ b: 1, a: 2 }), canonicalizeTrace({ a: 2, b: 1 }));
 });
 
 test("the committed SDK API manifest matches the live package entry exactly", async () => {

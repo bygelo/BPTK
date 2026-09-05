@@ -9,6 +9,7 @@
     "analyzeSecurity",
     "assertCapsWithinSupport",
     "benchmarkPerformance",
+    "canonicalizeTrace",
     "censusInput",
     "compareFoundation",
     "computeFrameDiff",
@@ -74,6 +75,8 @@
     "runBenchmark",
     "runCli",
     "runConformanceSuite",
-    "runPackage"
+    "runPackage",
+    "verifyTrace",
+    "verifyTraceCorpus"
   ]
 }
