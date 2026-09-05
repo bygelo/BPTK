@@ -297,6 +297,33 @@ test("regression risk: a served import binds to the HLE thunk page and a TLS cal
   assert.equal(tlsReport.instruction_count, 2);
 });
 
+test("regression risk: CPUID serves the declared processor identity leaf table", (context) => {
+  // mov eax, 0; cpuid; ret — vendor string lands in EBX:ECX:EDX.
+  const vendor = readRun(createPackage(context, [
+    0xb8, 0, 0, 0, 0,
+    0x0f, 0xa2,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(vendor.stop_reason, "entry_return");
+  assert.equal(vendor.register.ebx, 0x756e6547);
+  assert.equal(vendor.register.ecx, 0x6c65746e);
+  assert.equal(vendor.register.edx, 0x49656e69);
+  const features = readRun(createPackage(context, [
+    0xb8, 1, 0, 0, 0,
+    0x0f, 0xa2,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(features.stop_reason, "entry_return");
+  assert.equal(features.register.eax, 0x663);
+  // An undeclared leaf is a structured unsupported stop, never host data.
+  const unknown = readRun(createPackage(context, [
+    0xb8, 2, 0, 0, 0,
+    0x0f, 0xa2,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(unknown.stop_reason, "unsupported_opcode");
+});
+
 test("regression risk: memory fault is structured and deterministic", (context) => {
   const report = readRun(createPackage(context, [0xa1, 0xef, 0xbe, 0xad, 0xde]).packagePath);
   assert.equal(report.stop_reason, "read_fault");

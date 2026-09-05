@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when FIX-002 passes the pinned instruction, flag, FPU, exception, self-modification, and memory suite.",
   "expected_failing_assertion": "The complete i386 microprogram suite cannot execute to its frozen reference machine state while BPTK-002 owns no frozen denominator, and instruction outside the bounded subset stop as structured unsupported.",
   "owner_item": "BPTK-009",
-  "active_gate_evidence": "Thirty-two runtime check exercise the real bptk run surface and now cover the widened bounded subset: the operand-size override with the high-word preservation rule, 16-bit carry-out semantics, the exact two-byte stack adjustment of a 16-bit push captured mid-run, the structured refusals of the rare 16-bit control forms, plus the prior integer, flag, memory, rollback, and determinism coverage.",
+  "active_gate_evidence": "Thirty-five runtime check exercise the real bptk run surface and now cover the widened bounded subset: the operand-size override with the high-word preservation rule, 16-bit carry-out semantics, the exact two-byte stack adjustment of a 16-bit push captured mid-run, the structured refusals of the rare 16-bit control forms, CPUID serving the declared processor identity leaf table with undeclared leaves stopping structured, plus the prior integer, flag, memory, rollback, and determinism coverage.",
   "fixture": [
     "FIX-002"
   ],

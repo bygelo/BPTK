@@ -184,6 +184,23 @@ override and SSE, so real binaries cannot reach `entry` until both widen.
   encoded a carry propagation into the high word that the real architecture
   does not do; the probe had the architecture right.
 
+## 2026-09-05 — cycle 7
+
+### Widened: BPTK-009 — CPUID over a declared leaf table
+
+- Real CRT startup calls CPUID for feature detection before almost anything
+  else, so the probe now answers it from a declared leaf table: leaf 0 returns
+  the deterministic vendor string, leaf 1 the declared family/feature word,
+  and an undeclared leaf is a structured unsupported stop instead of leaking
+  host identity.
+- Proof: three runtime check through the real run surface (vendor leaf,
+  feature leaf, undeclared-leaf stop); full suite 125 test, 0 failing. Corpus
+  reached stage and coverage honestly unchanged.
+- Session state at this commit: six implementation commits, implemented 37 →
+  40, conformance suite 0 → 169 case, real-corpus coverage 0 → 113 of 356
+  symbol, and the two i386 entry refusal now name the exact unserved surface
+  instead of "302 import, no HLE".
+
 ### State after the commit
 
 - Implemented count stays 40; the cycle widened BPTK-009. Passing stays 0 (no
