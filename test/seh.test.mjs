@@ -9,8 +9,10 @@ import {
   buildExceptionRecord,
   disposition,
   exceptionCode,
+  exceptionFlag,
   mapFaultToException,
   mapToExnref,
+  nestExceptionRecord,
   raiseException,
   runTlsCallback,
   tlsReason,
@@ -193,6 +195,68 @@ test("PE TLS callbacks fire in declared order before entry", () => {
   assert.deepEqual(fired, [0x00401500, 0x00401600, 0x00401700]);
   assert.equal(report.reason, tlsReason.process_attach);
   assert.equal(report.is_before_entry, true);
+});
+
+test("continuing a noncontinuable exception is the fatal noncontinuable violation, not a resume", () => {
+  const thread = new SehThread();
+  thread.pushFrame({ label: "resumer", filter: () => disposition.continue_execution });
+  const record = buildExceptionRecord(exceptionCode.access_violation, 0x00406000, {
+    exception_flag: exceptionFlag.noncontinuable,
+    information: [0, 0],
+  });
+  const trace = thread.dispatch(record, buildContext());
+  assert.equal(trace.is_continued, false);
+  assert.equal(trace.is_noncontinuable_violation, true);
+  assert.equal(trace.is_terminated, true);
+});
+
+test("an explicit unwind runs __finally down to the target frame without running a handler", () => {
+  const thread = new SehThread();
+  const order = [];
+  const target = thread.pushFrame({ label: "target", finally: () => order.push("target_finally"), except: () => order.push("target_except") });
+  thread.pushFrame({ label: "mid", finally: () => order.push("mid_finally") });
+  thread.pushFrame({ label: "inner", finally: () => order.push("inner_finally") });
+
+  const trace = thread.unwindTo(target);
+  // inner and mid clean up innermost-first; the target survives as the head and
+  // its own __except never runs — this is the cleanup-only path.
+  assert.deepEqual(order, ["inner_finally", "mid_finally"]);
+  assert.equal(thread.readHead(), target);
+  assert.equal(trace.finally_run.length, 2);
+  assert.throws(() => thread.unwindTo(0x00abcdef), /target is not on the chain|SehError/);
+});
+
+test("a nested exception carries the prior record and is marked nested", () => {
+  const prior = buildExceptionRecord(exceptionCode.access_violation, 0x00407000, { information: [0, 0x10] });
+  const inner = buildExceptionRecord(exceptionCode.divide_by_zero, 0x00407100);
+  const nested = nestExceptionRecord(inner, prior);
+  assert.equal(nested.exception_code, exceptionCode.divide_by_zero);
+  assert.equal((nested.exception_flag & exceptionFlag.nested_call) !== 0, true);
+  assert.equal(nested.nested_record, prior);
+});
+
+test("a re-entrant dispatch during an unwind is refused as a collided unwind", () => {
+  const thread = new SehThread();
+  let reentryError = null;
+  thread.pushFrame({
+    label: "catch",
+    filter: () => disposition.execute_handler,
+    except: () => {},
+  });
+  thread.pushFrame({
+    label: "unwound",
+    filter: () => disposition.continue_search,
+    finally: () => {
+      // A fault raised inside a __finally during the unwind must be refused.
+      try {
+        thread.dispatch(buildExceptionRecord(exceptionCode.access_violation, 0), buildContext());
+      } catch (error) {
+        reentryError = error;
+      }
+    },
+  });
+  thread.dispatch(mapFaultToException({ code: "divide_error" }), buildContext());
+  assert.equal(reentryError?.seh_code, "seh_collided_unwind");
 });
 
 test("a legacy delivery maps onto an exnref tag when the substrate declares one", () => {
