@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -42,6 +42,36 @@ test("catalog validates the frozen schema and gates instant-play", (context) => 
   assert.equal(report.entry[2].access, "hosted_no_capability");
   assert.equal(report.instant_play_count, 1);
   assert.equal(report.byo_only_count, 1);
+});
+
+function createProject(rootPath, packageValue) {
+  const projectPath = join(rootPath, `project-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(projectPath);
+  writeFileSync(join(projectPath, "game.dat"), "first-party demo payload\n");
+  if (packageValue) writeFileSync(join(projectPath, "package.json"), JSON.stringify(packageValue));
+  return projectPath;
+}
+
+test("hosting publishes an in-date grant and refuses an expired one", (context) => {
+  const rootPath = scratch(context);
+  const inDate = createProject(rootPath, { name: "demo", license: "Apache-2.0", grant_expiry: "2999-01-01" });
+  const okRun = run(["library", "publish", inDate, "--json"]);
+  assert.equal(okRun.status, 0);
+  const okReport = JSON.parse(okRun.stdout);
+  assert.equal(okReport.is_published, true);
+  assert.equal(okReport.state, "hosted_no_runtime");
+
+  const expired = createProject(rootPath, { name: "demo", license: "Apache-2.0", grant_expiry: "2000-01-01" });
+  const expiredRun = run(["library", "publish", expired, "--json"]);
+  assert.equal(expiredRun.status, 1);
+  const expiredReport = JSON.parse(expiredRun.stdout);
+  assert.equal(expiredReport.is_published, false);
+  assert.ok(expiredReport.refusal.some((entry) => /expired/.test(entry)));
+
+  const unlicensed = createProject(rootPath, null);
+  const unlicensedRun = run(["library", "publish", unlicensed, "--json"]);
+  assert.equal(unlicensedRun.status, 1);
+  assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
 });
 
 test("catalog rejects an entry that violates the schema", (context) => {
