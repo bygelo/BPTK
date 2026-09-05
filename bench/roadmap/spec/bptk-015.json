@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when FIX-008 passes path, case, read-only base, copy-on-write, registry, quota, transaction, reload, and rollback assertions.",
   "expected_failing_assertion": "The storage fixture cannot persist and recover the golden state safely.",
   "owner_item": "BPTK-015",
-  "active_gate_evidence": "The conformance suite carries 110 case over all 84 served export including 26 storage and registry case with the oracle return, last-error, and MORE_DATA behavior; the FIX-008 storage exerciser (a generated PE32 with a kernel32 and advapi32 import directory) creates, writes, seeks, reads, truncates, types, flushes, and closes a virtual-drive file and round-trips a registry value through the real run surface, exiting through its golden trace with repeat runs hash-stable; the coverage ledger on the real corpus import surface rose from 62 to 79 covered symbol (OpenTTD i386 serves 75 of 302, Plink i386 61 of 142).",
+  "active_gate_evidence": "The conformance suite carries 169 case over all 118 served export including the storage, registry, and file-enumeration case with the oracle return, last-error, and MORE_DATA behavior; the FIX-008 storage exerciser (a generated PE32 with a kernel32 and advapi32 import directory) creates, writes, seeks, reads, truncates, types, flushes, and closes a virtual-drive file and round-trips a registry value through the real run surface, exiting through its golden trace with repeat runs hash-stable; FindFirstFileExA and FindNextFileA enumerate the virtual drive with the real no-more-files contract; the coverage ledger on the real corpus import surface marks 113 of the 356 symbol covered.",
   "fixture": [
     "FIX-008"
   ],

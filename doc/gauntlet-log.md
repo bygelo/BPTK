@@ -136,11 +136,32 @@ override and SSE, so real binaries cannot reach `entry` until both widen.
   import surface (OpenTTD i386 serves 96 of 302 import, Plink i386 79 of 142).
   Reached stage of the two i386 entry stays honestly at `loaded`.
 
+## 2026-09-05 — cycle 5
+
+### Implemented: synchronization, enumeration, and timer slice
+
+- The unserved ledger after cycle 4 still ranked waits and events first, so
+  the cycle took the parts that a declared single-thread world can serve
+  honestly: a real event state machine (CreateEventW named and unnamed,
+  SetEvent, ResetEvent, WaitForSingleObject/Ex where a finite wait advances
+  the one guest clock and an infinite wait on a silent event is a structured
+  deadlock stop), OpenProcess opening only the declared process,
+  FindFirstFileExA/FindNextFileA enumerating the virtual drive with the real
+  PATH_NOT_FOUND and no-more-files contract, IsValidLocale, and the winmm
+  timer family (timeGetTime, timeBeginPeriod, timeEndPeriod, timeKillEvent)
+  over the one monotonic time source. CreateThread stays refused — a served
+  thread creation without a thread model would be a lie.
+- Proof: 22 new conformance case (169 total, all 118 served export covered);
+  full suite 121 test, 0 failing.
+- Real payload: coverage ledger 100 → **113 covered** of the real 356-symbol
+  import surface (OpenTTD i386 serves 109 of 302 import, Plink i386 86 of
+  142). Reached stage of the two i386 entry stays honestly at `loaded`.
+
 ### State after the commit
 
-- Implemented 37 → 40 across the four cycle; passing stays 0 (no benchmark
-  runner exists yet).
+- Implemented count stays 40; the cycle deepened four implemented item. Passing
+  stays 0 (no benchmark runner exists yet).
 - Next highest-leverage target: the BPTK-009 instruction-subset widening
   (operand-size override first) toward a real binary reaching `entry`, since
-  the remaining unserved families (threads, SEH unwind) need the thread and
-  exception models those item own.
+  the remaining unserved families need the thread, exception, window, audio,
+  and socket models their item own.

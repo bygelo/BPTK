@@ -10,7 +10,7 @@
   "promotion_trigger": "Promote when the codepage fixture converts byte-exactly and comparison matches the oracle.",
   "expected_failing_assertion": "No locale layer exists.",
   "owner_item": "BPTK-103",
-  "active_gate_evidence": "The conformance suite carries 133 case over all 96 served export including 23 locale case with the oracle conversion, comparison, mapping, and formatting behavior; the euro code point round-trips byte-exact through the 1252 table (0x80 to U+20AC and back); the coverage ledger on the real corpus import surface rose from 79 to 93 covered symbol (OpenTTD i386 serves 89 of 302 import, Plink i386 75 of 142); and the full suite stays green.",
+  "active_gate_evidence": "The conformance suite carries 169 case over all 118 served export including 23 locale case with the oracle conversion, comparison, mapping, and formatting behavior; the euro code point round-trips byte-exact through the 1252 table (0x80 to U+20AC and back); the coverage ledger on the real corpus import surface rose from 79 to 113 covered symbol across the storage and locale slice (OpenTTD i386 serves 109 of 302 import, Plink i386 86 of 142); and the full suite stays green.",
   "fixture": [
     "FIX-003"
   ],

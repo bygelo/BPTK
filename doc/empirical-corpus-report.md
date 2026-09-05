@@ -53,10 +53,15 @@ and codepage slice (BPTK-103): **93 covered / 263 absent** — OpenTTD i386
 serves 89 of 302 import, Plink i386 75 of 142. After the module-loading and
 memory-probe slice (LoadLibraryA/W/ExW, FreeLibrary, IsBadReadPtr, Sleep,
 GetThreadTimes): **100 covered / 256 absent** — OpenTTD i386 serves 96 of 302
-import, Plink i386 79 of 142. The next unserved families by the same ranking:
-threads and waits (WaitForSingleObject, CreateThread → BPTK-025), SEH unwind
-(RtlUnwind → GS-008), and date-enumeration surfaces that need guest callback
-dispatch (EnumSystemLocalesW).
+import, Plink i386 79 of 142. After the synchronization and enumeration slice
+(events, waits, OpenProcess, FindFirstFileExA/FindNextFileA, IsValidLocale,
+winmm timers): **113 covered / 243 absent** — OpenTTD i386 serves 109 of 302
+import, Plink i386 86 of 142. The remaining unserved set is concentrated in
+what its roadmap item own honestly: threads and thread creation
+(CreateThread → BPTK-025), SEH unwind (RtlUnwind, UnhandledExceptionFilter →
+GS-008), user32 and gdi32 window surfaces (→ BPTK-011/012), audio (→
+BPTK-014), sockets (→ BPTK-026), and locale enumeration that needs guest
+callback dispatch (EnumSystemLocalesW).
 
 ## Generic guard finding the corpus produced
 
