@@ -2,7 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   SehThread,
   buildContext,
@@ -17,6 +22,55 @@ import {
   runTlsCallback,
   tlsReason,
 } from "../lib/seh.mjs";
+
+const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
+
+// A minimal executable PE32 that runs the supplied byte at entry, so a real CPU
+// fault flows through executeProbe into the enriched exception report.
+function createPe32(code) {
+  const file = Buffer.alloc(0x800);
+  file.writeUInt16LE(0x5a4d, 0);
+  file.writeUInt32LE(0x80, 0x3c);
+  file.writeUInt32LE(0x00004550, 0x80);
+  file.writeUInt16LE(0x14c, 0x84);
+  file.writeUInt16LE(1, 0x86);
+  file.writeUInt16LE(224, 0x94);
+  file.writeUInt16LE(0x10b, 0x98);
+  file.writeUInt32LE(0x1000, 0xa8);
+  file.writeUInt32LE(0x400000, 0xb4);
+  file.writeUInt32LE(0x2000, 0xd0);
+  file.writeUInt32LE(0x200, 0xd4);
+  file.writeUInt32LE(0x10000, 0xe0);
+  file.writeUInt32LE(0x1000, 0xe4);
+  file.writeUInt32LE(0x10000, 0xe8);
+  file.writeUInt32LE(0x1000, 0xec);
+  file.writeUInt32LE(16, 0xf4);
+  const sectionOffset = 0x178;
+  file.write(".text", sectionOffset);
+  file.writeUInt32LE(0x1000, sectionOffset + 8);
+  file.writeUInt32LE(0x1000, sectionOffset + 12);
+  file.writeUInt32LE((0x80000000 | 0x60000020) >>> 0, sectionOffset + 36);
+  file.writeUInt32LE(0x600, sectionOffset + 16);
+  file.writeUInt32LE(0x200, sectionOffset + 20);
+  Buffer.from(code).copy(file, 0x200);
+  return file;
+}
+
+function runProbe(context, code) {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-seh-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const packagePath = join(rootPath, "package");
+  mkdirSync(packagePath);
+  writeFileSync(join(packagePath, "game.exe"), createPe32(code));
+  writeFileSync(join(packagePath, "bptk.json"), JSON.stringify({
+    schema_version: 1,
+    executable: "game.exe",
+    execution: { profile: "i386_probe_v1", instruction_budget_count: 100 },
+  }));
+  const result = spawnSync(process.execPath, [binPath, "run", packagePath, "--json"], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
 
 // A minimal flat guest memory that reads and writes little-endian dword so the
 // fs:[0] chain lives in real memory, exactly as a mapped TEB would carry it.
@@ -257,6 +311,29 @@ test("a re-entrant dispatch during an unwind is refused as a collided unwind", (
   });
   thread.dispatch(mapFaultToException({ code: "divide_error" }), buildContext());
   assert.equal(reentryError?.seh_code, "seh_collided_unwind");
+});
+
+test("a real CPU divide error carries the guest divide-by-zero status code on the report", (context) => {
+  const report = runProbe(context, [
+    0xb8, 5, 0, 0, 0, // mov eax, 5
+    0x31, 0xd2,       // xor edx, edx
+    0xb3, 0,          // mov bl, 0
+    0xf6, 0xf3,       // div bl
+    0xc3,
+  ]);
+  assert.equal(report.stop_reason, "divide_error");
+  assert.equal(report.exception.guest_exception_code, exceptionCode.divide_by_zero);
+});
+
+test("a real CPU access violation carries the guest AV status code, access type, and faulting address", (context) => {
+  const report = runProbe(context, [
+    0xa1, 0, 0, 0, 0, // mov eax, [0x00000000]
+    0xc3,
+  ]);
+  assert.equal(report.stop_reason, "read_fault");
+  assert.equal(report.exception.guest_exception_code, exceptionCode.access_violation);
+  assert.equal(report.exception.access_type, 0);
+  assert.equal(report.exception.fault_address, 0);
 });
 
 test("a legacy delivery maps onto an exnref tag when the substrate declares one", () => {
