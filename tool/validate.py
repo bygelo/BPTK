@@ -285,7 +285,7 @@ def validate_path(error: list[str]) -> None:
 
     for path in ROOT.rglob("*"):
         relative = path.relative_to(ROOT)
-        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts:
+        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts or ".claude" in relative.parts:
             continue
         if path.is_dir() and path.name in BANNED_DIRECTORY:
             error.append(f"plural directory name is disallowed: {relative}")
@@ -695,7 +695,7 @@ def validate_single_emitter(error: list[str]) -> None:
     hit = []
     for path in ROOT.rglob("*.mjs"):
         relative = path.relative_to(ROOT)
-        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts:
+        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts or ".claude" in relative.parts:
             continue
         if marker in path.read_text(encoding="utf-8"):
             hit.append(str(relative))

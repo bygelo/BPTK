@@ -2,3 +2,6 @@ node_modules/
 *.tgz
 .npmrc
 .opencode/
+
+# agent worktrees (transient, per Agent-tool isolation)
+.claude/
