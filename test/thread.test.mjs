@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { buildTebImage, tebField, pebField, SEH_CHAIN_END, TEB_SIZE_BYTE, createThreadScheduler, threadOp, threadPriority, waitResult, INFINITE } from "../lib/thread.mjs";
+import { buildTebImage, tebField, pebField, SEH_CHAIN_END, TEB_SIZE_BYTE, createThreadScheduler, threadOp, threadPriority, waitResult, INFINITE, runContentionFixture } from "../lib/thread.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -430,4 +430,28 @@ test("scheduler: a waitable timer fires at its due time", () => {
   assert.equal(report.stopped, null);
   assert.equal(code, waitResult.object_0);
   assert.equal(report.clock_ms, 500);
+});
+
+// BPTK-051 / GS-006 — guest SMP determinism over the worker-pool model.
+test("smp: the contention fixture is guest-state deterministic across repeated runs", () => {
+  const first = runContentionFixture({ worker_count: 4, total_increment: 240 });
+  const second = runContentionFixture({ worker_count: 4, total_increment: 240 });
+  assert.equal(first.is_consistent, true, "both counters reach the expected total under contention");
+  assert.equal(first.state_sha256, second.state_sha256, "guest-visible state is byte-reproducible across runs");
+  assert.equal(first.schedule_sha256, second.schedule_sha256, "the schedule itself is byte-reproducible");
+});
+
+test("smp: guest-visible state matches across worker counts with no lost wakeup", () => {
+  const single = runContentionFixture({ worker_count: 1, total_increment: 240 });
+  const many = runContentionFixture({ worker_count: 8, total_increment: 240 });
+  assert.equal(single.state_sha256, many.state_sha256, "the same total regardless of worker count");
+  assert.equal(single.lost_wakeup_count, 0);
+  assert.equal(many.lost_wakeup_count, 0, "no wakeup is lost under N workers");
+  assert.equal(many.is_deadlocked, false);
+});
+
+test("smp: the real cross-core worker deployment stays honestly red", () => {
+  const report = runContentionFixture({ worker_count: 4 });
+  assert.equal(report.is_worker_backed, false, "the deterministic model is not a real SAB Worker pool");
+  assert.ok(report.blocker.length >= 1);
 });

@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No worker-backed guest runtime exists; the thread command validates selection without a worker.",
+  "gate": "active",
+  "exclusion_reason": "The contention fixture runs deterministically under N workers over the cooperative scheduler model with byte-reproducible guest-visible state and zero lost wakeup, but the production target \u2014 a real SharedArrayBuffer-backed Worker pool with true cross-core parallelism \u2014 is not deployed on the run surface, so that deployment leg stays red.",
   "prerequisite": [
     "BPTK-025"
   ],
-  "promotion_trigger": "Promote when the contention fixture is deterministic under the declared worker count with no lost wakeup across repeated run.",
-  "expected_failing_assertion": "The run surface has no worker pool and the contention fixture cannot execute.",
+  "promotion_trigger": "Promote to passing when the contention fixture is deterministic with no lost wakeup on a real SharedArrayBuffer-backed Worker pool across repeated runs and a second machine.",
+  "expected_failing_assertion": "The reproducible schedule is a deterministic cooperative model; no SharedArrayBuffer-backed Worker pool executes the fixture across real cores, so the cross-core deployment cannot be measured.",
   "owner_item": "BPTK-051",
-  "active_gate_evidence": "The thread command keeps selecting or refusing a thread configuration honestly without claiming a runtime.",
+  "active_gate_evidence": "test/thread.test.mjs drives runContentionFixture: N workers contend on an interlocked counter and a critical-section-guarded counter and hand a token around an auto-reset event; it asserts both counters reach the expected total, that the guest-state hash and the schedule hash are byte-reproducible across repeated runs, that the guest-state hash is identical across worker counts (1 and 8) with lost_wakeup_count zero and no deadlock, and that is_worker_backed is false so no real cross-core runtime is claimed.",
   "fixture": [
     "FIX-018"
   ],

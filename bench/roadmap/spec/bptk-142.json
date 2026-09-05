@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No game runtime exists for a sustained run.",
+  "gate": "active",
+  "exclusion_reason": "A repeated recompiled run measures run-to-run jitter and confirms memory returns to baseline, but a real 30-minute sustained game run over the declared host set needs a game runtime that does not exist, so the sustained-stability bound is not certified.",
   "prerequisite": [],
-  "promotion_trigger": "Promote when the sustained run holds jitter, pause, and memory-return bound on the declared host set.",
-  "expected_failing_assertion": "No sustained run exists to measure.",
+  "promotion_trigger": "Promote to passing when a sustained run over the declared host set holds its jitter, pause, and memory-return bound with a real game workload.",
+  "expected_failing_assertion": "No game runtime executes a sustained run, so jitter, pause, and memory-return over a real 30-minute session cannot be measured.",
   "owner_item": "BPTK-142",
-  "active_gate_evidence": "The performance profile keeps its measurement scope declared.",
+  "active_gate_evidence": "test/performance.test.mjs (benchmarkStability) repeats the frozen workload many times, asserts a positive median and a non-negative jitter (p99 minus median), that memory returns to baseline across runs, and that the sustained-game bound stays red (is_bar_cleared false).",
   "fixture": [
     "FIX-016"
   ],

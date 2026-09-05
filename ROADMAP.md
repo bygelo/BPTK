@@ -66,7 +66,7 @@ The raw candidate denominator was frozen after deduplication on 2026-07-18 and e
 | Accepted into this roadmap | 145 |
 | Rejected | 8 |
 | Deferred | 6 |
-| Implemented | 43 |
+| Implemented | 55 |
 | Passing | 0 |
 
 The complete identity, origin, dedupe key, decision, and target mapping is frozen in [the candidate ledger](bench/roadmap/candidate.json); [the rejection and defer ledger](doc/roadmap-rejected.md) explains the non-accepted decisions. A future change may alter the denominator only by adding a newly discovered raw candidate and classifying it in the same change.

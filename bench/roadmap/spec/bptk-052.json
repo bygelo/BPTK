@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The probe covers a 64-bit precision x87 subset and no packed SIMD; no strict-fallback comparison exists.",
+  "gate": "active",
+  "exclusion_reason": "The packed single/double float arithmetic and 128-bit logical SSE forms execute over the xmm file and match an independent strict per-lane IEEE-754 reference to zero ULP, but the x87 path is 64-bit precision (80-bit extended precision is not modeled) and AVX-256 width is not covered, so the full packed-and-80-bit vectorization within the declared tolerance is not met.",
   "prerequisite": [
     "BPTK-035"
   ],
-  "promotion_trigger": "Promote when the packed and 80-bit fixture matches within the frozen tolerance and the strict fallback matches the primary path.",
-  "expected_failing_assertion": "Packed SIMD is unsupported and the x87 subset stops at 64-bit precision.",
+  "promotion_trigger": "Promote to passing when the packed, 80-bit x87, and AVX fixtures all match within the frozen tolerance and the strict fallback matches the primary path across every declared width.",
+  "expected_failing_assertion": "The 80-bit x87 extended-precision path and the 256-bit AVX register width are not modeled, so the packed-and-80-bit tolerance fixture cannot pass across every declared width.",
   "owner_item": "BPTK-052",
-  "active_gate_evidence": "The bounded probe suite pins the existing 64-bit precision x87 subset through the real run surface.",
+  "active_gate_evidence": "test/simd.test.mjs runs the interpreter's packed SSE battery (addps/mulps/subps/addpd/mulpd and andps/orps/xorps) as the primary path and asserts every operation matches an independent strict per-lane IEEE-754 reference (the strict fallback) to zero ULP, and pins that the 80-bit x87 and AVX-256 legs stay red (covers_80bit_x87 and covers_avx256 false, is_bar_cleared false).",
   "fixture": [
     "FIX-002"
   ],

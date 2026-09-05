@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The recompiler is absent and the bounded probe covers only a static instruction subset, so no recompiled page exists to invalidate.",
+  "gate": "active",
+  "exclusion_reason": "A code write invalidates and re-decodes exactly the affected instructions while untouched instructions are reused from the decode cache, bit-exact against the interpreter oracle, but the trigger is an explicit host writeCode rather than a guest store into its own page detected mid-run, so whole in-run self-modification through the recompiled memory surface is not yet closed.",
   "prerequisite": [
     "BPTK-009"
   ],
-  "promotion_trigger": "Promote when a fixture that rewrites its own executed page produces the freshly decoded behavior and untouched block never re-decode.",
-  "expected_failing_assertion": "No recompiled page invalidation path exists; the probe executes a static bounded subset only.",
+  "promotion_trigger": "Promote to passing when a guest store into its own executed page is detected mid-run, the affected block re-decodes to the freshly written behavior before its next execution, and untouched blocks never re-decode, across the fixture.",
+  "expected_failing_assertion": "In-run detection of a guest store into a recompiled page is modelled through an explicit writeCode trigger rather than the recompiled memory-write surface, so a fixture that patches and immediately re-enters its own page within one run is not yet closed end to end.",
   "owner_item": "BPTK-048",
-  "active_gate_evidence": "The bounded probe suite pins self-modifying access for the interpreted subset through the real run surface.",
+  "active_gate_evidence": "test/recompile.test.mjs drives createHybridRecompiler: the first compile decodes every instruction fresh; after a writeCode into the code page, exactly the modified instruction re-decodes (reDecodedInstruction is the single patched address) while every untouched instruction is reused (keptInstruction), and the rewritten behavior is bit-exact against the interpreter oracle over the modified image (register, memory_sha256, trace_sha256).",
   "fixture": [
     "FIX-002"
   ],

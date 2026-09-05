@@ -4,16 +4,16 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No guest loop executes, so no run can be recorded or replayed.",
+  "gate": "active",
+  "exclusion_reason": "Single-thread CPU-deterministic record and replay hash-match locally and are deterministic on any host by construction, but the literal second-machine leg is not certified in this suite and multi-threaded schedule determinism (BPTK-051 guest SMP) is outside the single-thread record, so the full cross-machine SMP replay stays red.",
   "prerequisite": [
     "BPTK-039",
     "BPTK-051"
   ],
-  "promotion_trigger": "Promote when two replay of the recorded fixture and a replay on a second machine produce the identical state hash.",
-  "expected_failing_assertion": "The report surface writes no session and no replay exists to compare.",
+  "promotion_trigger": "Promote to passing when two local replays and a replay on a second machine produce the identical state hash at every checkpoint, including a multi-threaded guest schedule.",
+  "expected_failing_assertion": "The second-machine replay is not executed in this suite and the guest SMP schedule (BPTK-051) is not yet deterministic, so the cross-machine multi-threaded state hash cannot be compared.",
   "owner_item": "BPTK-055",
-  "active_gate_evidence": "The report command keeps consent recording privacy-minimized and off by default.",
+  "active_gate_evidence": "test/replay.test.mjs records a run through the recompiler with every declared nondeterminism source pinned (virtual-monotonic clock, no host RNG, no host input, single-thread schedule) and asserts two replays hash-match at every instruction-count checkpoint, that the recompiler and interpreter agree at every checkpoint (the cross-machine foundation), that no pinned source is host-derived (is_host_source_free), that a tampered checkpoint hash is detected as divergence, and that the second-machine and SMP-schedule legs are declared red.",
   "fixture": [
     "FIX-021"
   ],

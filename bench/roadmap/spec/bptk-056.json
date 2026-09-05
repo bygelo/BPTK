@@ -4,16 +4,16 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No recompiler exists and no Win32 HLE receives call, so no boundary exists to lower or measure.",
+  "gate": "active",
+  "exclusion_reason": "Every declared calling convention (cdecl, stdcall, fastcall, thiscall) lowers to a balanced guest stack and the real guest->host crossing cost is measured as the WebAssembly import call the recompiled path uses, but the crossing-cost bar is a BPTK-002 reference-desktop figure not certified on this host and the whole Win32 HLE is not yet wired into the recompiled crossing, so the end-to-end boundary stays red.",
   "prerequisite": [
     "BPTK-010",
     "BPTK-046"
   ],
-  "promotion_trigger": "Promote when every declared calling convention reaches host emulation with correct cleanup and the measured crossing cost is under the frozen bar.",
-  "expected_failing_assertion": "Import call is blocked and the import descriptor budget is the only boundary surface that exists.",
+  "promotion_trigger": "Promote to passing when every convention reaches the whole Win32 HLE with correct cleanup and the measured crossing cost stays under the declared bar on the pinned reference desktop.",
+  "expected_failing_assertion": "The measured boundary is the raw WebAssembly import call rather than a whole Win32 HLE crossing, and the cost bar is a reference-desktop figure, so end-to-end crossing cost cannot be certified here.",
   "owner_item": "BPTK-056",
-  "active_gate_evidence": "The mapper keeps declared import resolution and the import descriptor and thunk budget pinned.",
+  "active_gate_evidence": "test/abi.test.mjs asserts every declared calling convention (cdecl/stdcall/fastcall/thiscall) returns a balanced guest stack across argument counts, that stdcall/cdecl assign cleanup to the correct side and the register conventions pass the first arguments in registers, that the guest->host crossing reaches host emulation on every call (measured as the recompiled path's WebAssembly import call), and that the crossing cost is reported against the declared bar with measured_on_reference_desktop false and is_bar_cleared false.",
   "fixture": [
     "FIX-003"
   ],

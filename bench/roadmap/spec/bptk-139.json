@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No module compile or streamed-asset runtime exists.",
+  "gate": "active",
+  "exclusion_reason": "Cold start (WebAssembly module compile plus instantiate) and warm re-instantiate are measured for the recompiled module, but this is time-to-first-executable-instruction, not time-to-first-frame, and no graphics or streamed-asset runtime exists to include, so the frame-inclusive budget on the reference host is not certified.",
   "prerequisite": [],
-  "promotion_trigger": "Promote when cold and warm start hold their declared budget on the reference host.",
-  "expected_failing_assertion": "No start path exists to measure.",
+  "promotion_trigger": "Promote to passing when cold and warm start, including WebAssembly compile and asset streaming to the first frame, hold their declared budget on the pinned reference host.",
+  "expected_failing_assertion": "The measurement covers only compile and instantiate to the first executable instruction; no streamed-asset or graphics runtime contributes, so the frame-inclusive budget cannot be measured.",
   "owner_item": "BPTK-139",
-  "active_gate_evidence": "The packaging timing surface keeps cold and warm read measurement for the asset layer.",
+  "active_gate_evidence": "test/performance.test.mjs (benchmarkColdStart) measures cold start as the full recompile plus WebAssembly module compile and instantiate, and warm start as re-instantiate of the compiled module, asserts warm is not slower than cold, that asset streaming is not included, and that the frame-inclusive budget stays red (measured_on_reference_desktop false, is_bar_cleared false) with the declared budget pinned.",
   "fixture": [
     "FIX-016"
   ],
