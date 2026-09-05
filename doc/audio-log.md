@@ -95,10 +95,30 @@ export rows to the rebase-onto-thread step, exactly as the lane's dependency
 note anticipates. The audio subsystem exposes an injected
 `dispatch(callback, message, param)` so that seam is a one-function swap.
 
+- **Cycle 4** — promoted BPTK-014 `planned → implemented`, keeping BENCH-014
+  honestly red. Reconciled every gate-enforced count: `manifest.count.implemented`
+  40 → 41 and `promotion_state`; `spec/bptk-014.json` `gate` `excluded → active`
+  (state stays `red`) with the honesty fields rewritten to "implemented but red
+  because…"; regenerated `data/status.json`; updated the hardcoded count in
+  `test/cli.test.mjs`, `README.md`, and the ROADMAP decision table; and
+  reconciled the narrative "implemented but red" / gate-excluded (108 → 107)
+  paragraphs. `npm run gate` exits 0 (178 test, 45 file).
+
+## Subsystem state
+
+- **Conformance:** complete — zero uncovered audio export for this subsystem.
+- **Offline acceptance (fixtures):** green — golden mix within tolerance, zero
+  ring underrun over a sustained run, A/V clock from one monotonic source.
+- **Live BENCH-014:** honestly red / active — no verified WebAudio output
+  through a real AudioWorklet after gesture activation.
+- **Gate:** `npm run gate` exits 0.
+
 ## Next
 
 - On rebase onto thread: wire `dispatch` to the guest-thread poster and add the
   `winmm`/`dsound`/`xaudio2` export rows to `lib/hle.mjs` with guest-memory
-  cases.
-- Promote BPTK-014 `planned → implemented` via the 8-file contract, keeping the
-  live BENCH-014 red and every count reconciled.
+  cases (deferred here to avoid a fabricated case under the coverage-complete
+  invariant).
+- Promote `implemented → passing` only when a real AudioWorklet renders verified
+  output after gesture activation (FIX-007), which requires the browser runtime
+  host.
