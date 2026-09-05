@@ -4,8 +4,8 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No decision-record rule or analytics surface exists.",
+  "gate": "active",
+  "exclusion_reason": "Governance and analytics honesty is implemented: a breaking change without a decision record is refused, the analytics byte flow is audited for the aggregate + opt-in + personal-data-free property, and the community space and code-of-conduct location is recorded. The benchmark stays red because proving the property on a live analytics stream needs the deployed hosting surface.",
   "prerequisite": [
     "BPTK-028",
     "BPTK-125"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when a breaking-change drill is refused without a merged record and the byte audit proves the analytics property.",
   "expected_failing_assertion": "No governance rule or analytics surface exists.",
   "owner_item": "BPTK-128",
-  "active_gate_evidence": "The report command keeps local recording off by default and the changelog records every user-visible change.",
+  "active_gate_evidence": "test/governance.test.mjs asserts a breaking change without a decision record is refused, a recorded change with honest analytics is accepted, and a non-aggregate/opt-out/personal-data analytics config fails the property audit.",
   "fixture": [
     "FIX-021",
     "CHANGELOG.md"
