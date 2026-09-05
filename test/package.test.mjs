@@ -41,6 +41,30 @@ test("HTML and React host preserve one generated package identity", (context) =>
   assert.match(readFileSync(join(reactReport.output_path, "BptkHost.mjs"), "utf8"), new RegExp(assetReport.package_id));
 });
 
+test("every host shape carries one identity, a release path, and a sandboxed frame", (context) => {
+  const value = createProject(context);
+  const assetReport = JSON.parse(run(["package", value.project_path, "--asset-mode", "stream", "--json"]).stdout);
+  const shape = ["html", "react", "webcomponent", "iframe"];
+  const artifact = [];
+  for (const host of shape) {
+    const hostRun = run(["package", value.package_path, "--host", host, "--json"]);
+    assert.equal(hostRun.status, 0, `${host} host emits`);
+    const report = JSON.parse(hostRun.stdout);
+    assert.equal(report.package_id, assetReport.package_id, `${host} preserves identity`);
+    const source = readFileSync(join(report.output_path, report.host_file), "utf8");
+    assert.match(source, new RegExp(assetReport.package_id), `${host} embeds package id`);
+    artifact.push({ host, source });
+  }
+  // Web component releases every worker/audio/GPU handle on disconnect.
+  const webComponent = artifact.find((entry) => entry.host === "webcomponent").source;
+  assert.match(webComponent, /disconnectedCallback/);
+  assert.match(webComponent, /terminate\?\.\(\)/);
+  // Both framed shapes sandbox the embedded document.
+  for (const host of ["react", "iframe"]) {
+    assert.match(artifact.find((entry) => entry.host === host).source, /sandbox/);
+  }
+});
+
 test("compressed streaming shrinks stored bytes and every chunk hash verifies", (context) => {
   // A compressible payload larger than one chunk so compression is measurable.
   const payload = Buffer.from("BPTK streaming payload block. ".repeat(120000));
