@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The redistributable kit resolution and the compressed store are both absent.",
+  "gate": "active",
+  "exclusion_reason": "Cross-title CDN asset dedup is implemented: chunks publish into a content-addressed shared store, a payload shared across titles is written once and every later title hits the cache, and a differing hash is a distinct key that is never merged (a hit is validated against the stored bytes). The benchmark stays red because confirming the cross-title cache hit on a live CDN edge needs the absent hosting environment.",
   "prerequisite": [
     "BPTK-041",
     "BPTK-105"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when the shared payload is stored once, the second title hits the cache, and the differing-hash case never merges.",
   "expected_failing_assertion": "No cross-title store exists.",
   "owner_item": "BPTK-110",
-  "active_gate_evidence": "The packager keeps hash-keyed chunk identity per package.",
+  "active_gate_evidence": "test/package.test.mjs publishes two titles sharing a payload and asserts one stored copy plus a cache hit for the second, and that a differing payload becomes a separate store object.",
   "fixture": [
     "FIX-015"
   ],

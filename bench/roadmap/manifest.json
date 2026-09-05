@@ -9,7 +9,7 @@
     "accepted": 145,
     "rejected": 8,
     "deferred": 6,
-    "implemented": 84,
+    "implemented": 101,
     "passing": 0
   },
   "item": [
@@ -1600,7 +1600,7 @@
         "SRC-002",
         "SRC-033"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-123",
@@ -1672,7 +1672,7 @@
         "SRC-002",
         "SRC-033"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-127",
@@ -1722,7 +1722,7 @@
         "SRC-013",
         "SRC-033"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-076",
@@ -2379,7 +2379,7 @@
         "SRC-010",
         "SRC-022"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-106",
@@ -2399,7 +2399,7 @@
         "SRC-010",
         "SRC-022"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-107",
@@ -2421,7 +2421,7 @@
         "SRC-023",
         "SRC-024"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-108",
@@ -2439,7 +2439,7 @@
         "SRC-010",
         "SRC-022"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-109",
@@ -2480,7 +2480,7 @@
         "SRC-022",
         "SRC-038"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-111",
@@ -2499,7 +2499,7 @@
         "SRC-022",
         "SRC-023"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-112",
@@ -2532,7 +2532,7 @@
         "SRC-023",
         "SRC-024"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-113",
@@ -2563,7 +2563,7 @@
         "SRC-015",
         "SRC-022"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-114",
@@ -2583,7 +2583,7 @@
         "SRC-010",
         "SRC-011"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-115",
@@ -2608,7 +2608,7 @@
         "SRC-013",
         "SRC-016"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-116",
@@ -2644,7 +2644,7 @@
         "SRC-002",
         "SRC-033"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-118",
@@ -2672,7 +2672,7 @@
         "SRC-014",
         "SRC-015"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-119",
@@ -2709,7 +2709,7 @@
         "SRC-022",
         "SRC-023"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-130",
@@ -2739,7 +2739,7 @@
       "source_evidence": [
         "SRC-041"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-132",

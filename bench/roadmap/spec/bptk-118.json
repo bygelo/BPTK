@@ -4,15 +4,15 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No provenance catalog exists.",
+  "gate": "active",
+  "exclusion_reason": "The preservation catalog is implemented as an append-only, provenance-carrying record set: appending an entry whose id already exists with different content is refused, an identical re-append is a no-op, and the export is deterministic byte-stable and personal-data-free (a PII hit refuses the export). The benchmark stays red because playing a preserved title needs the absent browser game runtime.",
   "prerequisite": [
     "BPTK-127"
   ],
   "promotion_trigger": "Promote when the chain refuses mutation, the export reproduces byte-stably, and the personal-data audit holds.",
   "expected_failing_assertion": "No preservation catalog exists.",
   "owner_item": "BPTK-118",
-  "active_gate_evidence": "The legal surface keeps the provenance rule recorded for the catalog to bind to.",
+  "active_gate_evidence": "test/library.test.mjs asserts mutation of an existing id is refused, duplicates no-op, the export hash and body are identical across runs, and a record carrying an email refuses the export.",
   "fixture": [
     "FIX-021"
   ],

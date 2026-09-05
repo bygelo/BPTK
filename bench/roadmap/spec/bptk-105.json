@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "Asset packaging emits uncompressed chunk and no browser streaming runtime exists.",
+  "gate": "active",
+  "exclusion_reason": "Per-chunk compressed content-addressed streaming is implemented: the packager gzip-encodes each content-addressed chunk, records the stored fraction, and the verify path decodes and hash-checks every chunk against both its stored and content hash. The benchmark stays red because measuring bytes-to-interactive against the declared fraction needs the absent browser streaming runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the streamed package meets the declared bytes-to-interactive fraction with every chunk hash-verified.",
   "expected_failing_assertion": "No compressed streaming exists; the package integrity timing covers uncompressed chunk only.",
   "owner_item": "BPTK-105",
-  "active_gate_evidence": "The packager keeps content-addressed chunk with atomic commit and one package identity.",
+  "active_gate_evidence": "test/package.test.mjs asserts stream-compressed shrinks stored bytes below plain, every chunk hash verifies through the CLI verify path, and a tampered stored chunk is rejected.",
   "fixture": [
     "FIX-015"
   ],

@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The copy-on-write overlay does not exist.",
+  "gate": "active",
+  "exclusion_reason": "Modding is implemented as a copy-on-write overlay: a mod is layered into an overlay directory over a read-only base whose package identity is verified unchanged after the apply, every mod path is contained (a parent-path escape is refused), and the total overlay is refused above the declared bound. The benchmark stays red because running the modded title needs the absent browser game runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the mod overlay applies with unchanged base hash inside containment and the oversized case is refused.",
   "expected_failing_assertion": "No overlay exists to layer a mod on.",
   "owner_item": "BPTK-120",
-  "active_gate_evidence": "The save boundary keeps the base read-only and the resource bound layer refuses declared overflow.",
+  "active_gate_evidence": "test/library.test.mjs asserts the base identity is unchanged, override and addition overlay files stage, and an oversized mod is refused at the bound.",
   "fixture": [
     "FIX-008"
   ],

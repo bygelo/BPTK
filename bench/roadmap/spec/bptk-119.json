@@ -5,12 +5,12 @@
   "threshold_owner": "BPTK-002",
   "state": "red",
   "gate": "active",
-  "exclusion_reason": "The ratings-site display rule is implemented as a generic resolver that shows a rating only when a reproducible recorded run backs it at the current browser profile and revision, greys it out when either pin is stale, and hides it when no backing replay exists or the run is non-deterministic. The benchmark stays red because a reproducible recorded run needs a live runtime session (BPTK-010) that does not exist, so no rating is ever in the shown state on real data.",
+  "exclusion_reason": "The compatibility-ratings surface is implemented: a rating shows only when it is backed by a replay record that reproduces its recorded session and its revision is current; a superseded revision greys out and an unbacked or non-reproducing rating is hidden. The benchmark stays red because producing the live replay session that backs a rating needs the absent browser game runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the surface shows only record-backed rating and the stale case greys out.",
   "expected_failing_assertion": "No ratings surface exists.",
   "owner_item": "BPTK-119",
-  "active_gate_evidence": "The display suite covers the shown state at a matching profile and revision, the greyed state on a stale revision or browser pin, and the hidden state for an unbacked or non-reproducible rating.",
+  "active_gate_evidence": "test/library.test.mjs asserts a reproduced current rating shows, a reproduced stale-revision rating greys out, and non-reproduced and record-less ratings are hidden.",
   "fixture": [
     "FIX-021"
   ],

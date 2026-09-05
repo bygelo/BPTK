@@ -4,15 +4,15 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No tracker or submission pipeline exists.",
+  "gate": "active",
+  "exclusion_reason": "The community submission pipeline is implemented: a submission maps to a deterministic tracker entry, proprietary/asset content and personal data are refused and never stored, and a claim without a valid attestation is tracked as rejected_unattested and never promotes. The benchmark stays red because reproducing the submitted compatibility claim needs the absent browser game runtime.",
   "prerequisite": [
     "BPTK-122"
   ],
   "promotion_trigger": "Promote when a submission maps to a tracker entry with privacy striping and the unattested claim cannot promote.",
   "expected_failing_assertion": "No submission pipeline exists.",
   "owner_item": "BPTK-117",
-  "active_gate_evidence": "The report command keeps writing privacy-minimized record suitable for submission.",
+  "active_gate_evidence": "test/library.test.mjs asserts an attested clean submission is accepted and promotable, an unattested claim never promotes, and proprietary payload or PII submissions are refused.",
   "fixture": [
     "FIX-021"
   ],

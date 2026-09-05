@@ -51,3 +51,41 @@ test("import and run diagnosis never stages or executes an asset package", (cont
   assert.equal(report.is_staged, false);
   assert.equal(report.is_executed, false);
 });
+
+test("every declared flood fails closed with its bound named and the executing lane enforces budgets", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-flood-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const fixturePath = join(rootPath, "flood.json");
+  writeFileSync(fixturePath, JSON.stringify({
+    flood: [
+      { lane: "extraction", resource: "output", magnitude: 2 * 1024 * 1024 * 1024 },
+      { lane: "extraction", resource: "entry", magnitude: 5000000 },
+      { lane: "streaming", resource: "chunk_input", magnitude: 1024 * 1024 * 1024 },
+      { lane: "library", resource: "mod_overlay", magnitude: 1024 * 1024 * 1024 },
+      { lane: "execution", resource: "instruction", magnitude: 999999999 },
+      { lane: "execution", resource: "time", magnitude: 999999 },
+    ],
+  }));
+  const floodRun = run(["bound", "flood", fixturePath, "--json"]);
+  assert.equal(floodRun.status, 0);
+  const report = JSON.parse(floodRun.stdout);
+  assert.equal(report.is_every_flood_fail_closed, true);
+  assert.equal(report.is_execution_budget_enforced, true);
+  assert.equal(report.fail_closed_count, report.fixture_count);
+  for (const entry of report.result) {
+    assert.equal(entry.disposition, "refused");
+    assert.ok(entry.bound_name.length > 0);
+  }
+});
+
+test("a within-bound magnitude does not fail closed", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-flood-ok-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const fixturePath = join(rootPath, "flood.json");
+  writeFileSync(fixturePath, JSON.stringify({ flood: [{ lane: "extraction", resource: "entry", magnitude: 10 }] }));
+  const floodRun = run(["bound", "flood", fixturePath, "--json"]);
+  assert.equal(floodRun.status, 1);
+  const report = JSON.parse(floodRun.stdout);
+  assert.equal(report.is_every_flood_fail_closed, false);
+  assert.equal(report.result[0].disposition, "within_bound");
+});

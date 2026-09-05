@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "HTML and React host source exist but the web component and iframe shape and the remount leak proof do not.",
+  "gate": "active",
+  "exclusion_reason": "The four host shapes are implemented: html, react, web component, and iframe all emit one content-addressed package identity, the web component releases every worker/audio/GPU handle on disconnect, and both framed shapes sandbox the embedded document. The benchmark stays red because counting leaked runtime handles across repeated live remounts needs the absent browser game runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the four host shape produce the identical artifact with zero remount leak and a sandboxed frame.",
   "expected_failing_assertion": "Only HTML and React host source exist and no leak proof exists.",
   "owner_item": "BPTK-107",
-  "active_gate_evidence": "The packager preserves one package identity across host emission without moving the game loop into React.",
+  "active_gate_evidence": "test/package.test.mjs asserts all four host shapes preserve one package identity, embed the id, the web component carries a disconnect release path, and the framed shapes are sandboxed.",
   "fixture": [
     "FIX-017"
   ],

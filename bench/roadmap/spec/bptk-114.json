@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The inspect classification exists but no library staging or launch path exists.",
+  "gate": "active",
+  "exclusion_reason": "Bring-your-own-file import is implemented: a user-owned file is threat- and protection-scanned, refused if flagged, then staged into a local content-addressed library with zero network transfer and marked never-published. The benchmark stays red because launching the staged entry needs the absent browser game runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the user file reaches launch locally with zero upload and the local-only entry stays unpublished.",
   "expected_failing_assertion": "No library staging exists.",
   "owner_item": "BPTK-114",
-  "active_gate_evidence": "The inspect surface keeps classification without execution or upload.",
+  "active_gate_evidence": "test/library.test.mjs asserts import stages the file locally with network_byte 0, marks it unpublished and launch-local, and writes the staged object.",
   "fixture": [
     "FIX-009"
   ],

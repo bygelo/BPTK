@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No service worker or offline runtime behavior exists.",
+  "gate": "active",
+  "exclusion_reason": "PWA/offline install is implemented: the emitter writes a service worker that precaches every content-addressed chunk by hash, a web manifest, and an app shell that registers the worker; because each cache key is a content hash, the precache diff invalidates exactly the changed block. The benchmark stays red because reaching interactive fully offline from the cache needs the absent browser game runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the offline run reaches interactive from hash-verified chunk and the update invalidates exactly the changed set.",
   "expected_failing_assertion": "No offline install exists.",
   "owner_item": "BPTK-108",
-  "active_gate_evidence": "The packaging surface keeps content-addressed chunk that make precise invalidation representable.",
+  "active_gate_evidence": "test/package.test.mjs asserts the service worker precaches every chunk hash, the shell registers the worker, and computePrecacheDiff invalidates exactly the changed block while retaining the rest.",
   "fixture": [
     "FIX-015"
   ],

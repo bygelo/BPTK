@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No catalog surface, embedding host set, or provenance graph resolution exists.",
+  "gate": "active",
+  "exclusion_reason": "The game catalog and its frozen metadata schema are implemented: every entry is validated against the required typed schema, instant-play is gated to approved-redistribution entries with a passing capability record, a no-rights entry is bring-your-own only, and a schema violation is rejected. The benchmark stays red because serving a validated entry needs the absent browser game runtime.",
   "prerequisite": [
     "BPTK-107",
     "BPTK-127"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when every entry validates the schema and the instant-play and no-rights gating hold through the catalog surface.",
   "expected_failing_assertion": "No catalog exists.",
   "owner_item": "BPTK-112",
-  "active_gate_evidence": "The packaging and legal surface keep identity and rights records that the schema can bind to.",
+  "active_gate_evidence": "test/library.test.mjs asserts every valid entry validates, instant-play/BYO/hosted gating holds per entry, and a schema-violating entry is rejected with named failures.",
   "fixture": [
     "FIX-017"
   ],

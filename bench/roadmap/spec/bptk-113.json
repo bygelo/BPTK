@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No streamed store, hosting surface, or grant resolution exists.",
+  "gate": "active",
+  "exclusion_reason": "Instant-play redistributable hosting is implemented: publication is gated by the license/reuse/provenance graph so an in-date grant publishes a hosted-title descriptor while an expired grant or unlicensed component is refused outright. The benchmark stays red because measuring cold-browser time-to-interactive on the hosted title needs the absent browser game runtime.",
   "prerequisite": [
     "BPTK-105",
     "BPTK-127"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when the hosted title reaches interactive from cold start and the expired-grant publication is refused.",
   "expected_failing_assertion": "No hosting surface exists.",
   "owner_item": "BPTK-113",
-  "active_gate_evidence": "The legal surface keeps requiring named review and the packager keeps content-addressed identity.",
+  "active_gate_evidence": "test/library.test.mjs asserts an in-date grant publishes, an expired grant is refused naming the expiry, and an unlicensed project is refused.",
   "fixture": [
     "FIX-015"
   ],

@@ -1,0 +1,238 @@
+// Copyright 2026 Maphy Technologies
+// SPDX-License-Identifier: Apache-2.0
+
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
+const hashA = "a".repeat(64);
+const hashB = "b".repeat(64);
+
+function run(argument) {
+  return spawnSync(process.execPath, [binPath, ...argument], { encoding: "utf8" });
+}
+
+function scratch(context) {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-library-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  return rootPath;
+}
+
+test("catalog validates the frozen schema and gates instant-play", (context) => {
+  const rootPath = scratch(context);
+  const catalogPath = join(rootPath, "catalog.json");
+  writeFileSync(catalogPath, JSON.stringify({
+    entry: [
+      { title: "Demo A", build_hash: hashA, license: "Apache-2.0", redistribution: "approved", capability: "passing" },
+      { title: "Demo B", build_hash: hashB, license: "Freeware", redistribution: "none", capability: "unknown" },
+      { title: "Demo C", build_hash: hashA, license: "Apache-2.0", redistribution: "approved", capability: "failing" },
+    ],
+  }));
+  const catalogRun = run(["library", "catalog", catalogPath, "--json"]);
+  assert.equal(catalogRun.status, 0);
+  const report = JSON.parse(catalogRun.stdout);
+  assert.equal(report.is_all_valid, true);
+  assert.equal(report.entry[0].access, "instant_play_eligible");
+  assert.equal(report.entry[1].access, "bring_your_own_only");
+  assert.equal(report.entry[2].access, "hosted_no_capability");
+  assert.equal(report.instant_play_count, 1);
+  assert.equal(report.byo_only_count, 1);
+});
+
+function createProject(rootPath, packageValue) {
+  const projectPath = join(rootPath, `project-${Math.random().toString(36).slice(2)}`);
+  mkdirSync(projectPath);
+  writeFileSync(join(projectPath, "game.dat"), "first-party demo payload\n");
+  if (packageValue) writeFileSync(join(projectPath, "package.json"), JSON.stringify(packageValue));
+  return projectPath;
+}
+
+test("BYO import stages locally with zero network and never publishes", (context) => {
+  const rootPath = scratch(context);
+  const filePath = join(rootPath, "my-save.dat");
+  writeFileSync(filePath, "user owned game file\n");
+  const stagePath = join(rootPath, "library");
+  const importRun = run(["library", "import", filePath, "--stage", stagePath, "--json"]);
+  assert.equal(importRun.status, 0);
+  const report = JSON.parse(importRun.stdout);
+  assert.equal(report.network_byte, 0);
+  assert.equal(report.is_published, false);
+  assert.equal(report.is_launch_local, true);
+  assert.equal(existsSync(report.staged_path), true);
+});
+
+test("hosting publishes an in-date grant and refuses an expired one", (context) => {
+  const rootPath = scratch(context);
+  const inDate = createProject(rootPath, { name: "demo", license: "Apache-2.0", grant_expiry: "2999-01-01" });
+  const okRun = run(["library", "publish", inDate, "--json"]);
+  assert.equal(okRun.status, 0);
+  const okReport = JSON.parse(okRun.stdout);
+  assert.equal(okReport.is_published, true);
+  assert.equal(okReport.state, "hosted_no_runtime");
+
+  const expired = createProject(rootPath, { name: "demo", license: "Apache-2.0", grant_expiry: "2000-01-01" });
+  const expiredRun = run(["library", "publish", expired, "--json"]);
+  assert.equal(expiredRun.status, 1);
+  const expiredReport = JSON.parse(expiredRun.stdout);
+  assert.equal(expiredReport.is_published, false);
+  assert.ok(expiredReport.refusal.some((entry) => /expired/.test(entry)));
+
+  const unlicensed = createProject(rootPath, null);
+  const unlicensedRun = run(["library", "publish", unlicensed, "--json"]);
+  assert.equal(unlicensedRun.status, 1);
+  assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
+});
+
+test("first-party demo builds reproducibly, is publishable, and reports no passing run", (context) => {
+  const rootPath = scratch(context);
+  const outA = join(rootPath, "demo-a");
+  const outB = join(rootPath, "demo-b");
+  const reportA = JSON.parse(run(["library", "demo", outA, "--json"]).stdout);
+  const reportB = JSON.parse(run(["library", "demo", outB, "--json"]).stdout);
+  assert.equal(reportA.is_clean_build, true);
+  assert.equal(reportA.build_hash, reportB.build_hash, "clean build is reproducible");
+  assert.equal(reportA.is_first_party, true);
+  // Honest: no runtime, so no passing capability evidence is promoted.
+  assert.equal(reportA.is_passing, false);
+  assert.equal(reportA.capability_evidence.is_passing, false);
+  assert.equal(reportA.capability_evidence.evidence_hash, null);
+  // The generated demo is Apache-licensed, so it is publishable through hosting.
+  const publish = JSON.parse(run(["library", "publish", outA, "--json"]).stdout);
+  assert.equal(publish.is_published, true);
+});
+
+test("submission maps to a tracker entry; unattested never promotes; proprietary and PII refused", (context) => {
+  const rootPath = scratch(context);
+  const attested = join(rootPath, "attested.json");
+  writeFileSync(attested, JSON.stringify({ title: "Demo runs", claim: "reaches menu", attestation: { signer: "contributor-1", is_attested: true } }));
+  const attestedRun = run(["library", "submit", attested, "--json"]);
+  assert.equal(attestedRun.status, 0);
+  const attestedReport = JSON.parse(attestedRun.stdout);
+  assert.equal(attestedReport.tracker_entry.status, "accepted");
+  assert.equal(attestedReport.is_promotable, true);
+
+  const unattested = join(rootPath, "unattested.json");
+  writeFileSync(unattested, JSON.stringify({ title: "Demo runs", claim: "reaches menu" }));
+  const unattestedRun = run(["library", "submit", unattested, "--json"]);
+  assert.equal(unattestedRun.status, 1);
+  const unattestedReport = JSON.parse(unattestedRun.stdout);
+  assert.equal(unattestedReport.tracker_entry.status, "rejected_unattested");
+  assert.equal(unattestedReport.is_promotable, false);
+
+  const proprietary = join(rootPath, "proprietary.json");
+  writeFileSync(proprietary, JSON.stringify({ title: "Leak", claim: "x", asset_payload: "GAMEBYTES", attestation: { signer: "s", is_attested: true } }));
+  assert.equal(run(["library", "submit", proprietary, "--json"]).status, 1);
+
+  const pii = join(rootPath, "pii.json");
+  writeFileSync(pii, JSON.stringify({ title: "Contact me at person@example.com", claim: "x", attestation: { signer: "s", is_attested: true } }));
+  assert.equal(run(["library", "submit", pii, "--json"]).status, 1);
+});
+
+test("modding overlays a base without changing it and refuses an oversized mod", (context) => {
+  const rootPath = scratch(context);
+  const projectPath = join(rootPath, "base-project");
+  mkdirSync(projectPath);
+  writeFileSync(join(projectPath, "level.dat"), "base level bytes\n");
+  assert.equal(run(["package", projectPath, "--asset-mode", "stream", "--json"]).status, 0);
+  const basePackage = `${projectPath}.bptk-package`;
+
+  const modPath = join(rootPath, "mod");
+  mkdirSync(modPath);
+  writeFileSync(join(modPath, "level.dat"), "modded level bytes\n"); // override
+  writeFileSync(join(modPath, "extra.dat"), "new mod content\n"); // addition
+  const modRun = run(["library", "mod", basePackage, modPath, "--stage", join(rootPath, "overlay"), "--json"]);
+  assert.equal(modRun.status, 0);
+  const report = JSON.parse(modRun.stdout);
+  assert.equal(report.is_base_unchanged, true);
+  assert.equal(report.overlay.length, 2);
+  assert.ok(report.overlay.some((entry) => entry.disposition === "override"));
+  assert.ok(report.overlay.some((entry) => entry.disposition === "addition"));
+  assert.equal(existsSync(join(rootPath, "overlay", "level.dat")), true);
+
+  // An oversized mod is refused at the declared bound.
+  const bigMod = run(["library", "mod", basePackage, modPath, "--stage", join(rootPath, "overlay2"), "--max", "1", "--json"]);
+  assert.equal(bigMod.status, 1);
+});
+
+test("ratings show only when record-backed and current; stale ones grey out", (context) => {
+  const rootPath = scratch(context);
+  const ratingPath = join(rootPath, "rating.json");
+  const session = [{ frame: 0 }, { frame: 1 }];
+  writeFileSync(ratingPath, JSON.stringify({
+    current_revision: "rev-3",
+    rating: [
+      { title: "Reproduced current", score: 5, revision: "rev-3", record: { session, replay: session } },
+      { title: "Reproduced stale", score: 4, revision: "rev-1", record: { session, replay: session } },
+      { title: "Not reproduced", score: 5, revision: "rev-3", record: { session, replay: [{ frame: 9 }] } },
+      { title: "No record", score: 5, revision: "rev-3" },
+    ],
+  }));
+  const report = JSON.parse(run(["library", "rating", ratingPath, "--json"]).stdout);
+  assert.equal(report.rating[0].display, "shown");
+  assert.equal(report.rating[1].display, "greyed_out_stale");
+  assert.equal(report.rating[2].display, "hidden_no_record");
+  assert.equal(report.rating[3].display, "hidden_no_record");
+  assert.equal(report.shown_count, 1);
+  assert.equal(report.greyed_count, 1);
+  assert.equal(report.hidden_count, 2);
+});
+
+test("preservation catalog is append-only and exports reproducibly and PII-free", (context) => {
+  const rootPath = scratch(context);
+  const catalogPath = join(rootPath, "preservation.json");
+  const entryOne = join(rootPath, "entry-one.json");
+  const entryTwo = join(rootPath, "entry-two.json");
+  writeFileSync(entryOne, JSON.stringify({ id: "title-1", title: "Preserved One", provenance: "freeware release 1999" }));
+  writeFileSync(entryTwo, JSON.stringify({ id: "title-2", title: "Preserved Two", provenance: "freeware release 2001" }));
+  assert.equal(run(["library", "preserve", catalogPath, entryOne, "--json"]).status, 0);
+  assert.equal(run(["library", "preserve", catalogPath, entryTwo, "--json"]).status, 0);
+  // Re-appending the identical entry is a no-op duplicate, not an error.
+  const duplicate = JSON.parse(run(["library", "preserve", catalogPath, entryOne, "--json"]).stdout);
+  assert.equal(duplicate.is_appended, false);
+  assert.equal(duplicate.is_duplicate, true);
+
+  // Mutating an existing id is refused.
+  const mutated = join(rootPath, "entry-mutated.json");
+  writeFileSync(mutated, JSON.stringify({ id: "title-1", title: "Preserved One CHANGED", provenance: "tampered" }));
+  const mutateRun = run(["library", "preserve", catalogPath, mutated, "--json"]);
+  assert.equal(mutateRun.status, 1);
+
+  // Export is byte-identical across two runs and personal-data-free.
+  const exportA = JSON.parse(run(["library", "preserve-export", catalogPath, "--json"]).stdout);
+  const exportB = JSON.parse(run(["library", "preserve-export", catalogPath, "--json"]).stdout);
+  assert.equal(exportA.export_hash, exportB.export_hash);
+  assert.equal(exportA.export_body, exportB.export_body);
+  assert.equal(exportA.is_personal_data_free, true);
+});
+
+test("preservation export refuses a record carrying personal data", (context) => {
+  const rootPath = scratch(context);
+  const catalogPath = join(rootPath, "preservation.json");
+  const entry = join(rootPath, "entry.json");
+  writeFileSync(entry, JSON.stringify({ id: "t", title: "Has PII", provenance: "contact person@example.com" }));
+  assert.equal(run(["library", "preserve", catalogPath, entry, "--json"]).status, 0);
+  const exportRun = run(["library", "preserve-export", catalogPath, "--json"]);
+  assert.equal(exportRun.status, 1);
+  const report = JSON.parse(exportRun.stdout);
+  assert.equal(report.is_personal_data_free, false);
+  assert.ok(report.personal_data_hit.includes("email"));
+});
+
+test("catalog rejects an entry that violates the schema", (context) => {
+  const rootPath = scratch(context);
+  const catalogPath = join(rootPath, "catalog.json");
+  writeFileSync(catalogPath, JSON.stringify({
+    entry: [{ title: "Bad", build_hash: "not-a-hash", license: "Apache-2.0", redistribution: "maybe", capability: "passing" }],
+  }));
+  const catalogRun = run(["library", "catalog", catalogPath, "--json"]);
+  assert.equal(catalogRun.status, 1);
+  const report = JSON.parse(catalogRun.stdout);
+  assert.equal(report.is_all_valid, false);
+  assert.equal(report.entry[0].access, "rejected");
+  assert.ok(report.entry[0].failure.length >= 2);
+});

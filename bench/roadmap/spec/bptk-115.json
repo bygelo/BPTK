@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No authoring SDK or first-party source exists.",
+  "gate": "active",
+  "exclusion_reason": "A first-party BPTK tech-demo title is implemented: it is generated deterministically on the public authoring SDK (a clean build reproduces the same build hash), is Apache-2.0 licensed so it publishes through hosting, and the runner records its run as capability evidence that is honestly not-passing with no promoted evidence. The benchmark stays red because reaching interactive and promoting a passing run needs the absent browser game runtime.",
   "prerequisite": [
     "BPTK-003",
     "BPTK-116"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when the title builds clean, hosts, and its run evidence promotes through the runner.",
   "expected_failing_assertion": "No first-party title exists.",
   "owner_item": "BPTK-115",
-  "active_gate_evidence": "The benchmark runner keeps content-addressed promotion that the title run can feed.",
+  "active_gate_evidence": "test/library.test.mjs asserts two clean builds share a build hash, the demo is first-party and publishable, and the capability evidence reports is_passing false with a null evidence hash.",
   "fixture": [
     "FIX-014"
   ],

@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The declared bound layer covers extraction and the probe instruction budget; the other lane surfaces are absent.",
+  "gate": "active",
+  "exclusion_reason": "Cross-lane resource-exhaustion bounds are implemented: every lane surface (extraction output/entry/depth/ratio, streaming chunk-input, mod overlay, execution instruction/stack/time) resolves to one frozen bound, a flood fixture whose magnitude exceeds the bound fails closed with the bound named, and the code-executing lane enforces both an instruction and a time budget. The benchmark stays red because exercising each bound under real load needs the absent live lane runtime.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every declared flood fixture fails closed per lane and the budget enforcement holds where code runs.",
   "expected_failing_assertion": "The GPU, worker, and storage-quota lane surface do not exist yet.",
   "owner_item": "BPTK-131",
-  "active_gate_evidence": "The declared bound layer keeps refusing the decompression-bomb fixture and the probe keeps its instruction budget.",
+  "active_gate_evidence": "test/boundary.test.mjs asserts every declared flood fixture fails closed with its bound named, the executing lane enforces instruction and time budgets, and a within-bound magnitude does not fail closed.",
   "fixture": [
     "FIX-009",
     "FIX-015"

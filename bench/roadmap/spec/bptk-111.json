@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The copy-on-write overlay does not exist yet to diff.",
+  "gate": "active",
+  "exclusion_reason": "Cloud save sync is implemented: only the overlay diff (new or hash-changed save files) is transmitted, base files and overlay files that match the base are excluded, and cross-device conflict resolution is deterministic (higher logical clock wins, hash tie-break) and order-independent. The benchmark stays red because applying the merged overlay against a live cloud endpoint needs the absent hosting service.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the sync uploads exactly the overlay diff with the base-exclusion proof and resolves conflicts deterministically.",
   "expected_failing_assertion": "No overlay or sync exists.",
   "owner_item": "BPTK-111",
-  "active_gate_evidence": "The save boundary keeps the base read-only with no overlay created and path-shaped profile refused.",
+  "active_gate_evidence": "test/policy.test.mjs asserts save sync transmits only the new/changed overlay files and excludes the base, and that conflict resolution yields an identical result hash regardless of device order with the higher-clock writer winning.",
   "fixture": [
     "FIX-008"
   ],
