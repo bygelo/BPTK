@@ -196,7 +196,11 @@ test("the run harness records the real stage and the named generic gap", async (
   const report = runCorpus({ stage });
   const record = report.record[0];
   assert.equal(record.architecture, "i386");
-  assert.equal(record.reached_stage, "loaded");
+  // The corpus is the consented, bounded execution context: it fires the i386
+  // probe, so a valid i386 image executes from its entry point and reaches the
+  // `entry` stage. The generic gap is now runtime_game_loop_absent (BPTK-010) —
+  // executed, but a real session needs the full Win32 runtime. Not playable.
+  assert.equal(record.reached_stage, "entry");
   assert.equal(record.gap_item, "BPTK-010");
   assert.equal(record.is_playable_claim, false);
   assert.ok(record.command.includes("run"));
