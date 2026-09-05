@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { mapPe64State } from "../lib/pe64.mjs";
+import { mapPe64State, peekPeMachine } from "../lib/pe64.mjs";
 
 const PE = 0x80; // PE header offset written at 0x3c
 const OPT = PE + 24; // optional header offset (0x98)
@@ -146,6 +146,15 @@ test("mapPe64State applies an IMAGE_REL_BASED_DIR64 relocation for a moved base"
 test("mapPe64State refuses a moved base with no relocation directory", (context) => {
   const path = tempFile(context, createPe64File());
   assert.throws(() => mapPe64State(path, 0x180000000n), (error) => error.input_code === "relocation_required");
+});
+
+test("peekPeMachine reads the machine without a full load and returns null for non-PE input", (context) => {
+  const x64 = tempFile(context, createPe64File(), "x64.exe");
+  assert.equal(peekPeMachine(x64), 0x8664);
+  // a large sparse non-PE file peeks null (and is never fully read)
+  const junk = tempFile(context, Buffer.alloc(0x2000), "junk.bin");
+  assert.equal(peekPeMachine(junk), null);
+  assert.equal(peekPeMachine(""), null);
 });
 
 test("mapPe64State reads a 64-bit TLS callback array", (context) => {
