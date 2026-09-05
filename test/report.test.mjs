@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { computeCompatibilityRating } from "../lib/report.mjs";
+import { buildReplayArtifact, compareReplay, computeCompatibilityRating, verifyReplayArtifact } from "../lib/report.mjs";
 
 const provenance = { boots: "replay:aa", in_game: "replay:bb", playable: "replay:cc", complete: "replay:dd" };
 
@@ -35,4 +35,45 @@ test("with no passing predicate the honest rating is broken", () => {
   const none = computeCompatibilityRating({ predicate: {}, provenance: {} });
   assert.equal(none.rating, "broken");
   assert.equal(none.rating_index, 0);
+});
+
+const run = {
+  title_id: "T-DEMO",
+  revision: "sha256:rev",
+  checkpoint: [
+    { label: "boot", state: { frame: 0, pc: 4096 } },
+    { label: "menu", state: { frame: 60, pc: 8192 } },
+  ],
+};
+
+test("two replays of the same run hash-match at every checkpoint", () => {
+  const first = buildReplayArtifact(run);
+  const second = buildReplayArtifact({ ...run, checkpoint: run.checkpoint.map((entry) => ({ ...entry })) });
+  assert.equal(first.artifact_sha256, second.artifact_sha256);
+  const verdict = compareReplay(first, second);
+  assert.equal(verdict.is_deterministic, true);
+  assert.equal(verdict.first_divergence, null);
+});
+
+test("a divergent checkpoint is caught at its index", () => {
+  const first = buildReplayArtifact(run);
+  const drift = buildReplayArtifact({ ...run, checkpoint: [run.checkpoint[0], { label: "menu", state: { frame: 61, pc: 8192 } }] });
+  const verdict = compareReplay(first, drift);
+  assert.equal(verdict.is_deterministic, false);
+  assert.equal(verdict.first_divergence.index, 1);
+});
+
+test("the built artifact embeds no raw state, only hashes, and passes the clean check", () => {
+  const artifact = buildReplayArtifact(run);
+  assert.equal("state" in artifact.checkpoint[0], false);
+  assert.match(artifact.checkpoint[0].state_sha256, /^[a-f0-9]{64}$/);
+  assert.equal(verifyReplayArtifact(artifact).is_clean, true);
+});
+
+test("an artifact that embeds personal data or a raw state blob is refused", () => {
+  const leak = { title_id: "T", revision: "r", checkpoint: [{ label: "x", state_sha256: "a".repeat(64), state: { note: "PERSONAL_DATA_MARKER" } }] };
+  const verdict = verifyReplayArtifact(leak);
+  assert.equal(verdict.is_clean, false);
+  assert.match(verdict.reason.join(" "), /embedded personal_data/);
+  assert.match(verdict.reason.join(" "), /embeds raw state/);
 });

@@ -9,9 +9,11 @@
     "analyzeSecurity",
     "assertCapsWithinSupport",
     "benchmarkPerformance",
+    "buildReplayArtifact",
     "canonicalizeTrace",
     "censusInput",
     "compareFoundation",
+    "compareReplay",
     "computeCompatibilityRating",
     "computeFrameDiff",
     "configureThread",
@@ -49,6 +51,7 @@
     "formatNetwork",
     "formatPerformance",
     "formatProgram",
+    "formatReplay",
     "formatReport",
     "formatResearch",
     "formatRun",
@@ -78,6 +81,7 @@
     "runCli",
     "runConformanceSuite",
     "runPackage",
+    "verifyReplayArtifact",
     "verifyTrace",
     "verifyTraceCorpus"
   ]
