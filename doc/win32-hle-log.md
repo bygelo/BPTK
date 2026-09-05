@@ -98,7 +98,19 @@ needs a consented allowlisted peer and the WebRTC/WebSocket transport binding.
 
 Gate: exit 0.
 
+## Cycle 6 — BPTK-096 3D positional-audio core (implemented, red/active)
+Added the DS3D/X3DAudio positional math in lib/audio.mjs on the BPTK-014 mixer:
+distanceAttenuation (inverse-distance rolloff), azimuthPan (left-handed right
+axis from one listener + emitter), and compute3dSourceGain combining attenuation
+with the constant-power pan into the mixer's left/right gain. No new HLE guest
+import (library math); three tests prove the rolloff points, the left/right/
+centered pan, and the combined gain. Implemented count 48→49; passing 0. Still
+red: the EAX reverb send and the DirectSound3D/XAudio2 emitter-listener COM
+binding are absent.
+
+Gate: exit 0.
+
 ## Progress
-Implemented 43→48 (BPTK-101, 098, 011, 012, 099). Served HLE export 156→218.
-Remaining owned planned items: BPTK-096 (3D audio), 097 (full input), 100 (FMV),
+Implemented 43→49 (BPTK-101, 098, 011, 012, 099, 096). Served HLE export 156→218.
+Remaining owned planned items: BPTK-097 (full input), 100 (FMV),
 102 (installer/optical), 104 (frame-pacing).

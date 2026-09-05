@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No waveOut or DirectSound bridge exists to extend.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the environmental reverb (EAX) send and its frozen wet/dry tolerance, and the binding of the 3D gain onto the DirectSound3DBuffer and XAudio2 emitter/listener COM surfaces, are not wired — so the positional-and-reverb fixture cannot mix its reverb band. The positional core exists generically in lib/audio.mjs on top of the BPTK-014 mixer: the DS3D inverse-distance attenuation (unity inside the minimum distance, inverse rolloff between min and max, held at the max-distance gain beyond it), the azimuth pan from one listener and one emitter over the left-handed right axis, and compute3dSourceGain combining attenuation and the constant-power pan into the same explicit left/right linear gain the mixer already consumes (plus the distance for a reverb send or Doppler ratio).",
   "prerequisite": [],
   "promotion_trigger": "Promote when the positional and reverb fixture mixes within the frozen tolerance with zero underrun.",
-  "expected_failing_assertion": "No audio bridge exists.",
+  "expected_failing_assertion": "The EAX reverb send and the DirectSound3D/XAudio2 emitter-listener binding are absent, so the reverb band of the fixture is not mixed.",
   "owner_item": "BPTK-096",
-  "active_gate_evidence": "The graphics probes observe AudioContext availability without a mixing claim.",
+  "active_gate_evidence": "Three tests prove the positional core: the distance attenuation follows the DS3D inverse-distance rolloff at its declared points, the azimuth pan places an emitter left/right/centered relative to the listener orientation, and the 3D source gain combines attenuation and the constant-power pan so a nearer emitter is louder and a right emitter is louder on the right; the existing offline mix stays underrun-free and the full suite stays green.",
   "fixture": [
     "FIX-007"
   ],
