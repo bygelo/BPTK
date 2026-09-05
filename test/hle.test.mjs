@@ -15,7 +15,7 @@ import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
-import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile } from "../lib/hle.mjs";
+import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile, createConformanceMachine } from "../lib/hle.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -414,6 +414,77 @@ test("conformance: every Win32 core HLE export carries case and matches the orac
   assert.equal(report.is_coverage_complete, true, "a served export without case is a coverage hole");
   assert.equal(report.fail_count, 0, report.result.filter((entry) => !entry.pass).map((entry) => `${entry.case_id}: ${entry.mismatch.join("; ")}`).join("\n"));
   assert.equal(report.pass_count, caseTable.length);
+});
+
+// The conformance suite compares return_value and last_error; these cases
+// prove the memory side effects of the BPTK-101 breadth slice, which the
+// oracle does not inspect.
+function invoke(guest, library, symbol, argument) {
+  return guest.invokeExport(guest.lookupExport(library, symbol), argument);
+}
+
+test("BPTK-101: interlocked atomics read-modify-write the guest dword and honor the return contract", () => {
+  const { guest, memory } = createConformanceMachine();
+  const cell = guest.layout.arena_base + 0x40;
+  memory.writeMemory(cell, 4, 5);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedIncrement", [cell]), 6);
+  assert.equal(memory.readMemory(cell, 4), 6);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedDecrement", [cell]), 5);
+  assert.equal(memory.readMemory(cell, 4), 5);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedExchange", [cell, 99]), 5, "Exchange returns the prior value");
+  assert.equal(memory.readMemory(cell, 4), 99);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedExchangeAdd", [cell, 1]), 99, "ExchangeAdd returns the prior value");
+  assert.equal(memory.readMemory(cell, 4), 100);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedCompareExchange", [cell, 7, 100]), 100, "a matching comparand stores the exchange");
+  assert.equal(memory.readMemory(cell, 4), 7);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedCompareExchange", [cell, 42, 999]), 7, "a mismatched comparand leaves the cell");
+  assert.equal(memory.readMemory(cell, 4), 7);
+});
+
+test("BPTK-101: the kernel32 string family copies and concatenates bytes into guest memory", () => {
+  const { guest } = createConformanceMachine();
+  const src = guest.layout.arena_base + 0x80;
+  const dest = guest.layout.arena_base + 0x120;
+  guest.writeAnsiString(src, "hello", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "lstrcpyA", [dest, src]), dest);
+  assert.equal(guest.readAnsiString(dest), "hello");
+  guest.writeAnsiString(src, "world", 16);
+  invoke(guest, "kernel32.dll", "lstrcpynA", [dest, src, 3]);
+  assert.equal(guest.readAnsiString(dest), "wo", "lstrcpynA copies at most n-1 characters and terminates");
+  guest.writeAnsiString(dest, "ab", 16);
+  guest.writeAnsiString(src, "cd", 16);
+  invoke(guest, "kernel32.dll", "lstrcatA", [dest, src]);
+  assert.equal(guest.readAnsiString(dest), "abcd");
+});
+
+test("BPTK-101: MulDiv rounds half away from zero and refuses a zero denominator", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [10, 3, 4]), 8);
+  assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [1, 1, 3]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [10, 3, 0]) | 0, -1, "a zero denominator returns -1");
+});
+
+test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clock", () => {
+  const { guest, memory } = createConformanceMachine();
+  const buffer = guest.layout.arena_base + 0x200;
+  invoke(guest, "kernel32.dll", "GetSystemTime", [buffer]);
+  const field = guest.readSystemTime(buffer);
+  assert.deepEqual(field, guest.guestSystemTime());
+  assert.ok(field.month >= 1 && field.month <= 12);
+  assert.ok(field.hour >= 0 && field.hour < 24);
+  // GetSystemInfo reports one declared processor and the 64 KiB granularity.
+  const info = guest.layout.arena_base + 0x180;
+  invoke(guest, "kernel32.dll", "GetSystemInfo", [info]);
+  assert.equal(memory.readMemory(info + 4, 4), 4096, "dwPageSize");
+  assert.equal(memory.readMemory(info + 20, 4), 1, "dwNumberOfProcessors");
+  assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
+});
+
+test("BPTK-101: SetErrorMode returns the previous mode", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "SetErrorMode", [0x8000]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "SetErrorMode", [0x0001]), 0x8000);
+  assert.equal(invoke(guest, "kernel32.dll", "GetErrorMode", []), 0x0001);
 });
 
 test("FIX-003: the core API exerciser starts, synchronizes, allocates, times, calls COM, and exits with the golden trace", (context) => {

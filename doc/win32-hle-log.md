@@ -1,0 +1,44 @@
+# Win32 HLE lane log (lane/win32-hle)
+
+Scope: Pillar 5 (Win32 HLE + runtime services) + BPTK-010. Converge every owned
+runtime-service item to gate-green (implemented + active red contract). Owned:
+lib/hle.mjs, lib/user.mjs, lib/gdi.mjs, lib/audio.mjs, lib/net.mjs,
+lib/input.mjs, lib/storage.mjs, lib/clock.mjs.
+
+Verifier: `npm run gate` exit 0. Passing stays 0 (no real benchmark passes yet).
+
+## Remaining planned P5 items (from doc/roadmap-gold-standard.json)
+- BPTK-096 3D/positional audio (XAudio2/EAX/DS3D) — lib/audio.mjs
+- BPTK-097 full input (DirectInput/XInput/gamepad/touch/pointer-lock/rumble) — lib/input.mjs
+- BPTK-098 storage & registry fidelity — lib/storage.mjs / lib/hle.mjs
+- BPTK-099 networking (Winsock/DirectPlay→WebRTC/WebSocket) — lib/net.mjs
+- BPTK-100 FMV sync & subtitles — lib/audio.mjs / lib/hle.mjs
+- BPTK-101 Win32 breadth — lib/hle.mjs  **(in progress)**
+- BPTK-102 installer/CD/virtual optical drive — lib/storage.mjs
+- BPTK-104 frame-pacing / vblank scheduler — lib/clock.mjs
+- BPTK-011 USER32 window/message/input — lib/user.mjs
+- BPTK-012 GDI compatibility slice — lib/gdi.mjs
+
+Note: the real corpus stage is not present in this worktree (no staged payload),
+so `bptk corpus coverage` reports empty here; coverage deltas are measured on the
+Windows corpus box, not re-measured in this lane. Local scoreboard = the
+conformance suite (case-per-served-export) + served-export count + the test floor.
+
+## Cycle 1 — BPTK-101 kernel32 breadth slice (implemented, red/active)
+Added generic stdcall emulations in lib/hle.mjs:
+- string family: lstrcmpA/W, lstrcmpiA/W (ordinal <0/0/>0), lstrcpyA/W,
+  lstrcpynA, lstrcatA/W (return the destination pointer)
+- interlocked atomics: InterlockedIncrement/Decrement (new value),
+  InterlockedExchange/ExchangeAdd (prior value), InterlockedCompareExchange
+  (store only on comparand match)
+- MulDiv (round half away from zero; -1 on zero denominator / overflow)
+- GetSystemInfo/GetNativeSystemInfo (declared single-processor SYSTEM_INFO)
+- GetSystemTime/GetLocalTime (SYSTEMTIME from the one guest clock, UTC bias)
+- SetErrorMode/GetErrorMode; OutputDebugStringA/W (no-observable-effect sink)
+
+Served kernel32 export 107→130; total served 156→179. Every new export carries
+a conformance case; added five memory-effect tests. Implemented count 43→44;
+passing stays 0. Still red: ole32 COM marshaling, SxS activation context, and
+msvbvm module slices are absent, and the real-corpus gap budget is unmeasured here.
+
+Gate: exit 0.
