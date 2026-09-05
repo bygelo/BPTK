@@ -213,6 +213,7 @@ ALLOWED_MJS_PATH = {
     Path("test/boundary.test.mjs"),
     Path("test/census.test.mjs"),
     Path("test/emulator.test.mjs"),
+    Path("test/engine.test.mjs"),
     Path("test/extract.test.mjs"),
     Path("test/i386.test.mjs"),
     Path("test/import.test.mjs"),

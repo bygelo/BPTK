@@ -10,7 +10,7 @@ Converge-to-completion run over the P4 lane/routing/format scope. Verifier:
 | GS-043 | BPTK-088 | Diagnose-and-route front door | implemented (pre-run) |
 | GS-044 | BPTK-089 | Universal `.bptk` bundle envelope | implemented (pre-run) |
 | GS-045 | BPTK-090 | Source lane build autodetect + patch-set | **implemented** |
-| GS-046 | BPTK-091 | Engine lane open-reimpl host | planned |
+| GS-046 | BPTK-091 | Engine lane open-reimpl host | **implemented** |
 | GS-048 | BPTK-093 | Web-native ingest under capability | implemented (pre-run) |
 | GS-049 | BPTK-094 | DOS/Win16/Win9x emulator lane | **implemented** |
 | GS-050 | BPTK-095 | Cross-lane fallback + confidence chain | **implemented** |
@@ -78,3 +78,24 @@ Converge-to-completion run over the P4 lane/routing/format scope. Verifier:
 - Spec `bptk-101.json`: gate excluded → active; red until every imported module
   carries a passing conformance slice. Counts: implemented 46 → 47; +3 SDK
   exports. passing 0. Gate exit 0.
+
+## Cycle 5 — GS-046 / BPTK-091 (engine lane runtime host)
+
+- `lib/engine.mjs`: `diagnoseEnginePort` now fingerprints the asset's engine
+  family, pairs it to the declared open-reimplementation build (PrBoom+,
+  EDuke32, QuakeSpasm, ScummVM, Sarien) via a data catalog, keeps the
+  user-owned asset held separate under a rights boundary, and refuses a
+  requested engine that contradicts the fingerprint as a mislabel (compared by
+  reimplementation, since two families share ScummVM). Reachable via the
+  existing `bptk port --engine <engine> <asset>`.
+- `test/engine.test.mjs` (new): pairing + asset-held-separate, mislabel
+  refusal, blocked-until-build-and-rights, unfingerprinted-no-pairing, CLI
+  reachability. Registered in `tool/validate.py`.
+- Spec `bptk-091.json`: gate excluded → active; red until a Wasm build is
+  embedded and rights attested. Counts: implemented 47 → 48. passing 0. Gate 0.
+
+## Scope complete
+
+All five planned P4 lane/format items (GS-045/046/049/050/057) are implemented
+with an active red contract; GS-043/044/048/072 were implemented pre-run.
+`npm run gate` exit 0; passing stays 0.
