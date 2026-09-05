@@ -23,10 +23,15 @@ import {
   createTransportPolicy,
   createWinsock,
   deliveryChannel,
+  htons,
+  inetAddr,
   listNetExport,
   netAcceptance,
+  ntohs,
+  resolveName,
   runTwoInstanceFixture,
   winsockConstant,
+  winsockOption,
   wsaError,
 } from "../lib/net.mjs";
 import { runConformanceSuite } from "../lib/conformance.mjs";
@@ -222,6 +227,46 @@ test("the two-instance fixture is accepted with zero off-allowlist and un-consen
   assert.equal(report.host_socket_opened, false);
   assert.equal(report.is_accepted, true);
   assert.equal(report.player.length, 2);
+});
+
+test("name resolution refuses an off-allowlist and un-consented name and reaches no host", () => {
+  const policy = createTransportPolicy({ allowlist: ["relay:room/peer"], is_consented: true });
+  const offAllowlist = resolveName(policy, "matchmaker.example.com");
+  assert.equal(offAllowlist.is_resolved, false);
+  assert.equal(offAllowlist.reason, "off_allowlist");
+  assert.equal(offAllowlist.wsa_error, 11001);
+  assert.equal(offAllowlist.endpoint, null);
+  assert.equal(policy.off_allowlist_attempt_count, 1);
+
+  const allowlisted = resolveName(policy, "relay:room/peer");
+  assert.equal(allowlisted.is_resolved, true);
+  assert.equal(allowlisted.endpoint, "relay:room/peer");
+
+  const unconsented = createTransportPolicy({ allowlist: ["relay:room/peer"], is_consented: false });
+  assert.equal(resolveName(unconsented, "relay:room/peer").is_resolved, false);
+  assert.equal(unconsented.unconsented_attempt_count, 1);
+});
+
+test("the byte-order and address helpers are pure and reach no host", () => {
+  assert.equal(htons(0x1234), 0x3412);
+  assert.equal(ntohs(0x3412), 0x1234);
+  assert.equal(inetAddr("127.0.0.1"), 0x7f000001);
+  assert.equal(inetAddr("999.1.1.1"), 0xffffffff);
+  assert.equal(inetAddr("not-an-address"), 0xffffffff);
+});
+
+test("socket option honors a declared name, refuses an unknown one, and toggles FIONBIO", () => {
+  const policy = createTransportPolicy({ allowlist: ["relay:a"], is_consented: true });
+  const relay = createMediatedRelay(policy);
+  const winsock = createWinsock(relay, { endpoint: "relay:a" });
+  winsock.WSAStartup();
+  const handle = winsock.socket(winsockConstant.AF_INET, winsockConstant.SOCK_DGRAM, winsockConstant.IPPROTO_UDP);
+  assert.equal(winsock.setsockopt(handle, winsockOption.TCP_NODELAY, 1), wsaError.WSA_OK);
+  assert.equal(winsock.getsockopt(handle, winsockOption.TCP_NODELAY).value, 1);
+  assert.equal(winsock.setsockopt(handle, "SO_UNKNOWN", 1), winsockConstant.SOCKET_ERROR);
+  assert.equal(winsock.WSAGetLastError(), wsaError.WSAEINVAL);
+  assert.equal(winsock.ioctlsocket(handle, "FIONBIO", 1), wsaError.WSA_OK);
+  assert.equal(winsock.ioctlsocket(handle, "SIOCATMARK", 0), winsockConstant.SOCKET_ERROR);
 });
 
 test("the net conformance suite covers every served export with zero coverage hole", () => {

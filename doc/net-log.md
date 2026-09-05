@@ -88,6 +88,37 @@ coverage are different claims:
   export table so a staged Plink (a ws2_32 client) flips those imports from
   `absent` to `covered`, and to acquire the payload locally to measure it.
 
+## 2026-09-05 — cycle 2: name-resolution refusal, socket option, byte-order helper
+
+### Implemented (generic; no payload or title branch anywhere)
+
+- **Name-resolution refusal** (`resolveName`) — a Tier-1 legal rail.
+  getaddrinfo / gethostbyname resolve ONLY an allowlisted, consented logical
+  relay endpoint, and to that endpoint identity itself, never to a routable host
+  address. An off-allowlist or un-consented name is refused with
+  `WSAHOST_NOT_FOUND` (11001) and no lookup is performed — the resolver reaches
+  nothing outside the allowlist, so the guest cannot probe or reach a live host
+  by name.
+- **Socket option** (`setsockopt`/`getsockopt`): a bounded store honoring only a
+  declared, host-neutral option (`SO_REUSEADDR`, `SO_RCVBUF`, `SO_SNDBUF`,
+  `SO_BROADCAST`, `TCP_NODELAY`); an unknown option is refused with `WSAEINVAL`,
+  never mapped onto host behavior.
+- **`ioctlsocket` FIONBIO**: the non-blocking flag, changing only the local
+  empty-inbox contract, never reaching a host descriptor; an unknown command is
+  refused.
+- **Byte-order and address helpers** (`htons`/`htonl`/`ntohs`/`ntohl`,
+  `inetAddr`): pure arithmetic with the ws2_32 `INADDR_NONE` sentinel on a
+  malformed dotted quad — no host, no descriptor.
+
+### Measured
+
+- **Surface conformance: still coverage-complete.** 23 case over 20 served
+  ws2_32 export; `is_coverage_complete === true`, `fail_count === 0`. Delta from
+  cycle 1: 11 served → 20 served, 13 case → 23 case, no uncovered export.
+- **Gate:** `node --test` 181 pass / 0 fail; `npm run gate` exit 0.
+- **Corpus import coverage:** still 0 measured — no payload staged; the hle
+  export registration and local corpus acquisition remain the next step.
+
 ### Honest state
 
 BPTK-026 is **implemented but red** as a live capability. The contract, the
