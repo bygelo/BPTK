@@ -180,6 +180,43 @@ test("runImageBytes maps and runs PuTTY x64 bytes into a surface", () => {
   assert.equal(result.surface.height, defaultWindowSize.height);
 });
 
+test("runImageBytes composites PuTTY's About dialog into real painted pixels", () => {
+  const bytes = new Uint8Array(readFileSync(puttyPath));
+  const result = runImageBytes(bytes);
+  const { rgba, width, height } = result.surface;
+  const total = width * height;
+
+  // The surface is no longer all-zero: the compositor painted the windows the
+  // run created, so real pixels are present.
+  let nonZero = 0;
+  for (let index = 0; index < rgba.length; index += 4) {
+    if (rgba[index] !== 0 || rgba[index + 1] !== 0 || rgba[index + 2] !== 0 || rgba[index + 3] !== 0) nonZero += 1;
+  }
+  assert.ok(nonZero > 0, "the surface is not all zero");
+
+  // The dialog and its controls cover a non-trivial share of the surface: count
+  // the pixels that are not the cleared desktop background (rgb 58,110,165).
+  let nonBackground = 0;
+  for (let index = 0; index < rgba.length; index += 4) {
+    if (!(rgba[index] === 58 && rgba[index + 1] === 110 && rgba[index + 2] === 165)) nonBackground += 1;
+  }
+  assert.ok(nonBackground > total * 0.05, `painted pixels exceed 5% of the surface (${((100 * nonBackground) / total).toFixed(1)}%)`);
+
+  // PuTTY's About dialog is the #32770 frame at (140,40) size 270x136 (the
+  // template geometry the window manager stored); its client is COLOR_BTNFACE
+  // grey and its caption band is the active-caption color. Sample both inside
+  // that rect to prove the dialog background rectangle landed at its location.
+  const dialog = { x: 140, y: 40, width: 270, height: 136, caption: 14 };
+  const pixelAt = (x, y) => {
+    const offset = (y * width + x) * 4;
+    return [rgba[offset], rgba[offset + 1], rgba[offset + 2], rgba[offset + 3]];
+  };
+  assert.deepEqual(pixelAt(dialog.x + 4, dialog.y + 4), [0, 0, 128, 255], "the About dialog caption band is painted");
+  assert.deepEqual(pixelAt(dialog.x + 3, dialog.y + dialog.caption + 2), [192, 192, 192, 255], "the About dialog client is COLOR_BTNFACE grey at its location");
+  // Just outside the frame, the desktop shows through.
+  assert.deepEqual(pixelAt(dialog.x - 4, dialog.y - 4), [58, 110, 165, 255], "desktop background outside the dialog");
+});
+
 test("runImageBytes is deterministic across two calls", () => {
   const bytes = new Uint8Array(readFileSync(puttyPath));
   const first = runImageBytes(bytes);
