@@ -82,14 +82,65 @@ fault into this chain. **0 passing stays 0.**
 
 **Gate:** `npm run gate` exits 0. Test count 164 → 174 (+10 SEH fixtures).
 Implemented count 40 → 41 (manifest, status.json, README, ROADMAP, cli test
-reconciled).
+reconciled). Adding a new lib/test file needs three gate registrations:
+`tool/validate.py` (approved-surface set **and** the reviewed tarball manifest)
+and `bench/npm/content.json`.
 
-## Next cycles
+## Cycle 2 — cleanup semantics (2026-09-05)
 
-- Rebase onto the thread lane's per-thread TEB and point `SehThread` at
-  `fs:[0]` in mapped memory instead of the legacy in-object head.
-- When BPTK-035 lands an exnref delivery surface, route a real translated-block
-  fault (`executeProbe`) into `SehThread.dispatch` so a whole-guest exception
-  path runs — the promotion trigger for BPTK-053 → passing.
-- Expose the vectored kernel32 exports with conformance cases once the shared
-  conformance table is coordinated at the merge tip.
+- `unwindTo(target)` — explicit `RtlUnwind` / `__leave`: runs each `__finally`
+  down to a target frame, innermost-first, popping each, leaving the target at
+  the head. No filter or `__except` runs; the cleanup-only path is distinct
+  from an exception dispatch.
+- Noncontinuable enforcement: a `CONTINUE_EXECUTION` disposition against a
+  record carrying `EXCEPTION_NONCONTINUABLE` is itself the fatal
+  `EXCEPTION_NONCONTINUABLE_EXCEPTION` condition, never a resume.
+- Collided-unwind guard: a re-entrant `dispatch`/`unwindTo` during an active
+  unwind (a fault raised inside a `__finally`) is refused as
+  `seh_collided_unwind`.
+- `nestExceptionRecord` chains a fault that arose while handling an earlier one
+  onto its prior record, marked nested.
+
+Test count 174 → 178 (+4). Gate 0.
+
+## Cycle 3 — runtime fault delivery (2026-09-05)
+
+- `lib/runtime.mjs` `faultValue` folds `mapFaultToException` onto the structured
+  stop, so a real divide error, access violation, or illegal instruction from
+  `executeProbe` carries its Win32 status code (`guest_exception_code`), and an
+  access violation also carries `access_type` (0/1/8) and `fault_address`. A
+  probe refusal maps to `null` and adds nothing — a bounded stop never
+  masquerades as a guest exception.
+- End-to-end fixtures drive a real `div bl` (÷0) and a `mov eax,[0]` null read
+  through the product `run` and assert the guest view on the report.
+
+Test count 178 → 180 (+2). Gate 0. Field-level asserts on `report.exception`
+elsewhere are unaffected (additive fields only).
+
+## Cycle 4 — TLS callback plan from real mapper metadata (2026-09-05)
+
+- `planTlsCallback(report)` consumes a `mapPe32` report and produces the
+  deterministic before-entry firing plan: every declared TLS callback in table
+  order, each with `DLL_PROCESS_ATTACH`, ahead of guest entry, without
+  executing one (execution needs BPTK-035). A fixture generates a PE with a
+  two-entry callback table, maps it through the real product mapper, and asserts
+  the plan preserves order and the before-entry invariant.
+
+Test count 180 → 181 (+1). Gate 0.
+
+## State after cycle 4
+
+Every acceptance item is implemented and pinned within this lane's ownership;
+what remains is blocked on other lanes or on files this lane does not own:
+
+- **Rebase onto the thread lane's per-thread TEB** and point `SehThread` at
+  `fs:[0]` in mapped memory instead of the legacy in-object head — blocked until
+  `lib/thread.mjs` merges (threads-first).
+- **Route a real translated-block fault into `SehThread.dispatch`** so a
+  whole-guest exception path runs — blocked on BPTK-035's exnref delivery
+  surface. This is the BPTK-053 → passing promotion trigger; the item stays red
+  until then. **0 passing stays 0.**
+- **Expose the vectored / `RtlUnwind` kernel32 exports** with conformance
+  cases — blocked on the shared HLE conformance case table (`test/hle.test.mjs`,
+  not owned by this lane); coordinated at the merge tip. The engine and its
+  fixtures already cover the behavior.
