@@ -48,11 +48,13 @@ GetFileType, SetStdHandle, GetACP, GetConsoleMode, ReadConsoleW, GetConsoleCP,
 RtlUnwind, MultiByteToWideChar, CreateFileW, CloseHandle, GetLocaleInfoW,
 LoadLibraryA, FreeLibrary, ReadFile, WaitForSingleObject. After the storage
 slice (virtual drive + registry + console mode): **79 covered / 277 absent** —
-OpenTTD i386 serves 75 of 302 import, Plink i386 61 of 142. The next unserved
-families by the same ranking: locale and codepage (GetACP, GetLocaleInfoW,
-MultiByteToWideChar, CompareStringW → BPTK-059), module loading
-(LoadLibraryA/FreeLibrary), threads and waits (WaitForSingleObject,
-CreateThread → BPTK-025), and SEH unwind (RtlUnwind → GS-008).
+OpenTTD i386 serves 75 of 302 import, Plink i386 61 of 142. After the locale
+and codepage slice (BPTK-103): **93 covered / 263 absent** — OpenTTD i386
+serves 89 of 302 import, Plink i386 75 of 142. The next unserved families by
+the same ranking: module loading (LoadLibraryA, FreeLibrary, GetModuleHandleExW
+remainder), threads and waits (WaitForSingleObject, CreateThread → BPTK-025),
+SEH unwind (RtlUnwind → GS-008), and date-enumeration surfaces that need guest
+callback dispatch (EnumSystemLocalesW).
 
 ## Generic guard finding the corpus produced
 

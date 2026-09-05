@@ -95,11 +95,33 @@ override and SSE, so real binaries cannot reach `entry` until both widen.
   import surface (OpenTTD i386 serves 75 of 302 import, Plink i386 61 of 142).
   Reached stage of the two i386 entry stays honestly at `loaded`.
 
+## 2026-09-05 — cycle 3
+
+### Implemented: BPTK-103 slice 1 — locale, codepage, and Unicode conversion
+
+- The unserved ledger ranked the locale family next (GetACP, GetCPInfo,
+  GetOEMCP, IsValidCodePage, MultiByteToWideChar, WideCharToMultiByte,
+  CompareStringW, GetStringTypeW, LCMapStringW, GetLocaleInfoW,
+  GetUserDefaultLCID, GetTimeZoneInformation, GetDateFormatW, GetTimeFormatW —
+  every one imported by both real i386 entry), so the cycle took the roadmap
+  owner BPTK-103's conversion half: one declared locale with the real 1252
+  best-fit table and real UTF-8 conversion, byte-exact both directions with
+  the required-size and insufficient-buffer contracts, real comparison, case
+  mapping, CTYPE1 classification, a real SYSTEMTIME token formatter over the
+  one guest clock, and sortkey/enumeration honestly refused. The double-byte
+  fixture stays red — the declared environment has no double-byte code page
+  yet.
+- Proof: 23 new conformance case (133 total, all 96 served export covered);
+  the euro code point (0x80 ↔ U+20AC) round-trips byte-exact through the 1252
+  table; full suite 121 test, 0 failing.
+- Real payload: coverage ledger 79 → **93 covered** of the real 356-symbol
+  import surface (OpenTTD i386 serves 89 of 302 import, Plink i386 75 of 142).
+  Reached stage of the two i386 entry stays honestly at `loaded`.
+
 ### State after the commit
 
-- Implemented 37 → 39 across the two cycle; passing stays 0 (no benchmark
+- Implemented 37 → 40 across the three cycle; passing stays 0 (no benchmark
   runner exists yet).
-- Next highest-leverage target: the locale/codepage family (GetACP,
-  GetLocaleInfoW, MultiByteToWideChar, CompareStringW → BPTK-059) or module
-  loading (LoadLibraryA, FreeLibrary), then the BPTK-009 instruction-subset
-  widening (operand-size override first) toward a real binary reaching `entry`.
+- Next highest-leverage target: module loading (LoadLibraryA, FreeLibrary)
+  inside the BPTK-010 surface, then the BPTK-009 instruction-subset widening
+  (operand-size override first) toward a real binary reaching `entry`.

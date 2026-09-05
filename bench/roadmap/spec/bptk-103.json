@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No conversion surface exists in the runtime.",
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the frozen FIX-003 locale denominator is not pinned by BPTK-002, the double-byte code page fixture (the promotion trigger includes double-byte byte-exactness) is not served by the declared single-locale environment, and locale enumeration via guest callback is not implemented. The locale slice exists in the HLE core (lib/hle.mjs): one declared locale (LCID 0x0409) with ANSI and OEM code page 1252 carrying the real 0x80-0x9F best-fit table, byte-exact MultiByteToWideChar and WideCharToMultiByte for 1252 and real UTF-8 (65001) both directions with the required-size and insufficient-buffer contracts, GetACP, GetOEMCP, GetCPInfo, IsValidCodePage, GetUserDefaultLCID, GetLocaleInfoW over a real name table, CompareStringW with the equal/less/greater contract and NORM_IGNORECASE, LCMapStringW with real case mapping and sortkey honestly refused, GetStringTypeW with the real CTYPE1 classification, GetTimeZoneInformation with the declared UTC bias, and a deterministic GetDateFormatW and GetTimeFormatW over a real SYSTEMTIME token formatter fed by the one guest clock.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the codepage fixture converts byte-exactly and comparison matches the oracle.",
   "expected_failing_assertion": "No locale layer exists.",
   "owner_item": "BPTK-103",
-  "active_gate_evidence": "The conformance denominator stays empty and the runtime surface is absent.",
+  "active_gate_evidence": "The conformance suite carries 133 case over all 96 served export including 23 locale case with the oracle conversion, comparison, mapping, and formatting behavior; the euro code point round-trips byte-exact through the 1252 table (0x80 to U+20AC and back); the coverage ledger on the real corpus import surface rose from 79 to 93 covered symbol (OpenTTD i386 serves 89 of 302 import, Plink i386 75 of 142); and the full suite stays green.",
   "fixture": [
     "FIX-003"
   ],
