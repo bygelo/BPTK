@@ -190,6 +190,89 @@ test("the probe serves CPUID and REP STOSB with the same semantics as the oracle
   assert.equal(stos.register.rcx, 0n);
 });
 
+test("a reached FlsAlloc is served through the Win64 HLE and returns index 0", () => {
+  // The CRT-init frontier that used to end the games' probe. FlsAlloc(callback)
+  // is now a served kernel32 export, so the call dispatches, RAX carries the
+  // fresh fiber-local index (0), and the entry runs to its return.
+  //   0: FF 15 02 00 00 00   call qword ptr [rip+2]   (slot at rva 8)
+  //   6: 90                  nop
+  //   7: C3                  ret
+  //   8: <8-byte IAT slot>
+  const image = Buffer.from([0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0x90, 0xc3, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const mapped = {
+    image, input_path: "fls.exe", load_base: loadBase, entry_rva: 0,
+    image_size_byte: image.length, section: [], tls_callback: [], relocation_count: 0,
+    resolution_blocker: [], runtime_blocker: [],
+    import: [{ library: "kernel32.dll", symbol: "FlsAlloc", ordinal: null, iat_slot_rva: 8 }],
+  };
+  const probe = executeProbe64(mapped, 4096);
+  assert.equal(probe.state, "probe_executed");
+  assert.equal(probe.stop_reason, "entry_return", JSON.stringify(probe.exception));
+  assert.equal(probe.import_reached, null, "a served import is not a reached-import stop");
+  assert.equal(probe.register.rax, "0x0", "RAX carries the first FLS index");
+});
+
+test("_initterm runs each guest initializer before returning to the caller", () => {
+  // The ucrt startup runs the C++ global constructors by calling
+  // _initterm(begin, end) over a table of function pointers. The harness must
+  // drive each initializer through the interpreter, not skip it. This synthetic
+  // image builds a one-entry table whose initializer writes 7 into a marker cell;
+  // after _initterm returns, the entry loads the marker into RAX. A skipped
+  // initializer would leave RAX at 0.
+  const image = Buffer.alloc(0x100);
+  const at = (offset, bytes) => Buffer.from(bytes).copy(image, offset);
+  // entry
+  at(0x00, [0x48, 0x8d, 0x0d, 0x81, 0x00, 0x00, 0x00]); // lea rcx,[rip+0x81] -> table begin 0x88
+  at(0x07, [0x48, 0x8d, 0x15, 0x82, 0x00, 0x00, 0x00]); // lea rdx,[rip+0x82] -> table end 0x90
+  at(0x0e, [0xff, 0x15, 0x7c, 0x00, 0x00, 0x00]);       // call [rip+0x7c] -> IAT slot 0x90
+  at(0x14, [0x48, 0x8b, 0x05, 0x65, 0x00, 0x00, 0x00]); // mov rax,[rip+0x65] -> marker 0x80
+  at(0x1b, [0xc3]);                                     // ret
+  // initializer at 0x40: mov byte [rip+0x39],7 ; ret  (target marker 0x80)
+  at(0x40, [0xc6, 0x05, 0x39, 0x00, 0x00, 0x00, 0x07, 0xc3]);
+  // marker cell (0x80) starts 0; init table (0x88) -> loadBase+0x40; IAT slot (0x90)
+  const initFn = loadBase + 0x40n;
+  Buffer.from(le8(initFn)).copy(image, 0x88);
+  const mapped = {
+    image, input_path: "initterm.exe", load_base: loadBase, entry_rva: 0,
+    image_size_byte: image.length, section: [], tls_callback: [], relocation_count: 0,
+    resolution_blocker: [], runtime_blocker: [],
+    import: [{ library: "api-ms-win-crt-runtime-l1-1-0.dll", symbol: "_initterm", ordinal: null, iat_slot_rva: 0x90 }],
+  };
+  const probe = executeProbe64(mapped, 4096);
+  assert.equal(probe.stop_reason, "entry_return", JSON.stringify(probe.exception));
+  assert.equal(probe.import_reached, null, "_initterm is handled, never a reached-import stop");
+  assert.equal(probe.register.rax, "0x7", "the initializer ran and wrote the marker RAX reads back");
+});
+
+test("_initterm_e stops the sequence when an initializer reports a non-zero error", () => {
+  // _initterm_e differs from _initterm: each initializer returns int and a
+  // non-zero result aborts the sequence with that error in the return. Two
+  // initializers: the first returns 5 (error), the second would write a marker.
+  // The abort must return 5 and leave the marker untouched.
+  const image = Buffer.alloc(0x100);
+  const at = (offset, bytes) => Buffer.from(bytes).copy(image, offset);
+  at(0x00, [0x48, 0x8d, 0x0d, 0x81, 0x00, 0x00, 0x00]); // lea rcx,[rip+0x81] -> begin 0x88
+  at(0x07, [0x48, 0x8d, 0x15, 0x8a, 0x00, 0x00, 0x00]); // lea rdx,[rip+0x8a] -> end 0x98 (two entries)
+  at(0x0e, [0xff, 0x15, 0x84, 0x00, 0x00, 0x00]);       // call [rip+0x84] -> IAT slot 0x98
+  at(0x14, [0xc3]);                                     // ret (RAX holds _initterm_e result)
+  // first initializer at 0x40: mov eax,5 ; ret
+  at(0x40, [0xb8, 0x05, 0x00, 0x00, 0x00, 0xc3]);
+  // second initializer at 0x50: mov byte [rip+0x29],9 ; ret  (would set marker 0x80)
+  at(0x50, [0xc6, 0x05, 0x29, 0x00, 0x00, 0x00, 0x09, 0xc3]);
+  Buffer.from(le8(loadBase + 0x40n)).copy(image, 0x88); // table[0] -> first initializer
+  Buffer.from(le8(loadBase + 0x50n)).copy(image, 0x90); // table[1] -> second initializer
+  const mapped = {
+    image, input_path: "inittermE.exe", load_base: loadBase, entry_rva: 0,
+    image_size_byte: image.length, section: [], tls_callback: [], relocation_count: 0,
+    resolution_blocker: [], runtime_blocker: [],
+    import: [{ library: "api-ms-win-crt-runtime-l1-1-0.dll", symbol: "_initterm_e", ordinal: null, iat_slot_rva: 0x98 }],
+  };
+  const probe = executeProbe64(mapped, 4096);
+  assert.equal(probe.stop_reason, "entry_return", JSON.stringify(probe.exception));
+  assert.equal(probe.register.rax, "0x5", "the non-zero initializer result is returned");
+  assert.equal(image[0x80], 0, "the aborted sequence never ran the second initializer");
+});
+
 test("PuTTY x64 executes past its first import through the served Win64 HLE", { skip: existsSync(puttyPath) ? false : "PuTTY x64 corpus package absent" }, () => {
   const mapped = mapPe64State(puttyPath);
   const probe = executeProbe64(mapped, 2000000);
