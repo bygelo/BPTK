@@ -197,6 +197,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/status.mjs"),
     Path("lib/storage.mjs"),
     Path("lib/toolchain.mjs"),
+    Path("lib/user.mjs"),
     Path("script/package.mjs"),
     Path("script/status.mjs"),
     Path("test/cli.test.mjs"),
@@ -214,6 +215,7 @@ ALLOWED_MJS_PATH = {
     Path("test/security.test.mjs"),
     Path("test/shader.test.mjs"),
     Path("test/hle.test.mjs"),
+    Path("test/user.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -399,6 +401,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/status.mjs",
         "lib/storage.mjs",
         "lib/toolchain.mjs",
+        "lib/user.mjs",
         "package.json",
     ]
     if package_content.get("schema_version") != 1:

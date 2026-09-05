@@ -46,6 +46,7 @@
     "lib/status.mjs",
     "lib/storage.mjs",
     "lib/toolchain.mjs",
+    "lib/user.mjs",
     "package.json"
   ]
 }
