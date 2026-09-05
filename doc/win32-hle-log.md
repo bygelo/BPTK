@@ -110,7 +110,19 @@ binding are absent.
 
 Gate: exit 0.
 
+## Cycle 7 — BPTK-104 frame-pacing / vblank scheduler (implemented, red/active)
+Added createFramePacer in lib/clock.mjs over the one monotonic clock: resolves a
+frame ready at a guest time onto the next vblank boundary at the declared refresh
+rate, counts presented frames, and reports the vblanks a stall skipped as dropped.
+New test/clock.test.mjs (registered in validate.py); tests prove boundary sync,
+presented/dropped counting on a stall, and host-independent cadence from the one
+clock. Implemented count 49→50; passing 0. Still red: FIX-016 needs a live
+browser frame loop (rAF + AudioWorklet clock) to measure jitter and the
+yield-not-spin busy-wait.
+
+Gate: exit 0.
+
 ## Progress
-Implemented 43→49 (BPTK-101, 098, 011, 012, 099, 096). Served HLE export 156→218.
-Remaining owned planned items: BPTK-097 (full input), 100 (FMV),
-102 (installer/optical), 104 (frame-pacing).
+Implemented 43→50 (BPTK-101, 098, 011, 012, 099, 096, 104). Served HLE export
+156→218. Remaining owned planned items: BPTK-097 (full input), 100 (FMV),
+102 (installer/optical).
