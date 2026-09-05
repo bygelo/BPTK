@@ -190,6 +190,38 @@ test("the probe serves CPUID and REP STOSB with the same semantics as the oracle
   assert.equal(stos.register.rcx, 0n);
 });
 
+test("the probe's x87 executor agrees with the oracle: FADDP yields exactly 2.0", () => {
+  // fld1; fld1; faddp st1,st0; fstp qword[rsp-8]; mov rax,[rsp-8]; ret — the same
+  // microprogram frozen in test/lift64.test.mjs, proving exec64 mirrors lift64.
+  const report = run([0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1, 0xdd, 0x5c, 0x24, 0xf8, 0x48, 0x8b, 0x44, 0x24, 0xf8, 0xc3]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.rax, 0x4000000000000000n, `rax 0x${report.register.rax.toString(16)}`);
+});
+
+test("the probe's x87 executor computes 6*7=42 through FILD/FMULP/FISTP", () => {
+  const report = run([
+    0xc7, 0x44, 0x24, 0xfc, 0x06, 0x00, 0x00, 0x00,
+    0xc7, 0x44, 0x24, 0xf8, 0x07, 0x00, 0x00, 0x00,
+    0xdb, 0x44, 0x24, 0xfc,
+    0xdb, 0x44, 0x24, 0xf8,
+    0xde, 0xc9,
+    0xdb, 0x5c, 0x24, 0xf0,
+    0x8b, 0x44, 0x24, 0xf0,
+    0xc3,
+  ]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.rax, 42n, `rax 0x${report.register.rax.toString(16)}`);
+});
+
+test("the probe's x87 FCOMI sets the ordered EFLAGS the oracle does (greater)", () => {
+  // fldz; fld1; fcomi st0,st1; ret -> st0=1.0 > st1=0.0 -> CF=ZF=PF=0
+  const report = run([0xd9, 0xee, 0xd9, 0xe8, 0xdb, 0xf1, 0xc3]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.flag.cf, false);
+  assert.equal(report.flag.zf, false);
+  assert.equal(report.flag.pf, false);
+});
+
 test("a reached FlsAlloc is served through the Win64 HLE and returns index 0", () => {
   // The CRT-init frontier that used to end the games' probe. FlsAlloc(callback)
   // is now a served kernel32 export, so the call dispatches, RAX carries the
