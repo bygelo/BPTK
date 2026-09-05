@@ -93,14 +93,69 @@ that rebase lands, and does not touch i386.mjs to manufacture it.
 
 ### Ranking for the next cycle
 
-1. CreateThread/ExitThread + the handle table, and the deterministic scheduler
-   over a per-thread register file + per-thread TLS (no cross-thread bleed) —
-   the isolation and replay-hash-match acceptance.
-2. TlsAlloc/Get/Set/Free wired to the inline TEB slot array so the HLE export
-   and the guest's own `fs:[0xE10+i*4]` read the same bytes.
-3. Critical sections, WaitForSingleObject/MultipleObjects over the monotonic
-   clock with a structured deadlock stop, events/mutexes/semaphores/waitable
-   timers, Sleep/SleepEx that yield.
-4. Interlocked* over WASM atomics and memory.atomic.wait/notify; the
-   lock/atomic-contention fixture that must be deterministic under N workers
-   with zero lost wakeup and two replays that hash-match.
+1. Wire the Win32 thread export surface (CreateThread/ExitThread/
+   GetCurrentThreadId) into the HLE, backed by this engine, and make the
+   existing single-threaded TLS/critical-section exports current-thread aware.
+2. Drive spawned-thread guest execution through the probe (the deep seam: the
+   single-probe loop today runs only the initial thread).
+
+## 2026-09-05 — cycle 2: the deterministic scheduler engine
+
+### Implemented (generic; no payload or title branch anywhere)
+
+`lib/thread.mjs` `createThreadScheduler` — one cooperative scheduler that
+drives every thread over a single ordered timeline, so the concurrency the
+browser target runs on a Web Worker pool + SharedArrayBuffer is modelled
+deterministically. A thread body is a generator that yields `threadOp`
+requests; each yield is a scheduling point; the scheduler services one request
+per quantum and blocks a thread the instant a request cannot complete.
+
+- Lifecycle: create (bounded table) / run-to-return / exit with code; a thread
+  is itself a waitable object, so a join resolves when it terminates.
+- Per-thread register file (nine words) and per-thread TLS — the TLS *index* is
+  allocated across all threads (TlsAlloc/Free) but the *value* is private to
+  the thread record, so no slot value bleeds across threads.
+- Deterministic scheduling: highest priority first, FIFO within a priority by a
+  ready sequence number; suspend/resume with a suspend count.
+- Critical sections (recursive owner), auto/manual events, mutexes (with
+  abandoned-on-exit), semaphores (count/maximum), waitable timers (one-shot and
+  periodic).
+- WaitForSingleObject/MultipleObjects (waitAny and waitAll), timeout over the
+  scheduler's monotonic virtual clock returning WAIT_TIMEOUT, and a structured
+  `deadlock` stop when every live thread is blocked with no deadline to fire —
+  never a silent hang.
+- Sleep that yields the quantum and advances the clock (never a spin-wait).
+- Interlocked increment/decrement/add/exchange/compare-exchange/load over a
+  SharedArrayBuffer through `Atomics`, and a memory.atomic.wait/notify futex
+  model with no lost wakeup.
+- Cross-thread SendMessage to a per-thread queue that wakes a blocked receiver.
+
+### Proof (active acceptance contract)
+
+`test/thread.test.mjs` now carries 24 tests (8 TEB + 16 scheduler), all green,
+covering every acceptance bullet for this subsystem:
+
+- **contention fixture deterministic under N workers, zero lost wakeup**: eight
+  threads each do 25 lock/read/yield/write/unlock cycles; the counter reaches
+  200 with no lost update, and the auto-reset-event fixture wakes exactly one
+  consumer per set with none left stuck.
+- **two replays hash-match**: the same workload run twice produces an identical
+  `trace_sha256` over the ordered event log.
+- **per-thread register/TLS isolation asserted**: two threads write and read
+  back their own register 0 and their own TLS slot with an interleave between,
+  and neither sees the other's value.
+- **single-thread fallback matches**: an interlocked total reaches the same 200
+  under 1, 4, and 8 workers.
+- Plus: priority order, suspend/resume, semaphore admission, waitAll,
+  WAIT_TIMEOUT at the exact deadline, deadlock detection, sleep-without-spin,
+  atomic wait/notify, cross-thread send, and a waitable timer firing.
+
+`npm run gate` exit 0 at the committed change (188 tests, 0 failing).
+
+### Honest state
+
+The engine is complete and proven, but it is not yet wired to the live guest:
+the HLE thread export surface (CreateThread/ExitThread) and driving a spawned
+thread's guest x86 through the probe are the next cycle. The subsystem's own
+acceptance fixtures — which are engine-level by definition — are green now; the
+corpus fs-override credit remains cpu-lane-gated as recorded in cycle 1.
