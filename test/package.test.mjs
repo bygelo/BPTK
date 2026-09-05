@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { computePrecacheDiff } from "../lib/package.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -39,6 +40,27 @@ test("HTML and React host preserve one generated package identity", (context) =>
   assert.equal(reactReport.package_id, assetReport.package_id);
   assert.match(readFileSync(join(htmlReport.output_path, "index.html"), "utf8"), new RegExp(assetReport.package_id));
   assert.match(readFileSync(join(reactReport.output_path, "BptkHost.mjs"), "utf8"), new RegExp(assetReport.package_id));
+});
+
+test("PWA emits a hash-precaching service worker and a single-block edit invalidates only that block", (context) => {
+  const value = createProject(context);
+  const assetReport = JSON.parse(run(["package", value.project_path, "--asset-mode", "stream", "--json"]).stdout);
+  const pwaRun = run(["package", value.package_path, "--pwa", "--json"]);
+  assert.equal(pwaRun.status, 0);
+  const pwa = JSON.parse(pwaRun.stdout);
+  const serviceWorker = readFileSync(join(pwa.output_path, "sw.js"), "utf8");
+  for (const sha of pwa.precache) assert.match(serviceWorker, new RegExp(sha));
+  assert.equal(pwa.precache_count, assetReport.chunk_count);
+  assert.match(readFileSync(join(pwa.output_path, "index.html"), "utf8"), /serviceWorker\.register/);
+
+  // A content-addressed precache set invalidates exactly the changed block.
+  const before = ["aaa", "bbb", "ccc"];
+  const after = ["aaa", "ddd", "ccc"];
+  const diff = computePrecacheDiff(before, after);
+  assert.deepEqual(diff.added, ["ddd"]);
+  assert.deepEqual(diff.removed, ["bbb"]);
+  assert.deepEqual(diff.retained, ["aaa", "ccc"]);
+  assert.equal(diff.invalidated_count, 2);
 });
 
 test("stream plan splits prefetch from deferred and absent reads never block", (context) => {
