@@ -40,6 +40,7 @@
     "lib/platform.mjs",
     "lib/pe.mjs",
     "lib/port.mjs",
+    "lib/recompile.mjs",
     "lib/report.mjs",
     "lib/research.mjs",
     "lib/runtime.mjs",
