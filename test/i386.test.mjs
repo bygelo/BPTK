@@ -277,6 +277,75 @@ test("microprogram: SHRD shifts down with the exact carry out of bit 3", (contex
   });
 });
 
+test("microprogram: ROR r/m32 by CL rotates the exact nibble and sets carry from the result MSB", (context) => {
+  // mov eax,0x12345678; mov cl,4; ror eax,cl (d3 /1). The low nibble rotates to
+  // the top, so the result MSB is 1 and carry follows it. Regression for the
+  // Number/BigInt mix that faulted the rotate group on the CRT's first ROR.
+  const report = runMicro(context, [0xb8, 0x78, 0x56, 0x34, 0x12, 0xb1, 0x04, 0xd3, 0xc8, 0xc3]);
+  assertReferenceState(report, {
+    register: { eax: 0x81234567 },
+    flag: { carry: true },
+  });
+});
+
+test("microprogram: ROL r/m32 by CL rotates the exact nibble and clears carry from a zero LSB", (context) => {
+  // mov eax,0x81234567; mov cl,4; rol eax,cl (d3 /0) → 0x12345678, carry from
+  // the result LSB (0).
+  const report = runMicro(context, [0xb8, 0x67, 0x45, 0x23, 0x81, 0xb1, 0x04, 0xd3, 0xc0, 0xc3]);
+  assertReferenceState(report, {
+    register: { eax: 0x12345678 },
+    flag: { carry: false },
+  });
+});
+
+test("microprogram: SAR r/m32 by imm8 keeps the sign and sets carry from the last shifted bit", (context) => {
+  // mov ecx,0xffffffe0 (-32); sar ecx,6 (c1 /7) → -1. The exact instruction form
+  // that faulted the CRT: the asIntN bit-count argument must be a Number.
+  const report = runMicro(context, [0xb9, 0xe0, 0xff, 0xff, 0xff, 0xc1, 0xf9, 0x06, 0xc3]);
+  assertReferenceState(report, {
+    register: { ecx: 0xffffffff },
+    flag: { carry: true, sign: true, parity: true },
+  });
+});
+
+test("microprogram: two-operand IMUL keeps the low product and clears carry when it fits", (context) => {
+  // mov ecx,7; mov edx,6; imul ecx,edx (0f af /r) → 42, no overflow. Regression
+  // for the asIntN bit-count argument in imulTwoOperand.
+  const report = runMicro(context, [0xb9, 0x07, 0x00, 0x00, 0x00, 0xba, 0x06, 0x00, 0x00, 0x00, 0x0f, 0xaf, 0xca, 0xc3]);
+  assertReferenceState(report, {
+    register: { ecx: 42 },
+    flag: { carry: false, overflow: false },
+  });
+});
+
+test("microprogram: two-operand IMUL sets carry and overflow when the product truncates", (context) => {
+  // mov eax,0x10000; mov ecx,0x10000; imul eax,ecx → 0x100000000 truncates to 0
+  // with the 32-bit product no longer representing the full result.
+  const report = runMicro(context, [0xb8, 0x00, 0x00, 0x01, 0x00, 0xb9, 0x00, 0x00, 0x01, 0x00, 0x0f, 0xaf, 0xc1, 0xc3]);
+  assertReferenceState(report, {
+    register: { eax: 0 },
+    flag: { carry: true, overflow: true },
+  });
+});
+
+test("microprogram: FNINIT and FNCLEX execute so the following x87 round-trip computes", (context) => {
+  // mov [0x401600],7; fninit (db /4 e3); fnclex (db /4 e2); fild [0x401600];
+  // fistp [0x401604]; mov eax,[0x401604]. The two control forms were structured
+  // refusals before; reaching entry_return with 7 stored back proves the CRT's
+  // x87 reset now runs and the unit still loads and stores through it.
+  const report = runMicro(context, [
+    0xb8, 0x07, 0x00, 0x00, 0x00,       // mov eax, 7
+    0xa3, 0x00, 0x16, 0x40, 0x00,       // mov [0x401600], eax
+    0xdb, 0xe3,                         // fninit
+    0xdb, 0xe2,                         // fnclex
+    0xdb, 0x05, 0x00, 0x16, 0x40, 0x00, // fild dword [0x401600]
+    0xdb, 0x1d, 0x04, 0x16, 0x40, 0x00, // fistp dword [0x401604]
+    0xa1, 0x04, 0x16, 0x40, 0x00,       // mov eax, [0x401604]
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 7 } });
+});
+
 test("microprogram: CMPXCHG writes the source on equality and the accumulator on mismatch", (context) => {
   const equal = runMicro(context, [0xb8, 0x05, 0x00, 0x00, 0x00, 0xbb, 0x05, 0x00, 0x00, 0x00, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x0f, 0xb1, 0xcb, 0xc3]);
   assertReferenceState(equal, {
