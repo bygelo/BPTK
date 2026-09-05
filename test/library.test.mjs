@@ -88,6 +88,47 @@ test("hosting publishes an in-date grant and refuses an expired one", (context) 
   assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
 });
 
+test("preservation catalog is append-only and exports reproducibly and PII-free", (context) => {
+  const rootPath = scratch(context);
+  const catalogPath = join(rootPath, "preservation.json");
+  const entryOne = join(rootPath, "entry-one.json");
+  const entryTwo = join(rootPath, "entry-two.json");
+  writeFileSync(entryOne, JSON.stringify({ id: "title-1", title: "Preserved One", provenance: "freeware release 1999" }));
+  writeFileSync(entryTwo, JSON.stringify({ id: "title-2", title: "Preserved Two", provenance: "freeware release 2001" }));
+  assert.equal(run(["library", "preserve", catalogPath, entryOne, "--json"]).status, 0);
+  assert.equal(run(["library", "preserve", catalogPath, entryTwo, "--json"]).status, 0);
+  // Re-appending the identical entry is a no-op duplicate, not an error.
+  const duplicate = JSON.parse(run(["library", "preserve", catalogPath, entryOne, "--json"]).stdout);
+  assert.equal(duplicate.is_appended, false);
+  assert.equal(duplicate.is_duplicate, true);
+
+  // Mutating an existing id is refused.
+  const mutated = join(rootPath, "entry-mutated.json");
+  writeFileSync(mutated, JSON.stringify({ id: "title-1", title: "Preserved One CHANGED", provenance: "tampered" }));
+  const mutateRun = run(["library", "preserve", catalogPath, mutated, "--json"]);
+  assert.equal(mutateRun.status, 1);
+
+  // Export is byte-identical across two runs and personal-data-free.
+  const exportA = JSON.parse(run(["library", "preserve-export", catalogPath, "--json"]).stdout);
+  const exportB = JSON.parse(run(["library", "preserve-export", catalogPath, "--json"]).stdout);
+  assert.equal(exportA.export_hash, exportB.export_hash);
+  assert.equal(exportA.export_body, exportB.export_body);
+  assert.equal(exportA.is_personal_data_free, true);
+});
+
+test("preservation export refuses a record carrying personal data", (context) => {
+  const rootPath = scratch(context);
+  const catalogPath = join(rootPath, "preservation.json");
+  const entry = join(rootPath, "entry.json");
+  writeFileSync(entry, JSON.stringify({ id: "t", title: "Has PII", provenance: "contact person@example.com" }));
+  assert.equal(run(["library", "preserve", catalogPath, entry, "--json"]).status, 0);
+  const exportRun = run(["library", "preserve-export", catalogPath, "--json"]);
+  assert.equal(exportRun.status, 1);
+  const report = JSON.parse(exportRun.stdout);
+  assert.equal(report.is_personal_data_free, false);
+  assert.ok(report.personal_data_hit.includes("email"));
+});
+
 test("catalog rejects an entry that violates the schema", (context) => {
   const rootPath = scratch(context);
   const catalogPath = join(rootPath, "catalog.json");
