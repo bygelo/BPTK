@@ -480,6 +480,31 @@ test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clo
   assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
 });
 
+test("BPTK-101: GetEnvironmentVariable and ExpandEnvironmentStrings resolve over the environment map", () => {
+  const { guest } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const name = base + 0x40;
+  const value = base + 0x80;
+  const out = base + 0xc0;
+  const src = base + 0x140;
+  guest.writeAnsiString(name, "PATH", 16);
+  guest.writeAnsiString(value, "C:\\bin", 16);
+  invoke(guest, "kernel32.dll", "SetEnvironmentVariableA", [name, value]);
+  assert.equal(invoke(guest, "kernel32.dll", "GetEnvironmentVariableA", [name, out, 64]), "C:\\bin".length);
+  assert.equal(guest.readAnsiString(out), "C:\\bin");
+  // A too-small buffer returns the required size including the null.
+  assert.equal(invoke(guest, "kernel32.dll", "GetEnvironmentVariableA", [name, out, 2]), "C:\\bin".length + 1);
+  // A missing variable is the env-not-found contract.
+  guest.writeAnsiString(name, "MISSING", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetEnvironmentVariableA", [name, out, 64]), 0);
+  assert.equal(guest.getLastError(), 203);
+  // Expansion substitutes a known variable and keeps an unknown one literal.
+  guest.writeAnsiString(src, "d=%PATH%;%NOPE%", 32);
+  const expandedLen = invoke(guest, "kernel32.dll", "ExpandEnvironmentStringsA", [src, out, 64]);
+  assert.equal(guest.readAnsiString(out), "d=C:\\bin;%NOPE%");
+  assert.equal(expandedLen, "d=C:\\bin;%NOPE%".length + 1);
+});
+
 test("BPTK-097: XInput reports no controller by default and reflects an injected gamepad state", () => {
   const { guest, memory } = createConformanceMachine();
   const base = guest.layout.arena_base;
