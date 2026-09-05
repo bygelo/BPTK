@@ -107,6 +107,9 @@ Delivered:
   and `StretchBlt` (nearest-neighbor scale under the same ROP set).
 - **Packed pixel formats** — `pack565` / `unpack565`, `pack555` / `unpack555`
   with bit-replication expansion so white stays white.
+- **Palette** — `CreatePalette` (reads a LOGPALETTE from guest memory),
+  `SelectPalette`, `RealizePalette`, `GetNearestPaletteIndex` (closest entry by
+  squared distance), for the palettized DirectDraw-era path.
 
 Acceptance evidence (all green, `node --test test/gdi.test.mjs`):
 
@@ -146,7 +149,7 @@ Coverage delta on the served Win32 surface:
 | | Served export |
 | --- | --- |
 | Before | 118 |
-| After | 150 (+14 user32, +18 gdi32) |
+| After | 154 (+14 user32, +22 gdi32) |
 
 The **live corpus benchmark coverage is still 0 passing** — a served export is
 reachable and conformance-covered, but no real game reaches a passing state
@@ -161,5 +164,15 @@ Gate: `npm run gate` exits 0 (185 tests pass; 46-file package manifest).
   registry, and route `WndProc` dispatch through the CPU core so a guest's own
   window procedure runs.
 - Deepen the surface as the corpus demands: `GetMessage` blocking against the
-  timer slice, `WM_TIMER` from `SetTimer`, palette animation, and the DIB
-  section bit-depth paths (8-bit palettized alongside 555/565).
+  timer slice, `WM_TIMER` from `SetTimer`, palette animation (`AnimatePalette`),
+  and the DIB section bit-depth paths (8-bit palettized alongside 555/565).
+
+## Close-out status
+
+The subsystem is at its acceptance close-out: every served USER32/GDI export is
+conformance-covered (`test/hle.test.mjs` coverage-complete; module suites
+green), all three acceptance fixtures pass, and `npm run gate` exits 0 (186
+tests, 46-file manifest). The lane close tool
+(`~/Antigravity/booted/bin/lane.mjs`) is not present on this machine, so the
+`lane done` step is skipped per the brief. Merge is deferred to the tip in
+order thread → seh → cpu → usergdi.

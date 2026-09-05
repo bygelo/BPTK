@@ -117,6 +117,17 @@ test("TextOut renders a stock glyph in the text color over the background", () =
   assert.equal(gdi.getPixel(dc, 0, 0), rgb(0, 0, 0)); // corner is background in OPAQUE mode
 });
 
+test("a logical palette resolves the nearest index and reads back its entry", () => {
+  const gdi = createGdiSubsystem();
+  const palette = gdi.createPalette([[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 0, 255]]);
+  assert.equal(gdi.getNearestPaletteIndex(palette, rgb(250, 10, 10)), 1); // nearest to pure red
+  assert.equal(gdi.getNearestPaletteIndex(palette, rgb(5, 5, 250)), 3); // nearest to pure blue
+  assert.deepEqual(gdi.paletteEntry(palette, 2), [0, 255, 0]);
+  const dc = gdi.createDC(1, 1);
+  assert.equal(gdi.selectPalette(dc, palette), 0); // no palette was selected before
+  assert.equal(gdi.realizePalette(dc), 4); // four entries realized
+});
+
 // --- the draw fixture: rendered surface vs a test-time reference -------------
 // A two-band scene is rendered through GDI, then compared against a reference
 // the test computes independently from the same declared bands. No golden is
@@ -195,6 +206,14 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.bitBlt(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5], argument[6], argument[7], argument[8]);
     case "StretchBlt":
       return gdi.stretchBlt(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5], argument[6], argument[7], argument[8], argument[9], argument[10]);
+    case "CreatePalette":
+      return gdi.createPalette(argument[0]);
+    case "SelectPalette":
+      return gdi.selectPalette(argument[0], argument[1]);
+    case "RealizePalette":
+      return gdi.realizePalette(argument[0]);
+    case "GetNearestPaletteIndex":
+      return gdi.getNearestPaletteIndex(argument[0], argument[1]);
     default:
       return null;
   }
@@ -243,6 +262,12 @@ function buildGdiConformanceCase() {
   define("GetPixel", { scenario: [dcStep, ["SetPixel", [FIRST_HANDLE, 0, 0, rgb(7, 8, 9)]]], argument: [FIRST_HANDLE, 0, 0] }, { return_value: rgb(7, 8, 9), last_error: 0 });
   define("BitBlt", { scenario: [dcStep, dc2Step], argument: [FIRST_HANDLE, 0, 0, 1, 1, secondHandle, 0, 0, rasterOp.SRCCOPY] }, { return_value: 1, last_error: 0 });
   define("StretchBlt", { scenario: [dcStep, dc2Step], argument: [FIRST_HANDLE, 0, 0, 1, 1, secondHandle, 0, 0, 1, 1, rasterOp.SRCCOPY] }, { return_value: 1, last_error: 0 });
+  const paletteEntry2 = [[0, 0, 0], [255, 0, 0]];
+  const createPaletteStep = ["CreatePalette", [paletteEntry2]];
+  define("CreatePalette", { argument: [paletteEntry2] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("SelectPalette", { scenario: [dcStep, createPaletteStep], argument: [FIRST_HANDLE, secondHandle] }, { return_value: 0, last_error: 0 });
+  define("RealizePalette", { scenario: [dcStep, createPaletteStep, ["SelectPalette", [FIRST_HANDLE, secondHandle]]], argument: [FIRST_HANDLE] }, { return_value: 2, last_error: 0 });
+  define("GetNearestPaletteIndex", { scenario: [createPaletteStep], argument: [FIRST_HANDLE, rgb(250, 10, 10)] }, { return_value: 1, last_error: 0 });
 
   return caseList;
 }
