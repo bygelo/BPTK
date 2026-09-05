@@ -42,6 +42,7 @@
     "lib/runtime.mjs",
     "lib/run.mjs",
     "lib/security.mjs",
+    "lib/seh.mjs",
     "lib/shader.mjs",
     "lib/status.mjs",
     "lib/storage.mjs",

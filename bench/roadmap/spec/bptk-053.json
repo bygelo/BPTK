@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The PE32 mapper reports TLS metadata but no callback executes, and the substrate has no exception-delivery surface.",
+  "gate": "active",
+  "exclusion_reason": "The exception machine, chain walk, unwind, vectored dispatch, and TLS ordering exist and are pinned, but BPTK-035 provides no substrate that delivers a translated-block fault into the chain, so no whole-guest exception path runs.",
   "prerequisite": [
     "BPTK-035"
   ],
   "promotion_trigger": "Promote when the exception fixture unwinds through `__try`/`__except`/`__finally`, delivers access-violation and divide-error, and fires TLS callback before entry.",
-  "expected_failing_assertion": "TLS callback and structured exception behavior are blocked; the probe refuses import call and exception delivery.",
+  "expected_failing_assertion": "The substrate has no exception-delivery surface, so BPTK-035 stays red and a real guest fault never reaches the implemented chain.",
   "owner_item": "BPTK-053",
-  "active_gate_evidence": "The mapper keeps TLS metadata bounded and the probe suite pins the structured divide_error delivery that exists.",
+  "active_gate_evidence": "test/seh.test.mjs pins the per-thread fs:[0] chain, the search-then-unwind order that runs each __finally before the catching __except, the fault-to-EXCEPTION_RECORD mapping for access-violation, divide-error, and illegal-instruction, vectored dispatch precedence, the last-chance filter, and TLS callbacks firing in declared order before entry; lib/hle.mjs routes RaiseException through the same machine.",
   "fixture": [
     "FIX-002",
     "FIX-003"
