@@ -25,9 +25,45 @@ import {
   rasterOp2,
   backgroundMode,
   stockObject,
+  systemColor,
+  compositorMetric,
 } from "../lib/gdi.mjs";
+import { createUserSubsystem } from "../lib/user.mjs";
 
 const FIRST_HANDLE = 0x00040000;
+
+// Read one RGBA pixel [r,g,b,a] from a composited surface.
+function pixelAt(surface, x, y) {
+  const offset = (y * surface.width + x) * 4;
+  return [surface.rgba[offset], surface.rgba[offset + 1], surface.rgba[offset + 2], surface.rgba[offset + 3]];
+}
+
+const WS_VISIBLE = 0x10000000;
+const WS_CHILD = 0x40000000;
+const WS_TABSTOP = 0x00010000;
+
+// A synthetic RT_DIALOG template shaped like lib/rsrc.mjs parseDialogTemplate:
+// a titled #32770 frame carrying a STATIC caption and an OK BUTTON, so the
+// compositor is exercised generically by class, not by any title identity.
+function syntheticAboutDialog() {
+  return {
+    is_ex: false,
+    style: 0,
+    ex_style: 0,
+    control_count: 2,
+    x: 10,
+    y: 10,
+    cx: 200,
+    cy: 100,
+    class_name: "#32770",
+    title: "About PuTTY",
+    font: null,
+    item: [
+      { style: WS_VISIBLE | WS_CHILD, ex_style: 0, x: 8, y: 8, cx: 120, cy: 12, id: 100, class_name: "Static", title: "About PuTTY" },
+      { style: WS_VISIBLE | WS_CHILD | WS_TABSTOP, ex_style: 0, x: 80, y: 70, cx: 40, cy: 14, id: 1, class_name: "Button", title: "OK" },
+    ],
+  };
+}
 
 test("packed 565 and 555 round-trip within bit-replication tolerance and keep white white", () => {
   for (const value of [0, 8, 16, 128, 200, 255]) {
@@ -321,4 +357,110 @@ test("conformance: every served GDI32 export carries a case and matches the orac
   assert.equal(report.is_coverage_complete, true, `uncovered: ${report.uncovered_export.join(", ")}`);
   assert.equal(report.fail_count, 0, report.result.filter((entry) => !entry.pass).map((entry) => `${entry.case_id}: ${entry.mismatch.join("; ")}`).join("\n"));
   assert.equal(report.pass_count, caseTable.length);
+});
+
+// --- the desktop compositor (browser display milestone 3) -------------------
+// Instantiate a synthetic dialog through the real window manager, then paint its
+// paint log through compositeDesktop, and assert the frame, caption, STATIC, and
+// BUTTON pixels land exactly where the template geometry (offset by the caption
+// band) says. The paint is generic — driven by control class, never by title.
+
+test("compositeDesktop paints a dialog's frame, caption, STATIC, and BUTTON at the template geometry", () => {
+  const user = createUserSubsystem();
+  const gdi = createGdiSubsystem();
+  const template = syntheticAboutDialog();
+  const dialog = user.instantiateDialog(template, 0, 0);
+  assert.notEqual(dialog.hwnd, 0, "the dialog frame was created");
+
+  const snapshot = user.paintSnapshot();
+  // The frame plus its two controls are logged (frame first, back-to-front).
+  assert.equal(snapshot.length, 3, "frame + STATIC + BUTTON captured into the paint log");
+  assert.equal(snapshot[0].parent >>> 0, 0, "the frame is the first, back-most snapshot");
+
+  const surface = gdi.compositeDesktop(snapshot, compositorMetric.desktop_width, compositorMetric.desktop_height);
+  assert.equal(surface.width, compositorMetric.desktop_width);
+  assert.equal(surface.height, compositorMetric.desktop_height);
+  assert.equal(surface.window_painted, 1, "exactly one top-level frame painted");
+
+  // The frame occupies template (x,y)..(x+cx,y+cy); its client is btnFace grey.
+  const fx = template.x;
+  const fy = template.y;
+  const cap = compositorMetric.caption_height;
+  // Desktop shows through outside the frame.
+  assert.deepEqual(pixelAt(surface, fx - 3, fy - 3), [58, 110, 165, 255], "desktop background outside the frame");
+  // The caption band carries the active-caption color.
+  assert.deepEqual(pixelAt(surface, fx + 4, fy + 4), [0, 0, 128, 255], "the caption band is painted");
+  // The client area below the caption, clear of any control, is btnFace grey.
+  assert.deepEqual(pixelAt(surface, fx + 2, fy + cap + 2), [192, 192, 192, 255], "the dialog client is COLOR_BTNFACE grey");
+
+  // The STATIC caption paints black glyph ink inside its screen rect. Its client
+  // origin is the frame origin plus the caption band; the caption reads "About
+  // PuTTY", so at least one ink pixel lands in the rect.
+  const staticItem = template.item[0];
+  const staticLeft = fx + staticItem.x;
+  const staticTop = fy + cap + staticItem.y;
+  let staticInk = 0;
+  for (let y = staticTop; y < staticTop + staticItem.cy; y += 1) {
+    for (let x = staticLeft; x < staticLeft + staticItem.cx; x += 1) {
+      const [r, g, b] = pixelAt(surface, x, y);
+      if (r === 0 && g === 0 && b === 0) staticInk += 1;
+    }
+  }
+  assert.ok(staticInk > 0, `the STATIC caption painted glyph ink (${staticInk} px) at its geometry`);
+
+  // The BUTTON paints a raised bevel: white highlight on the top edge, grey
+  // shadow on the bottom edge, at the control's screen rect.
+  const buttonItem = template.item[1];
+  const bLeft = fx + buttonItem.x;
+  const bTop = fy + cap + buttonItem.y;
+  const bRight = bLeft + buttonItem.cx;
+  const bBottom = bTop + buttonItem.cy;
+  assert.deepEqual(pixelAt(surface, bLeft, bTop), [255, 255, 255, 255], "the button highlight edge (top-left)");
+  assert.deepEqual(pixelAt(surface, bRight - 1, bBottom - 1), [128, 128, 128, 255], "the button shadow edge (bottom-right)");
+  // The button caption "OK" paints black ink somewhere inside its face.
+  let buttonInk = 0;
+  for (let y = bTop; y < bBottom; y += 1) {
+    for (let x = bLeft; x < bRight; x += 1) {
+      const [r, g, b] = pixelAt(surface, x, y);
+      if (r === 0 && g === 0 && b === 0) buttonInk += 1;
+    }
+  }
+  assert.ok(buttonInk > 0, `the BUTTON caption painted glyph ink (${buttonInk} px) at its geometry`);
+});
+
+test("compositeDesktop is deterministic: same paint log yields byte-identical pixels", () => {
+  const template = syntheticAboutDialog();
+  const paintOnce = () => {
+    const user = createUserSubsystem();
+    const gdi = createGdiSubsystem();
+    user.instantiateDialog(template, 0, 0);
+    return gdi.compositeDesktop(user.paintSnapshot(), compositorMetric.desktop_width, compositorMetric.desktop_height).rgba;
+  };
+  assert.deepEqual(Array.from(paintOnce()), Array.from(paintOnce()), "two composites are byte-identical");
+});
+
+test("compositeDesktop clears to the desktop color when no window was painted", () => {
+  const gdi = createGdiSubsystem();
+  const surface = gdi.compositeDesktop([], 64, 48);
+  assert.equal(surface.window_painted, 0, "no frame painted from an empty log");
+  assert.deepEqual(pixelAt(surface, 32, 24), [58, 110, 165, 255], "the surface is the cleared desktop");
+});
+
+test("compositeDesktop paints an EDIT control as a sunken white client", () => {
+  const user = createUserSubsystem();
+  const gdi = createGdiSubsystem();
+  const template = {
+    is_ex: false, style: 0, ex_style: 0, control_count: 1,
+    x: 20, y: 20, cx: 120, cy: 60, class_name: "#32770", title: "Edit host", font: null,
+    item: [{ style: WS_VISIBLE | WS_CHILD, ex_style: 0, x: 10, y: 10, cx: 80, cy: 16, id: 1, class_name: "Edit", title: "" }],
+  };
+  user.instantiateDialog(template, 0, 0);
+  const surface = gdi.compositeDesktop(user.paintSnapshot(), 320, 200);
+  const cap = compositorMetric.caption_height;
+  const eLeft = template.x + template.item[0].x;
+  const eTop = template.y + cap + template.item[0].y;
+  // The interior of the EDIT client is white.
+  assert.deepEqual(pixelAt(surface, eLeft + 4, eTop + 4), [255, 255, 255, 255], "the EDIT client is white");
+  // Its sunken bevel puts the shadow on the top edge.
+  assert.deepEqual(pixelAt(surface, eLeft + 4, eTop), [128, 128, 128, 255], "the EDIT sunken top edge");
 });
