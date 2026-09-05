@@ -177,6 +177,57 @@ test("recompile: a memory-operand form refuses rather than mistranslate", async 
   assert.equal(compiled.refuse.code, "unsupported_opcode");
 });
 
+// BPTK-047 / GS-002 — control-flow and indirect-branch recovery. A switch
+// compiles to `jmp [table + index*4]`; the recompiler recovers the table, adds
+// every arm as a block leader, and dispatches by matching the runtime target
+// against the recovered leaders.
+function buildSwitch(index) {
+  const code = new Array(0x30).fill(0);
+  let offset = 0;
+  const put = (...bytes) => { for (const byte of bytes) code[offset++] = byte; };
+  put(0xb8, index, 0, 0, 0); // mov eax, index
+  put(0xff, 0x24, 0x85, 0x20, 0x10, 0x40, 0x00); // jmp [0x401020 + eax*4]
+  offset = 0x0c; put(0xbb, 0xa0, 0, 0, 0, 0xc3); // arm0: mov ebx,0xA0; ret
+  offset = 0x12; put(0xbb, 0xb0, 0, 0, 0, 0xc3); // arm1: mov ebx,0xB0; ret
+  offset = 0x18; put(0xbb, 0xc0, 0, 0, 0, 0xc3); // arm2: mov ebx,0xC0; ret
+  offset = 0x20;
+  const dword = (value) => { code[offset++] = value & 0xff; code[offset++] = (value >>> 8) & 0xff; code[offset++] = (value >>> 16) & 0xff; code[offset++] = (value >>> 24) & 0xff; };
+  dword(0x40100c); dword(0x401012); dword(0x401018);
+  return code;
+}
+
+test("recompile: a recovered jump table dispatches every switch arm bit-exact", async (context) => {
+  for (let index = 0; index <= 2; index += 1) {
+    const { oracle, recompiled } = await assertBitExact(context, buildSwitch(index));
+    assert.equal(oracle.register.ebx, [0xa0, 0xb0, 0xc0][index]);
+    assert.equal(recompiled.indirect_leader_count, 3, "the table recovers three code leaders");
+  }
+});
+
+test("recompile: the jump-table scan flags the code-as-data boundary, never a crash", async (context) => {
+  const mapped = mapMicro(context, buildSwitch(0));
+  const recompiled = await runRecompiled(mapped, { budget: 64, trace: true });
+  assert.ok(recompiled.flagged_region.length >= 1, "the dword after the table is flagged as data");
+  assert.equal(recompiled.flagged_region[0].kind, "table_boundary");
+});
+
+test("recompile: an indirect jump to an unrecovered target declares a fallback", async (context) => {
+  // mov eax, 0x00401234 (not a block leader); jmp eax → unresolved fallback.
+  const mapped = mapMicro(context, [0xb8, 0x34, 0x12, 0x40, 0x00, 0xff, 0xe0]);
+  const recompiled = await runRecompiled(mapped, { budget: 64, trace: true });
+  assert.equal(recompiled.state, "probe_executed");
+  assert.equal(recompiled.stop_reason, "indirect_branch_unresolved");
+  assert.equal(recompiled.fallback_count, 0);
+});
+
+test("recompile: an indirect call is a declared refusal, not a mistranslation", async (context) => {
+  // call [0x401020] (0xff /2) — indirect call recovery is a declared follow-up.
+  const mapped = mapMicro(context, [0xff, 0x15, 0x20, 0x10, 0x40, 0x00, 0xc3]);
+  const compiled = recompileImage(mapped, { budget: 64 });
+  assert.ok(compiled.refuse);
+  assert.equal(compiled.refuse.code, "indirect_call_unsupported");
+});
+
 test("recompile: the translation reports zero fallback and a recovered block graph", async (context) => {
   const mapped = mapMicro(context, [
     0xb8, 0, 0, 0, 0, 0xb9, 0x03, 0, 0, 0, 0x01, 0xc8, 0x49, 0x75, 0xfb, 0xc3,

@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The recompiler itself is absent, so no control-flow recovery pass exists to evaluate.",
+  "gate": "active",
+  "exclusion_reason": "Direct control flow, jump-table switches, and register/memory indirect jumps recover and dispatch bit-exact, but indirect call recovery (the vtable-call return path) and function-boundary inference beyond reachable decode are declared follow-ups, so a whole real image with virtual dispatch through call cannot recompile end to end.",
   "prerequisite": [
     "BPTK-046"
   ],
-  "promotion_trigger": "Promote when every switch and vtable arm of the fixture recompiles bit-exact, unknown target fall back with a declared reason, and code-as-data region is flagged.",
-  "expected_failing_assertion": "No control-flow recovery pass exists; the fixture switch and vtable dispatch cannot recompile.",
+  "promotion_trigger": "Promote to passing when every switch and vtable arm of a whole fixture recompiles bit-exact, indirect calls recover their return path, unknown targets fall back with a declared reason, and every code-as-data region is flagged.",
+  "expected_failing_assertion": "A fixture that dispatches through an indirect call (0xff /2) reaches a form the recovery pass declares unsupported, so the whole-image switch-and-vtable trace cannot recompile end to end.",
   "owner_item": "BPTK-047",
-  "active_gate_evidence": "The bounded probe suite pins indirect jump and call behavior through the interpreter oracle.",
+  "active_gate_evidence": "test/recompile.test.mjs recovers a `jmp [table + index*4]` switch: it reads the pointer table from the mapped image, adds every arm as a block leader, and dispatches each arm bit-exact against the interpreter oracle (register, eflags, trace_sha256, memory_sha256, eip, stop_reason); it also pins that the dword past the table is flagged as a code-as-data boundary rather than crashing, that a register-indirect jump to an unrecovered target declares an indirect_branch_unresolved fallback with fallback_count zero, and that an indirect call is a structured refusal rather than a mistranslation.",
   "fixture": [
     "FIX-002",
     "doc/research-static-recomp.md"

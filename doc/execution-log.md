@@ -30,6 +30,29 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   cannot recompile end-to-end. Promotes to passing when a whole fixture `.text`
   is bit-exact with zero fallback for every instruction it reaches.
 - **Counts:** implemented 43 → 44; passing 0. Gate exit 0.
-- **Next:** BPTK-047 (CFG + indirect-branch recovery) formalizes the block
-  graph and adds a resolvable indirect-jump/return model; then the perf bars
-  (BPTK-136/137, GS-092/093) can measure recompiled throughput vs interpreter.
+- **Next:** BPTK-047 (CFG + indirect-branch recovery).
+
+## Cycle 2 — BPTK-047 (GS-002) CFG + indirect-branch recovery
+
+- **Done:** extended `lib/recompile.mjs` with indirect-jump recovery. Decodes
+  `0xff /4` (jmp r/m32) including full ModRM+SIB+disp parsing; recognises the
+  `[disp32 + index*scale]` switch form and recovers the jump table by scanning
+  code pointers from the static base while each lands in the executable image,
+  stopping at (and flagging) the first non-code dword — the code-as-data
+  boundary. Recovered arms become block leaders. Dispatch is faithful: at run
+  time it reads the branch target and matches it against every recovered code
+  leader (switch AND vtable alike), dispatching to the match or declaring an
+  `indirect_branch_unresolved` fallback — never a crash, never a silent
+  interpreter fallback. Indirect call (`0xff /2`) is a declared structured
+  refusal (its return-path recovery is a follow-up).
+- **Evidence:** `test/recompile.test.mjs` (+4, now 17) — a 3-arm switch
+  dispatches bit-exact per arm vs the oracle (register/eflags/trace/memory/eip/
+  stop), the post-table dword is flagged, a register-indirect jump to an
+  unrecovered target declares the fallback, and an indirect call refuses.
+- **Why still red:** indirect-call return-path recovery and function-boundary
+  inference beyond reachable decode are follow-ups, so a whole image with
+  virtual `call`-dispatch can't recompile end to end.
+- **Counts:** implemented 44 → 45; passing 0. Gate exit 0 (302 tests).
+- **Next:** perf bars — BPTK-137 (GS-093 recompile-vs-interpret speedup, the
+  moat metric) and BPTK-136 (GS-092 MIPS floor), now measurable against the
+  real recompiler; or BPTK-048 (SMC hybrid fallback).
