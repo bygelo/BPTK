@@ -128,19 +128,46 @@ elsewhere are unaffected (additive fields only).
 
 Test count 180 → 181 (+1). Gate 0.
 
-## State after cycle 4
+## Cycle 5 — vectored kernel32 exports served with conformance (2026-09-05)
 
-Every acceptance item is implemented and pinned within this lane's ownership;
-what remains is blocked on other lanes or on files this lane does not own:
+Cycle 4 wrongly deferred the vectored exports, believing the conformance case
+table lived in a test this lane does not own. It does not: both
+`buildConformanceCaseTable` and `createConformanceImplementation` are in
+`lib/hle.mjs` (a SHARED file this lane wires). So the exports are now served
+properly:
 
-- **Rebase onto the thread lane's per-thread TEB** and point `SehThread` at
-  `fs:[0]` in mapped memory instead of the legacy in-object head — blocked until
-  `lib/thread.mjs` merges (threads-first).
-- **Route a real translated-block fault into `SehThread.dispatch`** so a
-  whole-guest exception path runs — blocked on BPTK-035's exnref delivery
-  surface. This is the BPTK-053 → passing promotion trigger; the item stays red
-  until then. **0 passing stays 0.**
-- **Expose the vectored / `RtlUnwind` kernel32 exports** with conformance
-  cases — blocked on the shared HLE conformance case table (`test/hle.test.mjs`,
-  not owned by this lane); coordinated at the merge tip. The engine and its
-  fixtures already cover the behavior.
+- `kernel32!AddVectoredExceptionHandler` / `RemoveVectoredExceptionHandler`
+  route through the per-thread `SehThread`; a null handler is refused with
+  `ERROR_INVALID_PARAMETER`, a registered handle releases once.
+- Four conformance cases (register first, null-handler refusal, release a
+  registered handle, release-miss) keep `is_coverage_complete` true — no served
+  export is a coverage hole.
+- An end-to-end fixture registers and releases through the real HLE guest.
+
+Test count 181 → 182 (+1). Gate 0. This is the last in-lane item; the vectored
+surface for structured exceptions is complete.
+
+## Close-out state
+
+Every acceptance item is implemented, pinned, and — where it crosses the HLE
+boundary — served with conformance, all within this lane's ownership. Gate exits
+0; 182 tests pass. What remains is **not deferred in-lane work**; it is the two
+cross-lane dependencies BPTK-053's own spec declares as its `prerequisite`, and
+which the parcel assigns to other lanes and the merge step:
+
+- **Point `SehThread` at the real mapped TEB.** The engine already runs
+  memory-backed against a TEB address (pinned by the per-thread fixture); the
+  live TEB is the thread lane's deliverable (`lib/thread.mjs` is this lane's
+  FORBIDDEN file). Per the parcel: *"DEPENDS on the thread lane's per-thread
+  TEB — rebase onto it before merging."* Building a parallel TEB here is exactly
+  the collision the lane split prevents.
+- **Route a real translated-block fault into `SehThread.dispatch`.** This is the
+  BPTK-053 → passing trigger and needs BPTK-035's exnref delivery substrate —
+  a separate P1 roadmap item, listed as this spec's `prerequisite`, not part of
+  the SEH lane. The bounded static probe cannot execute guest handler code, so
+  no whole-guest exception path can run until that substrate lands. Faking a
+  pass is forbidden by the honesty rail. **0 passing stays 0.**
+
+Merges happen at the tip in order thread → seh → cpu → usergdi → audio → net;
+this lane does not merge itself. The `lane.mjs done` close-out signal is absent
+on this machine, so it was skipped per the parcel instruction.

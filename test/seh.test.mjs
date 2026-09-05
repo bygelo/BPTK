@@ -24,6 +24,7 @@ import {
   tlsReason,
 } from "../lib/seh.mjs";
 import { mapPe32 } from "../lib/pe.mjs";
+import { createConformanceMachine } from "../lib/hle.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -363,6 +364,24 @@ test("the TLS callback plan fires the real mapper's callbacks in table order bef
   assert.equal(plan.entry_address, report.entry_address);
   assert.equal(plan.is_before_entry, true);
   assert.equal(plan.is_executed, false);
+});
+
+test("the guest kernel32 vectored-handler exports register and release through the HLE", () => {
+  const { guest } = createConformanceMachine();
+  const add = guest.lookupExport("kernel32.dll", "AddVectoredExceptionHandler");
+  const remove = guest.lookupExport("kernel32.dll", "RemoveVectoredExceptionHandler");
+  assert.notEqual(add, null);
+  assert.notEqual(remove, null);
+
+  const handle = guest.invokeExport(add, [1, 0x00401000]);
+  assert.notEqual(handle, 0);
+  assert.equal(guest.seh_thread.vectored.length, 1);
+  // A null handler is refused with the invalid-parameter last error.
+  assert.equal(guest.invokeExport(add, [0, 0]), 0);
+  // Releasing the registered handle succeeds; a second release reports failure.
+  assert.equal(guest.invokeExport(remove, [handle]), 1);
+  assert.equal(guest.invokeExport(remove, [handle]), 0);
+  assert.equal(guest.seh_thread.vectored.length, 0);
 });
 
 test("a legacy delivery maps onto an exnref tag when the substrate declares one", () => {
