@@ -175,6 +175,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/extract.mjs"),
     Path("lib/foundation.mjs"),
     Path("lib/graphics.mjs"),
+    Path("lib/hle.mjs"),
     Path("lib/input.mjs"),
     Path("lib/import.mjs"),
     Path("lib/i386.mjs"),
@@ -211,6 +212,7 @@ ALLOWED_MJS_PATH = {
     Path("test/runtime.test.mjs"),
     Path("test/security.test.mjs"),
     Path("test/shader.test.mjs"),
+    Path("test/hle.test.mjs"),
 }
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
@@ -374,6 +376,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/extract.mjs",
         "lib/foundation.mjs",
         "lib/graphics.mjs",
+        "lib/hle.mjs",
         "lib/input.mjs",
         "lib/import.mjs",
         "lib/i386.mjs",

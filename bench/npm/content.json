@@ -24,6 +24,7 @@
     "lib/extract.mjs",
     "lib/foundation.mjs",
     "lib/graphics.mjs",
+    "lib/hle.mjs",
     "lib/input.mjs",
     "lib/import.mjs",
     "lib/i386.mjs",

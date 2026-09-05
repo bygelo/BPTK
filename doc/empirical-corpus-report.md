@@ -32,10 +32,23 @@ a named source, a redistribution basis, a license, and a pinned sha256, and
 The gap tally across the nine entry: **BPTK-031 × 6** (the x86-64 research lane
 carries six of nine payload, including every game main executable in its modern
 build), **BPTK-010 × 2** (the two i386 entry map cleanly and then stop at the
-absent Win32 HLE — OpenTTD 1.10.3 win32 imports 302 function), and
-**BPTK-007 × 1** (the 7z container is outside the import classification). The
-breadth ranking is therefore: the x86-64 lane, then the Win32 HLE core, then
-import container breadth.
+partially served Win32 HLE — OpenTTD 1.10.3 win32 imports 302 function of which
+the core serves 62, Plink 0.74 win32 imports 142 of which the core serves 45),
+and **BPTK-007 × 1** (the 7z container is outside the import classification).
+The breadth ranking is therefore: the x86-64 lane, then the unserved Win32
+breadth (console, file, locale, SEH unwind, module loading — ranked per symbol
+by `corpus coverage`), then import container breadth.
+
+## Coverage-ledger raise after the Win32 core HLE (2026-09-05)
+
+`corpus coverage` joined the real 356-symbol import surface against the Win32
+core HLE registry: **62 covered** (served export each carrying conformance case),
+**294 absent**. The top of the unserved ranking, ranked by how many corpus entry
+import each symbol: SetFilePointerEx, GetFileType, SetStdHandle, GetACP,
+GetConsoleMode, ReadConsoleW, GetConsoleCP, RtlUnwind, MultiByteToWideChar,
+CreateFileW, CloseHandle, GetLocaleInfoW, LoadLibraryA, FreeLibrary, ReadFile,
+WaitForSingleObject — the console, file, locale, SEH-unwind, and module-loading
+families that the next emulation slice should take in family-sized units.
 
 ## Generic guard finding the corpus produced
 

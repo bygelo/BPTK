@@ -4,14 +4,24 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No Win32 core HLE exists in BPTK.",
-  "prerequisite": ["BPTK-009"],
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the frozen FIX-003 golden denominator is not pinned by BPTK-002 and the full Win32 breadth (user32, gdi32, advapi32, storage, locale) is not served. The Win32 core HLE exists (lib/hle.mjs): 67 kernel32 and ole32 export are real emulators over the guest memory model \u2014 process, module lookup, heap and virtual memory, time from the one monotonic clock, critical sections, TLS, lock-free list, pointer encoding, standard handle with bounded output capture, environment block, and the COM apartment trio \u2014 every one carrying conformance case, and the probe dispatches guest import call through a bounded thunk page with stdcall frame and rollback semantics. TLS callback now fire before the entry as their own bounded phase.",
+  "prerequisite": [
+    "BPTK-009"
+  ],
   "promotion_trigger": "Promote when FIX-003 starts, synchronizes, allocates, times, calls COM, and exits with the golden API trace.",
   "expected_failing_assertion": "The Win32 core fixture stops at its first unresolved or incorrect API behavior.",
   "owner_item": "BPTK-010",
-  "active_gate_evidence": "The roadmap names the API boundary without marking any function implemented.",
-  "fixture": ["FIX-003"],
-  "procedure": ["Run the API exerciser against the selected CPU and loader.", "Compare return value, last-error, callback order, handle lifetime, time, and trace."],
-  "pass_criterion": ["The complete P1 API sequence reaches normal exit.", "Every implemented call matches the golden behavior and every gap is explicit."]
+  "active_gate_evidence": "Eighty-four conformance case cover all 67 served export with zero uncovered export and zero failing case; the FIX-003 exerciser (a generated PE32 with a real two-library import directory) executes 26 guest instruction blocks through the full golden API sequence \u2014 starts, allocates, synchronizes, times, calls COM, writes captured output, resolves a procedure through GetProcAddress, and exits through the resolved pointer with code 0x5a5a \u2014 with repeat runs stable in call-trace, instruction-trace, and memory hash; unserved import are refused with the exact unserved surface named (1 of 2 style), and the coverage ledger marks the served kernel32 surface of a real import table covered.",
+  "fixture": [
+    "FIX-003"
+  ],
+  "procedure": [
+    "Run the API exerciser against the selected CPU and loader.",
+    "Compare return value, last-error, callback order, handle lifetime, time, and trace."
+  ],
+  "pass_criterion": [
+    "The complete P1 API sequence reaches normal exit.",
+    "Every implemented call matches the golden behavior and every gap is explicit."
+  ]
 }

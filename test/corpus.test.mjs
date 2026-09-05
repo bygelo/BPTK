@@ -294,7 +294,7 @@ test("loadRunRecords refuses a file without a record array", (context) => {
   assert.throws(() => loadRunRecords(badPath), (error) => error.input_code === "run_record_invalid");
 });
 
-test("the export-coverage ledger joins corpus import against the empty emulated set", (context) => {
+test("the export-coverage ledger marks the served Win32 core surface covered and the rest absent", (context) => {
   const stage = mkdtempSync(join(tmpdir(), "bptk-coverage-"));
   context.after(() => rmSync(stage, { recursive: true, force: true }));
   const entryDir = join(stage, "corpus-904");
@@ -313,8 +313,16 @@ test("the export-coverage ledger joins corpus import against the empty emulated 
   const report = buildExportLedger({ stage });
   assert.equal(report.record[0].status, "mapped");
   assert.ok(report.symbol_count >= 1);
-  assert.equal(report.covered_count, 0);
-  assert.equal(report.absent_count, report.symbol_count);
+  // kernel32!ExitProcess is served by the Win32 core HLE (BPTK-010) and its
+  // conformance case exist, so the real import surface is partially covered.
+  const exitProcess = report.ledger.find((entry) => entry.key.toLowerCase() === "kernel32.dll!exitprocess");
+  assert.notEqual(exitProcess, undefined);
+  assert.equal(exitProcess.status, "covered");
+  assert.ok(exitProcess.case_count >= 1);
+  // This fixture imports only ExitProcess, so the whole surface is covered.
+  assert.equal(report.covered_count, 1);
+  assert.equal(report.absent_count, 0);
+  assert.equal(report.covered_count + report.absent_count, report.symbol_count);
   assert.equal(report.is_within_budget, false);
   assert.ok(report.ledger.some((entry) => /^kernel32\.dll!/i.test(entry.key)));
 });

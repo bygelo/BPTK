@@ -224,13 +224,20 @@ test("regression risk: bounded x87 load, multiply, and store keep deterministic 
   assert.equal(second.memory_sha256, report.memory_sha256);
 });
 
-test("regression risk: imported function and TLS callback refuse execution", (context) => {
+test("regression risk: a served import binds to the HLE thunk page and a TLS callback fires before entry", (context) => {
+  // The Win32 core HLE (BPTK-010) serves kernel32!ExitProcess, so the image
+  // now executes and the import reports resolved against the thunk page.
   const importReport = readRun(createPackage(context, [0xc3], { import_value: true }).packagePath);
-  assert.equal(importReport.is_executed, false);
-  assert.equal(importReport.stop_reason, "import_present");
+  assert.equal(importReport.is_executed, true);
+  assert.equal(importReport.stop_reason, "entry_return");
+  assert.equal(importReport.import[0].resolution_state, "resolved");
+  assert.ok(importReport.import[0].address >= 0xf0000000, "the thunk page sits in the declared high block");
+  assert.equal(importReport.hle.call_count, 0);
+  // The TLS callback phase runs before the entry phase over one budget.
   const tlsReport = readRun(createPackage(context, [0xc3], { tls_value: true }).packagePath);
-  assert.equal(tlsReport.is_executed, false);
-  assert.equal(tlsReport.stop_reason, "tls_callback_present");
+  assert.equal(tlsReport.is_executed, true);
+  assert.equal(tlsReport.stop_reason, "entry_return");
+  assert.equal(tlsReport.instruction_count, 2);
 });
 
 test("regression risk: memory fault is structured and deterministic", (context) => {
