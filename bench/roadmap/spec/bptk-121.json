@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The repository gates green today, but no freshness window or tag-reproducibility check exists yet.",
+  "gate": "active",
+  "exclusion_reason": "The freshness gate is implemented in the planning validator: the default branch older than the declared 45-day window fails the gate, and the repository runs the full gate on every push through the immutable-action workflow. The benchmark remains red because no tagged release has been rebuilt byte-reproducibly from a clean clone yet.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the freshness gate enforces the declared window in CI and a tagged release rebuilds reproducibly from a clean clone.",
   "expected_failing_assertion": "No freshness gate exists and no tagged release has been rebuilt reproducibly.",
   "owner_item": "BPTK-121",
-  "active_gate_evidence": "The roadmap workflow runs the full gate with immutable action on every push and pull request.",
+  "active_gate_evidence": "The governance gate computes the default-branch age against the frozen window on every run, and the workflow runs it on every push and pull request.",
   "fixture": [
     "FIX-000"
   ],

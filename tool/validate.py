@@ -9,6 +9,8 @@ import hashlib
 import json
 import os
 import re
+import time
+from os.path import basename
 import subprocess
 import sys
 from pathlib import Path
@@ -151,10 +153,14 @@ BINARY_SUFFIX = {
 
 ALLOWED_SUFFIX = {".md", ".json", ".mjs", ".py"}
 ALLOWED_NAME = {"LICENSE", "NOTICE"}
-ALLOWED_SPECIAL_PATH = {Path(".gitignore"), Path(".github/workflows/roadmap.yml")}
+ALLOWED_SPECIAL_PATH = {Path(".gitignore"), Path(".github/workflows/roadmap.yml"), Path(".github/CODEOWNERS")}
 ALLOWED_MJS_PATH = {
     Path("bin/bptk.mjs"),
     Path("data/corpus.json"),
+    Path("data/corpus-run.json"),
+    Path("data/coverage-ratchet.json"),
+    Path("MAINTAINERS.md"),
+    Path(".github/CODEOWNERS"),
     Path("data/corpus-run.json"),
     Path("lib/benchmark.mjs"),
     Path("lib/bound.mjs"),
@@ -350,6 +356,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "bin/bptk.mjs",
         "data/corpus.json",
         "data/corpus-run.json",
+        "data/coverage-ratchet.json",
         "data/status.json",
         "lib/benchmark.mjs",
         "lib/bound.mjs",
@@ -575,9 +582,59 @@ def expand_source_reference(value: str, error: list[str], item_id: str) -> set[s
     return source_id
 
 
+
+FRESHNESS_WINDOW_DAY = 45
+
+
+def validate_governance(error: list[str]) -> None:
+    """The governance gate (GS-078, GS-081, GS-082): freshness, ratchet, orphan rule, maintainers."""
+    log = subprocess.run(
+        ["git", "-C", str(ROOT), "log", "-1", "--format=%ct"],
+        capture_output=True,
+        text=True,
+    )
+    if log.returncode == 0 and log.stdout.strip().isdigit():
+        ageSecond = time.time() - int(log.stdout.strip())
+        if ageSecond > FRESHNESS_WINDOW_DAY * 86400:
+            error.append(f"freshness gate: the default branch is {ageSecond // 86400} day old, past the {FRESHNESS_WINDOW_DAY}-day window")
+
+    ratchetPath = ROOT / "data/coverage-ratchet.json"
+    if ratchetPath.is_file():
+        ratchet = json.loads(ratchetPath.read_text(encoding="utf-8"))
+        testCount = 0
+        for path in (ROOT / "test").glob("*.mjs"):
+            testCount += path.read_text(encoding="utf-8").count("test(")
+        if testCount < ratchet.get("test_floor", 0):
+            error.append(f"coverage ratchet: {testCount} test is below the frozen floor {ratchet.get('test_floor')}")
+
+    libModule = {path.name for path in (ROOT / "lib").glob("*.mjs")}
+    packageValue = json.loads(PACKAGE_PATH.read_text(encoding="utf-8"))
+    entryModule = {basename(str(packageValue.get("main", ""))), basename(str(packageValue.get("bin", {}).get("bptk", "")))}
+    referenced: set[str] = set()
+    for searchRoot in (ROOT / "lib", ROOT / "test", ROOT / "script", ROOT / "bin"):
+        for path in searchRoot.glob("*.mjs"):
+            text = path.read_text(encoding="utf-8")
+            for moduleName in libModule:
+                if f"/{moduleName}" in text:
+                    referenced.add(moduleName)
+    orphan = sorted(libModule - referenced - entryModule)
+    if orphan:
+        error.append(f"orphan runtime module no test or module reaches: {orphan}")
+
+    maintainersPath = ROOT / "MAINTAINERS.md"
+    if maintainersPath.is_file():
+        maintainersText = maintainersPath.read_text(encoding="utf-8").lower()
+        for token in ("review is not self-approval", "two signer", "recovery drill"):
+            if token not in maintainersText:
+                error.append(f"maintainer record missing required statement: {token}")
+    codeownersPath = ROOT / ".github/CODEOWNERS"
+    if codeownersPath.is_file() and "@" not in codeownersPath.read_text(encoding="utf-8"):
+        error.append("code-owner record carries no owner")
+
 def main() -> int:
     error: list[str] = []
     validate_path(error)
+    validate_governance(error)
     validate_link(error)
     validate_claim(error)
     validate_license(error)

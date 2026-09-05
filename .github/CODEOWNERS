@@ -1,0 +1,3 @@
+# Review is not self-approval: every change needs a maintainer review from a
+# different login than the author (GS-082 / BPTK-125).
+* @bygelo/bptk-maintainers

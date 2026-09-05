@@ -9,7 +9,7 @@
     "accepted": 145,
     "rejected": 8,
     "deferred": 6,
-    "implemented": 27,
+    "implemented": 30,
     "passing": 0
   },
   "item": [
@@ -1584,7 +1584,7 @@
         "SRC-002",
         "SRC-033"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-122",
@@ -1638,7 +1638,7 @@
         "SRC-011",
         "SRC-013"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-125",
@@ -1654,7 +1654,7 @@
         "SRC-002",
         "SRC-033"
       ],
-      "promotion_state": "planned"
+      "promotion_state": "implemented"
     },
     {
       "item_id": "BPTK-126",

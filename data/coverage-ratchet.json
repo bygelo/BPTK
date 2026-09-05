@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "test_floor": 95,
+  "measured_at": "2026-09-05",
+  "lib_module_count": 31,
+  "note": "The floor is measured as the count of test( declaration across test/*.mjs and may only rise with the suite; a merge that lowers it fails the gate."
+}

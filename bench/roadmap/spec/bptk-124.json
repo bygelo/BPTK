@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The gate has no coverage ratchet and no surface-to-benchmark linkage rule yet.",
+  "gate": "active",
+  "exclusion_reason": "The ratcheting coverage bar is implemented in the planning validator: the frozen floor record refuses a merge that lowers the test declaration count, and the orphan rule refuses a runtime module that no test or module reaches. The benchmark remains red because the surface-to-benchmark linkage rule is only partially expressible while most surfaces are CLI-level and the runtime benchmark coverage is still zero.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the gate rejects a benchmark-less runtime surface and a coverage drop below the floor in a drill.",
   "expected_failing_assertion": "No coverage ratchet exists in the gate.",
   "owner_item": "BPTK-124",
-  "active_gate_evidence": "The gate already fails on roadmap-package inconsistency, status drift, and package-surface change.",
+  "active_gate_evidence": "The governance gate counts the test declaration against the committed floor record and refuses an orphan runtime module; both rules fail closed.",
   "fixture": [
     "FIX-000"
   ],
