@@ -88,6 +88,32 @@ test("hosting publishes an in-date grant and refuses an expired one", (context) 
   assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
 });
 
+test("modding overlays a base without changing it and refuses an oversized mod", (context) => {
+  const rootPath = scratch(context);
+  const projectPath = join(rootPath, "base-project");
+  mkdirSync(projectPath);
+  writeFileSync(join(projectPath, "level.dat"), "base level bytes\n");
+  assert.equal(run(["package", projectPath, "--asset-mode", "stream", "--json"]).status, 0);
+  const basePackage = `${projectPath}.bptk-package`;
+
+  const modPath = join(rootPath, "mod");
+  mkdirSync(modPath);
+  writeFileSync(join(modPath, "level.dat"), "modded level bytes\n"); // override
+  writeFileSync(join(modPath, "extra.dat"), "new mod content\n"); // addition
+  const modRun = run(["library", "mod", basePackage, modPath, "--stage", join(rootPath, "overlay"), "--json"]);
+  assert.equal(modRun.status, 0);
+  const report = JSON.parse(modRun.stdout);
+  assert.equal(report.is_base_unchanged, true);
+  assert.equal(report.overlay.length, 2);
+  assert.ok(report.overlay.some((entry) => entry.disposition === "override"));
+  assert.ok(report.overlay.some((entry) => entry.disposition === "addition"));
+  assert.equal(existsSync(join(rootPath, "overlay", "level.dat")), true);
+
+  // An oversized mod is refused at the declared bound.
+  const bigMod = run(["library", "mod", basePackage, modPath, "--stage", join(rootPath, "overlay2"), "--max", "1", "--json"]);
+  assert.equal(bigMod.status, 1);
+});
+
 test("ratings show only when record-backed and current; stale ones grey out", (context) => {
   const rootPath = scratch(context);
   const ratingPath = join(rootPath, "rating.json");
