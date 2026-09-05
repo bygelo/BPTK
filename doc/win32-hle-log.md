@@ -71,3 +71,21 @@ not yet invoked as real code (CPU core owns that; DefWindowProc fallback stands)
 and the cursor/timer/browser-gesture and focus-recovery path of FIX-004 are absent.
 
 Gate: exit 0.
+
+## Cycle 4 — BPTK-012 GDI 2D compatibility slice (implemented, red/active)
+Added generic 2D exports in lib/gdi.mjs + registration in lib/hle.mjs: FillRect
+(RECT from guest memory), PatBlt (pattern-copy and black/white ops, refusing an
+unrealized ternary op), GetDeviceCaps over one declared virtual-display profile,
+and SetROP2/GetROP2 state. Served gdi32 export 22→27; total 198→203. Cases added
+to BOTH conformance suites (test/gdi.test.mjs subsystem + core HLE); added a
+pixel-effect test proving PatBlt fills with the brush, the ops paint their color,
+caps report the declared display, and ROP2 round-trips. Implemented count 46→47;
+passing 0. Still red: clip regions, real font metrics, DIB transfer, and the
+browser present/invalidation path of FIX-005 are absent.
+
+Gate: exit 0.
+
+## Progress
+Implemented 43→47 (BPTK-101, 098, 011, 012). Served HLE export surface 156→203.
+Remaining owned planned items: BPTK-096 (3D audio), 097 (full input), 099
+(networking bind), 100 (FMV), 102 (installer/optical), 104 (frame-pacing).
