@@ -89,6 +89,63 @@ test("microprogram: a gs-relative read then store round-trips through the TEB re
   assert.equal(report.register.rax, loadBase, `rax 0x${report.register.rax.toString(16)} != seeded image base`);
 });
 
+test("microprogram: the probe's SHRD Ev,Gv,imm8 matches the oracle bit for bit", () => {
+  // mov eax,0x12345678; mov ecx,0xaabbccdd; shrd eax,ecx,8; ret
+  // result = (0x12345678 >> 8) | (0xaabbccdd << 24) = 0xdd123456.
+  const report = run([0xb8, 0x78, 0x56, 0x34, 0x12, 0xb9, 0xdd, 0xcc, 0xbb, 0xaa, 0x0f, 0xac, 0xc8, 0x08, 0xc3]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.rax, 0xdd123456n, `rax 0x${report.register.rax.toString(16)}`);
+  assert.equal(report.flag.cf, false);
+  assert.equal(report.flag.sf, true);
+  assert.equal(report.flag.pf, true);
+  assert.equal(report.flag.of, true);
+  assert.equal(report.flag.zf, false);
+});
+
+test("microprogram: the probe's SHLD Ev,Gv,imm8 matches the oracle bit for bit", () => {
+  // mov eax,0x12345678; mov ecx,0xaabbccdd; shld eax,ecx,8; ret
+  // result = (0x12345678 << 8) | (0xaabbccdd >> 24) = 0x345678aa.
+  const report = run([0xb8, 0x78, 0x56, 0x34, 0x12, 0xb9, 0xdd, 0xcc, 0xbb, 0xaa, 0x0f, 0xa4, 0xc8, 0x08, 0xc3]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.rax, 0x345678aan, `rax 0x${report.register.rax.toString(16)}`);
+  assert.equal(report.flag.cf, false);
+  assert.equal(report.flag.sf, false);
+  assert.equal(report.flag.pf, true);
+  assert.equal(report.flag.of, false);
+});
+
+test("microprogram: the probe's REX.W SHRD shifts a full 64-bit destination", () => {
+  // mov rax,0x123456789abcdef0; mov rcx,0xfedcba987654321f; shrd rax,rcx,4; ret
+  // result = (rax >> 4) | (rcx << 60) = 0xf123456789abcdef.
+  const report = run([
+    0x48, 0xb8, 0xf0, 0xde, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
+    0x48, 0xb9, 0x1f, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe,
+    0x48, 0x0f, 0xac, 0xc8, 0x04,
+    0xc3,
+  ]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.rax, 0xf123456789abcdefn, `rax 0x${report.register.rax.toString(16)}`);
+  assert.equal(report.flag.sf, true);
+  assert.equal(report.flag.of, true);
+  assert.equal(report.flag.cf, false);
+});
+
+test("microprogram: the probe's SHLD Ev,Gv,CL takes its count from CL", () => {
+  // mov edx,0xff; mov ebx,0xff000000; mov ecx,4; shld edx,ebx,cl; ret
+  // result = (0xff << 4) | (0xff000000 >> 28) = 0xfff.
+  const report = run([
+    0xba, 0xff, 0x00, 0x00, 0x00,
+    0xbb, 0x00, 0x00, 0x00, 0xff,
+    0xb9, 0x04, 0x00, 0x00, 0x00,
+    0x0f, 0xa5, 0xda,
+    0xc3,
+  ]);
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.rdx, 0xfffn, `rdx 0x${report.register.rdx.toString(16)}`);
+  assert.equal(report.flag.cf, false);
+  assert.equal(report.flag.of, false);
+});
+
 test("microprogram: an indirect call through an IAT slot stops as import_present", () => {
   // call [rip+0xfa]   ff 15 fa 00 00 00   -> effective slot = (loadBase+6)+0xfa = loadBase+0x100
   const slot = (loadBase + 0x100n) & ((1n << 64n) - 1n);
