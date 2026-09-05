@@ -41,6 +41,7 @@
     "lib/performance.mjs",
     "lib/platform.mjs",
     "lib/pe.mjs",
+    "lib/pe64.mjs",
     "lib/port.mjs",
     "lib/recompile.mjs",
     "lib/replay.mjs",
