@@ -244,6 +244,32 @@ test("a reached FlsAlloc is served through the Win64 HLE and returns index 0", (
   assert.equal(probe.register.rax, "0x0", "RAX carries the first FLS index");
 });
 
+test("a served strrchr returns a full-width x64 pointer above 4 GiB, not a truncated low dword", () => {
+  // The frontier Dwarf Fortress reached: vcruntime140!strrchr on a path string.
+  // The string lives in the image mapped at 0x140000000, so the pointer strrchr
+  // returns is above 4 GiB. If the Win64 return marshal truncated it to a low
+  // dword, the guest's next dereference would fault — this asserts it does not.
+  //   0x00: 48 8d 0d 39 00 00 00   lea rcx,[rip+0x39]   -> string at 0x40
+  //   0x07: ba 2f 00 00 00         mov edx,0x2f         -> '/'
+  //   0x0c: ff 15 7e 00 00 00      call [rip+0x7e]      -> IAT slot 0x90
+  //   0x12: c3                     ret
+  //   0x40: "a/b\0"                                     (last '/' at 0x41)
+  //   0x90: <8-byte IAT slot>
+  const image = Buffer.alloc(0x100);
+  Buffer.from([0x48, 0x8d, 0x0d, 0x39, 0x00, 0x00, 0x00, 0xba, 0x2f, 0x00, 0x00, 0x00, 0xff, 0x15, 0x7e, 0x00, 0x00, 0x00, 0xc3]).copy(image, 0x00);
+  Buffer.from("a/b\0", "latin1").copy(image, 0x40);
+  const mapped = {
+    image, input_path: "strrchr.exe", load_base: loadBase, entry_rva: 0,
+    image_size_byte: image.length, section: [], tls_callback: [], relocation_count: 0,
+    resolution_blocker: [], runtime_blocker: [],
+    import: [{ library: "vcruntime140.dll", symbol: "strrchr", ordinal: null, iat_slot_rva: 0x90 }],
+  };
+  const probe = executeProbe64(mapped, 4096);
+  assert.equal(probe.stop_reason, "entry_return", JSON.stringify(probe.exception));
+  assert.equal(probe.import_reached, null, "strrchr is served, not a reached-import stop");
+  assert.equal(probe.register.rax, "0x140000041", "RAX is the full 64-bit address of the last '/', not a truncated 0x41");
+});
+
 test("_initterm runs each guest initializer before returning to the caller", () => {
   // The ucrt startup runs the C++ global constructors by calling
   // _initterm(begin, end) over a table of function pointers. The harness must
