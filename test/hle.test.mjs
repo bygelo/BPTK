@@ -457,6 +457,69 @@ test("BPTK-101: the kernel32 string family copies and concatenates bytes into gu
   assert.equal(guest.readAnsiString(dest), "abcd");
 });
 
+test("BPTK-031: the ucrt formatted-output backend expands a real x64 va_list", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const format = base + 0x40;
+  const dest = base + 0x100;
+  const valist = base + 0x200;
+  const strArg = base + 0x300;
+  guest.writeAnsiString(format, "n=%d h=%x s=%s c=%c%%", 40);
+  guest.writeAnsiString(strArg, "OK", 8);
+  // The va_list is eight-byte slots in argument order: 42, 0xbeef, &"OK", 'Z'.
+  memory.writeMemory(valist + 0, 4, 42); memory.writeMemory(valist + 4, 4, 0);
+  memory.writeMemory(valist + 8, 4, 0xbeef); memory.writeMemory(valist + 12, 4, 0);
+  memory.writeMemory(valist + 16, 4, strArg); memory.writeMemory(valist + 20, 4, 0);
+  memory.writeMemory(valist + 24, 4, 0x5a); memory.writeMemory(valist + 28, 4, 0);
+  const written = invoke(guest, "api-ms-win-crt-stdio-l1-1-0.dll", "__stdio_common_vsprintf", [0, dest, 64, format, 0, valist]);
+  assert.equal(guest.readAnsiString(dest), "n=42 h=beef s=OK c=Z%");
+  assert.equal(written, "n=42 h=beef s=OK c=Z%".length, "the return is the full conversion length");
+});
+
+test("BPTK-031: printf width, precision, zero-fill, and sign flags render like C", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const format = base + 0x40;
+  const dest = base + 0x100;
+  const valist = base + 0x200;
+  guest.writeAnsiString(format, "[%05d][%+d][%8.3f][%-4d|]", 40);
+  memory.writeMemory(valist + 0, 4, 0xffffffd6); memory.writeMemory(valist + 4, 4, 0xffffffff); // -42 (int, sign-extended low dword)
+  memory.writeMemory(valist + 8, 4, 7); memory.writeMemory(valist + 12, 4, 0);
+  memory.writeMemory(valist + 16, 8, 0); // 3.14159 as a double, written below
+  memory.writeMemory(valist + 24, 4, 5); memory.writeMemory(valist + 28, 4, 0);
+  const buf = Buffer.alloc(8); buf.writeDoubleLE(3.14159, 0);
+  memory.writeBlock(valist + 16, buf);
+  invoke(guest, "api-ms-win-crt-stdio-l1-1-0.dll", "__stdio_common_vsprintf", [0, dest, 64, format, 0, valist]);
+  assert.equal(guest.readAnsiString(dest), "[-0042][+7][   3.142][5   |]");
+});
+
+test("BPTK-031: fopen honors its mode string — a read of an absent file never creates it", () => {
+  const { guest } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const path = base + 0x40;
+  const modeRead = base + 0x80;
+  const modeWrite = base + 0x90;
+  guest.writeAnsiString(path, "c:\\iwad.wad", 16);
+  guest.writeAnsiString(modeRead, "rb", 4);
+  guest.writeAnsiString(modeWrite, "wb", 4);
+  assert.equal(invoke(guest, "msvcrt.dll", "fopen", [path, modeRead]), 0, "a read of an absent file returns NULL");
+  assert.equal(guest.virtualFileSize("c:\\iwad.wad"), null, "and does not fabricate the file");
+  const stream = invoke(guest, "msvcrt.dll", "fopen", [path, modeWrite]);
+  assert.notEqual(stream, 0, "a write mode creates the file and returns a stream");
+  assert.equal(guest.virtualFileSize("c:\\iwad.wad"), 0, "the created file exists at zero length");
+});
+
+test("BPTK-031: _wmkdir over a valid c:\\ path succeeds and feof tracks a real file position", () => {
+  const { guest } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const dir = base + 0x40;
+  guest.writeWideString(dir, "c:\\game\\cfg", 16);
+  assert.equal(invoke(guest, "msvcrt.dll", "_wmkdir", [dir]), 0, "a valid directory path succeeds");
+  const bad = base + 0x100;
+  guest.writeWideString(bad, "d:\\notallowed", 20);
+  assert.equal(invoke(guest, "msvcrt.dll", "_wmkdir", [bad]) | 0, -1, "an out-of-tree path is refused");
+});
+
 test("BPTK-101: MulDiv rounds half away from zero and refuses a zero denominator", () => {
   const { guest } = createConformanceMachine();
   assert.equal(invoke(guest, "kernel32.dll", "MulDiv", [10, 3, 4]), 8);
