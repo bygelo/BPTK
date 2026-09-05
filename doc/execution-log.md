@@ -56,3 +56,22 @@ benchmark passes yet); `implemented` = real code + an active red contract.
 - **Next:** perf bars — BPTK-137 (GS-093 recompile-vs-interpret speedup, the
   moat metric) and BPTK-136 (GS-092 MIPS floor), now measurable against the
   real recompiler; or BPTK-048 (SMC hybrid fallback).
+
+## Cycle 3 — BPTK-136 (GS-092) + BPTK-137 (GS-093) performance bars
+
+- **Done:** `lib/performance.mjs` gains `benchmarkRecompiler()` + a frozen
+  CPU-bound workload (FIX-016, a mixed integer loop pinned as bytes). It runs
+  the workload through the interpreter oracle and the recompiled WebAssembly
+  module on this host, proves they compute the same result (register + count),
+  and measures sustained MIPS + the recompile-over-interpret speedup — the moat
+  metric. Measured here: recompiled ~300 MIPS vs interpreter ~4.4 MIPS ≈ **68×**
+  (bar is ≥5×), same computation verified, zero fallback.
+- **Evidence:** `test/performance.test.mjs` (4) — equivalence + zero fallback,
+  recompiled MIPS > interpreter MIPS with a real multiple > 1, and the honest
+  red boundary (native_fraction null, measured_on_reference_desktop false,
+  is_bar_cleared false, both blockers declared).
+- **Why still red:** the 770-MIPS floor is defined against the BPTK-002
+  reference desktop (not this host), and no native baseline exists to measure
+  the ≥50%-of-native fraction of GS-093 — so neither bar is *certified*.
+- **Counts:** implemented 45 → 47; passing 0. Gate exit 0 (306 tests).
+- **Next:** BPTK-048 (SMC hybrid fallback) or BPTK-052 (SSE/x87 breadth).

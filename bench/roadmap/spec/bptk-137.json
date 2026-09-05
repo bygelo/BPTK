@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No recompiled execution exists to compare.",
+  "gate": "active",
+  "exclusion_reason": "The recompiled-vs-interpreted speedup is measured on this host and clears the interpreter multiple by a wide margin, but the >=50%-of-native fraction cannot be measured because no native-execution baseline exists, and the multiple is not certified against the BPTK-002 reference desktop, so the bar is not cleared.",
   "prerequisite": [],
-  "promotion_trigger": "Promote when the same workload clears both the interpreter multiple and the native fraction.",
-  "expected_failing_assertion": "No recompiled execution exists to compare.",
+  "promotion_trigger": "Promote to passing when the same frozen workload clears both the >=5x interpreter multiple and the >=50% native fraction on the pinned BPTK-002 reference desktop.",
+  "expected_failing_assertion": "No native-execution baseline exists, so the native fraction of GS-093 is unmeasured and the bar stays red even though the interpreter multiple clears here.",
   "owner_item": "BPTK-137",
-  "active_gate_evidence": "The bounded interpreter probe keeps its measured behavior pinned for the comparison baseline.",
+  "active_gate_evidence": "test/performance.test.mjs runs the frozen CPU-bound workload through both the interpreter oracle and the recompiled WebAssembly module (lib/performance.mjs benchmarkRecompiler), asserts the recompiled path computes the identical register state and instruction count (is_equivalent) with fallback_count zero, and asserts the recompiled throughput exceeds the interpreter with a real interpreter_multiple above one; it also pins that native_fraction is null, measured_on_reference_desktop is false, and is_bar_cleared stays false with the native-baseline and reference-desktop blockers declared.",
   "fixture": [
     "FIX-016"
   ],

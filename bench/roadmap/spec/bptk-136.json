@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No recompiler exists to measure.",
+  "gate": "active",
+  "exclusion_reason": "Sustained recompiled instruction throughput over the frozen workload is measured on this host, but the 770-MIPS floor is defined against the BPTK-002 reference desktop, which is not the measurement host, so the floor cannot be certified and the benchmark stays red.",
   "prerequisite": [
     "BPTK-046"
   ],
-  "promotion_trigger": "Promote when the frozen workload clears the declared floor on the reference desktop.",
-  "expected_failing_assertion": "No recompiled execution exists to benchmark.",
+  "promotion_trigger": "Promote to passing when the frozen workload sustains >= 770 MIPS on the pinned BPTK-002 reference desktop.",
+  "expected_failing_assertion": "The measurement host is not the pinned reference desktop, so the measured MIPS cannot certify the 770-MIPS floor even when the recompiler clearly beats the interpreter wall.",
   "owner_item": "BPTK-136",
-  "active_gate_evidence": "The performance profile keeps honest package-integrity timing that never presents itself as game performance.",
+  "active_gate_evidence": "test/performance.test.mjs measures sustained recompiled throughput over the frozen mixed workload via lib/performance.mjs benchmarkRecompiler and pins the declared 770-MIPS floor, that the recompiled path is equivalent to the interpreter with zero fallback, that is_floor_cleared_here is reported as a boolean measured on this host, and that measured_on_reference_desktop is false so the floor is never claimed certified off the reference machine.",
   "fixture": [
     "FIX-016"
   ],
