@@ -13,8 +13,8 @@ From the lane brief, the subsystem is accepted when:
    (no committed golden, per `doc/TESTING.md`);
 3. an input trace yields the exact message sequence.
 
-Contracts 1 and 3 are **green** as of cycle 1 (`test/user.test.mjs`). Contract 2
-is **not yet implemented** — GDI lands in cycle 2.
+All three contracts are **green**: contracts 1 and 3 as of cycle 1
+(`test/user.test.mjs`), contract 2 as of cycle 2 (`test/gdi.test.mjs`).
 
 ## Dependency state
 
@@ -79,12 +79,53 @@ export is caught as a coverage hole — the same discipline the core HLE holds.
 
 Gate: `npm run gate` exits 0 (174 tests pass; 45-file package manifest).
 
+## Cycle 2 — GDI device context, primitives, raster ops, text, packed formats
+
+`lib/gdi.mjs`, `test/gdi.test.mjs`. Generic throughout — a surface is a
+surface, a DC is a DC.
+
+Delivered:
+
+- **Device context over a bounded surface** — `CreateCompatibleDC`,
+  `DeleteDC`, an RGBA surface bounded by `gdiBound.dimension_max`; the surface
+  is the buffer the browser present path reads (`surfacePixel`).
+- **Objects** — stock objects (`GetStockObject`: the brush/pen/font/palette
+  set at fixed handles), `CreateSolidBrush`, `CreatePen`, `DeleteObject`
+  (a stock object cannot be deleted), and `SelectObject` returning the
+  previous object of the same kind.
+- **Primitives** — `FillRect` (region-exact, null-brush aware), `Rectangle`
+  (pen outline + brush fill), `MoveToEx` / `LineTo` (integer Bresenham with
+  the selected pen), `SetPixel` / `GetPixel`.
+- **Text** — `TextOut` with a deterministic stock 8x8 bitmap font,
+  `SetTextColor` / `SetBkColor` / `SetBkMode` (OPAQUE fills the cell, else
+  the glyph paints only its set bits).
+- **Raster operations** — `BitBlt` (SRCCOPY / SRCPAINT / SRCAND / SRCINVERT /
+  BLACKNESS / WHITENESS / PATCOPY; an unknown ROP is refused, never guessed)
+  and `StretchBlt` (nearest-neighbor scale under the same ROP set).
+- **Packed pixel formats** — `pack565` / `unpack565`, `pack555` / `unpack555`
+  with bit-replication expansion so white stays white.
+
+Acceptance evidence (all green, `node --test test/gdi.test.mjs`):
+
+| Contract | Test |
+| --- | --- |
+| Draw fixture within tolerance of a test-time reference | "the GDI draw fixture renders within tolerance of a test-time reference" |
+| No committed golden; drift is caught | "the draw fixture fails when the rendered surface drifts from the reference" |
+| Coverage complete over the served surface | "conformance: every served GDI32 export carries a case and matches the oracle" |
+
+The draw fixture reuses `computeFrameDiff` (`lib/shader.mjs`): the reference is
+computed in the suite from the same declared scene, `committed_baseline` is
+`false`, and a drifted surface fails — the test-time-reference discipline of
+`doc/TESTING.md`.
+
+Gate: `npm run gate` exits 0 (185 tests pass; 46-file package manifest).
+
 ## Next
 
-- Cycle 2: GDI device context + BitBlt / StretchBlt, rect / line, `TextOut`
-  with a stock font, palettes and 555/565, into a bounded surface. The draw
-  fixture reuses `computeFrameDiff` (`lib/shader.mjs`) for the test-time
-  reference so no golden is committed (contract 2).
-- Post-rebase: register `userExportTable` (and the GDI table) into
-  `lib/hle.mjs`, key the queue on the real thread registry, and record the
-  live corpus export-coverage delta here.
+- Post-rebase: register `userExportTable` and `gdiExportTable` into
+  `lib/hle.mjs`, attach the `user` and `gdi` subsystems to the guest, key the
+  message queue on the real thread registry, and record the live corpus
+  export-coverage delta here.
+- Deepen the surface as the corpus demands: `GetMessage` blocking against the
+  timer slice, `WM_TIMER` from `SetTimer`, palette animation, and the DIB
+  section bit-depth paths (8-bit palettized alongside 555/565).

@@ -174,6 +174,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/engine.mjs"),
     Path("lib/extract.mjs"),
     Path("lib/foundation.mjs"),
+    Path("lib/gdi.mjs"),
     Path("lib/graphics.mjs"),
     Path("lib/hle.mjs"),
     Path("lib/input.mjs"),
@@ -214,6 +215,7 @@ ALLOWED_MJS_PATH = {
     Path("test/runtime.test.mjs"),
     Path("test/security.test.mjs"),
     Path("test/shader.test.mjs"),
+    Path("test/gdi.test.mjs"),
     Path("test/hle.test.mjs"),
     Path("test/user.test.mjs"),
 }
@@ -378,6 +380,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/engine.mjs",
         "lib/extract.mjs",
         "lib/foundation.mjs",
+        "lib/gdi.mjs",
         "lib/graphics.mjs",
         "lib/hle.mjs",
         "lib/input.mjs",

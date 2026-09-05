@@ -23,6 +23,7 @@
     "lib/engine.mjs",
     "lib/extract.mjs",
     "lib/foundation.mjs",
+    "lib/gdi.mjs",
     "lib/graphics.mjs",
     "lib/hle.mjs",
     "lib/input.mjs",
