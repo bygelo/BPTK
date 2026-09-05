@@ -15,6 +15,7 @@ import { test } from "node:test";
 import {
   assertCapsWithinSupport,
   computeFrameDiff,
+  containShaderInput,
   declaredCaps,
   emitWgsl,
   evaluateProgram,
@@ -138,6 +139,50 @@ test("the spotlight-cookie and planar-shadow fixtures render within tolerance an
     const mutatedReport = computeFrameDiff(mutated, reference, { mean_tolerance: 1.0 });
     assert.equal(mutatedReport.pass, false, `${mode} with the projection divide dropped must fail closed`);
   }
+});
+
+test("hostile shader bytecode is contained: every fuzzed stream is refused within bound, none crashes", () => {
+  const hostile = [
+    { name: "empty", byte: new Uint8Array(0) },
+    { name: "one byte", byte: new Uint8Array([0xff]) },
+    { name: "truncated operand", byte: new Uint8Array(Uint32Array.from([0xffff0200, 0x00000005, 0x00000000]).buffer) },
+    { name: "bad opcode", byte: new Uint8Array(Uint32Array.from([0xffff0200, 0x0000abcd, destTemp(0), srcConstant(0)]).buffer) },
+    { name: "vertex stream", byte: new Uint8Array(Uint32Array.from([0xfffe0200, 0x0000ffff]).buffer) },
+    { name: "future model", byte: new Uint8Array(Uint32Array.from([0xffff0900, 0x0000ffff]).buffer) },
+    { name: "not a byte array", byte: [1, 2, 3] },
+  ];
+  for (const { name, byte } of hostile) {
+    const report = containShaderInput(byte);
+    assert.equal(report.contained, true, `${name} must be contained`);
+    assert.equal(report.refused, true, `${name} must be refused`);
+    assert.equal(typeof report.reason, "string", `${name} must name a structured reason`);
+    assert.equal(report.program, null, `${name} must not yield a program`);
+  }
+  // Deterministic fuzz: a large sweep of pseudo-random streams, none may crash.
+  let seed = 0x1234abcd;
+  for (let trial = 0; trial < 2000; trial += 1) {
+    const length = seed % 64;
+    const byte = new Uint8Array(length);
+    for (let index = 0; index < length; index += 1) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      byte[index] = seed & 0xff;
+    }
+    const report = containShaderInput(byte);
+    assert.equal(report.contained, true, `fuzz trial ${trial} must be contained`);
+  }
+});
+
+test("the containment enforces the size and instruction budget", () => {
+  const oversize = containShaderInput(new Uint8Array(4096), { max_byte: 1024 });
+  assert.equal(oversize.reason, "shader_size_bound_exceeded");
+  const token = [0xffff0200];
+  for (let index = 0; index < 40; index += 1) token.push(1, destTemp(0), srcConstant(0));
+  token.push(0x0000ffff);
+  const overBudget = containShaderInput(new Uint8Array(Uint32Array.from(token).buffer), { instruction_budget: 8 });
+  assert.equal(overBudget.reason, "shader_instruction_budget_exceeded");
+  const valid = containShaderInput(new Uint8Array(assemblePixelShader(0x0200, [[1, [destTemp(0), srcConstant(0)]]]).buffer));
+  assert.equal(valid.refused, false);
+  assert.equal(valid.model, "2.0");
 });
 
 test("the frame diff computes its reference at test time with no committed baseline", (context) => {

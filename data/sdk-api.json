@@ -13,6 +13,7 @@
     "compareFoundation",
     "computeFrameDiff",
     "configureThread",
+    "containShaderInput",
     "createPipelineCache",
     "createReport",
     "declaredCaps",
