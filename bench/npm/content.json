@@ -52,6 +52,7 @@
     "lib/run.mjs",
     "lib/security.mjs",
     "lib/seh.mjs",
+    "lib/sevenzip.mjs",
     "lib/shader.mjs",
     "lib/simd.mjs",
     "lib/status.mjs",
