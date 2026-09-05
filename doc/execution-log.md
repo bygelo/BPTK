@@ -94,3 +94,21 @@ benchmark passes yet); `implemented` = real code + an active red contract.
   single-thread record.
 - **Counts:** implemented 47 → 48; passing 0. Gate exit 0 (311 tests, 52 files).
 - **Next:** BPTK-048 (SMC hybrid fallback) or BPTK-052 (SSE/x87 breadth).
+
+## Cycle 5 — BPTK-048 (GS-003) hybrid interpreter fallback for SMC
+
+- **Done:** `createHybridRecompiler` in `lib/recompile.mjs` + a decode cache
+  threaded through `decodeSubset`. It holds a mutable image and a per-instruction
+  decode cache; `writeCode(addr,bytes)` applies a self-modification and
+  invalidates only the cache entries whose byte range overlaps the write. The
+  next compile re-decodes exactly the affected block and reuses every untouched
+  instruction from the cache (never re-decoding it).
+- **Evidence:** `test/recompile.test.mjs` (+2, now 19) — after patching a
+  `mov ebx` immediate, `reDecodedInstruction` is the single patched address and
+  `keptInstruction` covers the rest; the rewritten result is bit-exact against
+  the interpreter oracle over the modified image (register/memory/trace).
+- **Why still red:** the trigger is an explicit host `writeCode`, not a guest
+  store into its own page detected mid-run through the recompiled memory-write
+  surface, so an in-run patch-then-re-enter fixture isn't closed end to end.
+- **Counts:** implemented 48 → 49; passing 0. Gate exit 0 (313 tests).
+- **Next:** BPTK-052 (SSE/x87 breadth) or BPTK-051 (guest SMP).

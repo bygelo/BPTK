@@ -18,7 +18,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { mapPe32ForRuntime } from "../lib/pe.mjs";
 import { executeProbe } from "../lib/runtime.mjs";
-import { recompileImage, runRecompiled } from "../lib/recompile.mjs";
+import { recompileImage, runRecompiled, createHybridRecompiler } from "../lib/recompile.mjs";
 
 // A minimal PE32 whose .text is the supplied byte sequence at entry, matching
 // the fixture shape the i386 conformance suite uses.
@@ -226,6 +226,45 @@ test("recompile: an indirect call is a declared refusal, not a mistranslation", 
   const compiled = recompileImage(mapped, { budget: 64 });
   assert.ok(compiled.refuse);
   assert.equal(compiled.refuse.code, "indirect_call_unsupported");
+});
+
+// BPTK-048 / GS-003 — hybrid interpreter fallback for self-modifying code. A
+// code write invalidates only the instructions it overlaps; the affected block
+// re-decodes to the freshly written behavior while untouched instructions are
+// reused from the decode cache.
+test("recompile: a self-modified block re-decodes while untouched blocks are reused", async (context) => {
+  // mov eax,0x11; jmp +5; (pad); mov ebx,0x22; ret
+  const code = [0xb8, 0x11, 0, 0, 0, 0xeb, 0x05, 0, 0, 0, 0, 0, 0xbb, 0x22, 0, 0, 0, 0xc3];
+  const mapped = mapMicro(context, code);
+  const hybrid = createHybridRecompiler(mapped, { trace: false, budget: 64 });
+
+  const first = await hybrid.run();
+  assert.equal(first.register.ebx, 0x22);
+  assert.equal(first.keptInstruction.length, 0, "the first compile decodes everything fresh");
+  assert.ok(first.reDecodedInstruction.length >= 4);
+
+  // Self-modify: rewrite the immediate of `mov ebx` (at 0x40100d) to 0x99.
+  hybrid.writeCode(0x40100d, [0x99, 0, 0, 0]);
+  const second = await hybrid.run();
+  assert.equal(second.register.ebx, 0x99, "the rewritten instruction takes effect on the next execution");
+  assert.deepEqual(second.reDecodedInstruction, [0x40100c], "only the modified block re-decodes");
+  assert.ok(second.keptInstruction.length >= 3, "untouched instructions are reused, never re-decoded");
+});
+
+test("recompile: the self-modified result stays bit-exact against the interpreter oracle", async (context) => {
+  const code = [0xb8, 0x11, 0, 0, 0, 0xeb, 0x05, 0, 0, 0, 0, 0, 0xbb, 0x22, 0, 0, 0, 0xc3];
+  const mapped = mapMicro(context, code);
+  const hybrid = createHybridRecompiler(mapped, { trace: true, budget: 64 });
+  await hybrid.run();
+  hybrid.writeCode(0x40100d, [0x99, 0, 0, 0]);
+  const recompiled = await hybrid.run();
+  // The oracle over the same modified image is the reference.
+  const modified = code.slice();
+  modified[13] = 0x99;
+  const oracle = executeProbe(mapMicro(context, modified), 64, {});
+  assert.equal(recompiled.register.ebx, oracle.register.ebx);
+  assert.equal(recompiled.memory_sha256, oracle.memory_sha256);
+  assert.equal(recompiled.trace_sha256, oracle.trace_sha256);
 });
 
 test("recompile: the translation reports zero fallback and a recovered block graph", async (context) => {
