@@ -42,13 +42,17 @@ by `corpus coverage`), then import container breadth.
 ## Coverage-ledger raise after the Win32 core HLE (2026-09-05)
 
 `corpus coverage` joined the real 356-symbol import surface against the Win32
-core HLE registry: **62 covered** (served export each carrying conformance case),
-**294 absent**. The top of the unserved ranking, ranked by how many corpus entry
-import each symbol: SetFilePointerEx, GetFileType, SetStdHandle, GetACP,
-GetConsoleMode, ReadConsoleW, GetConsoleCP, RtlUnwind, MultiByteToWideChar,
-CreateFileW, CloseHandle, GetLocaleInfoW, LoadLibraryA, FreeLibrary, ReadFile,
-WaitForSingleObject — the console, file, locale, SEH-unwind, and module-loading
-families that the next emulation slice should take in family-sized units.
+core HLE registry. After the process/core slice: **62 covered / 294 absent**,
+ranked by how many corpus entry import each unserved symbol: SetFilePointerEx,
+GetFileType, SetStdHandle, GetACP, GetConsoleMode, ReadConsoleW, GetConsoleCP,
+RtlUnwind, MultiByteToWideChar, CreateFileW, CloseHandle, GetLocaleInfoW,
+LoadLibraryA, FreeLibrary, ReadFile, WaitForSingleObject. After the storage
+slice (virtual drive + registry + console mode): **79 covered / 277 absent** —
+OpenTTD i386 serves 75 of 302 import, Plink i386 61 of 142. The next unserved
+families by the same ranking: locale and codepage (GetACP, GetLocaleInfoW,
+MultiByteToWideChar, CompareStringW → BPTK-059), module loading
+(LoadLibraryA/FreeLibrary), threads and waits (WaitForSingleObject,
+CreateThread → BPTK-025), and SEH unwind (RtlUnwind → GS-008).
 
 ## Generic guard finding the corpus produced
 

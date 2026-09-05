@@ -454,19 +454,20 @@ test("FIX-003: repeated exerciser run keeps the call trace, output, and memory h
 });
 
 test("unserved import: the refusal names the exact unserved surface instead of executing", (context) => {
-  const imports = [{ library: "kernel32.dll", symbol: "CreateFileW" }];
+  // IsBadReadPtr is a kernel32 export the Win32 core HLE does not serve.
+  const imports = [{ library: "kernel32.dll", symbol: "IsBadReadPtr" }];
   const packagePath = createHlePackage(context, "unserved.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
   assert.equal(report.is_executed, false);
   assert.equal(report.stop_reason, "import_present");
   assert.equal(report.hle ?? null, null);
-  assert.match(report.exception.message, /CreateFileW|kernel32\.dll/);
+  assert.match(report.exception.message, /IsBadReadPtr|kernel32\.dll/);
 });
 
 test("unserved import: a partially served surface reports the served fraction", (context) => {
   const imports = [
     { library: "kernel32.dll", symbol: "GetLastError" },
-    { library: "kernel32.dll", symbol: "CreateFileW" },
+    { library: "kernel32.dll", symbol: "IsBadReadPtr" },
   ];
   const packagePath = createHlePackage(context, "partial.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
@@ -522,6 +523,174 @@ test("TLS callback: the callback phase fires before entry through the same HLE s
   assert.deepEqual(report.hle.trace.map((entry) => entry.symbol), ["GetStdHandle", "WriteFile", "GetStdHandle", "WriteFile"]);
   assert.equal(report.hle.output_byte_count, 8);
   assert.equal(report.hle.output_sha256, createHash("sha256").update("TLSENTRY", "latin1").digest("hex"));
+});
+
+test("FIX-008 slice: the storage exerciser creates, writes, seeks, reads, truncates, and round-trips a registry value", (context) => {
+  const kernel32Symbol = [
+    "ExitProcess", "CreateFileW", "WriteFile", "ReadFile", "SetFilePointerEx", "SetEndOfFile", "CloseHandle",
+    "GetFileType", "FlushFileBuffers", "GetStdHandle",
+  ];
+  const imports = [
+    ...kernel32Symbol.map((name) => ({ library: "kernel32.dll", symbol: name })),
+    { library: "advapi32.dll", symbol: "RegCreateKeyA" },
+    { library: "advapi32.dll", symbol: "RegSetValueExA" },
+    { library: "advapi32.dll", symbol: "RegQueryValueExA" },
+    { library: "advapi32.dll", symbol: "RegCloseKey" },
+  ];
+  const plan = planImports(imports);
+  const iat = Object.fromEntries(imports.map((entry) => [entry.symbol, plan.addressOf(entry.library, entry.symbol)]));
+  // .data layout: save path (wide) at 0x00, file content at 0x40, read-back at 0x50,
+  // registry key name at 0x60, key handle at 0x80, value name at 0x90, value data at 0xa0,
+  // value size at 0xb0.
+  const data = Buffer.alloc(0x200);
+  data.write(String.raw`C:\save.dat`, 0x00, "utf16le");
+  data.write("SAVE", 0x40, "ascii");
+  data.write(String.raw`Software\BPTK`, 0x60, "ascii");
+  data.write("step", 0x90, "ascii");
+  data.writeUInt32LE(64, 0xb0);
+  const addr = (offset) => dataAddress(offset);
+  const o = createEmitter();
+  const e = o.emit, d = o.emitDword;
+  const pushImm = (value) => { e(0x68); d(value); };
+  const orMask = (mask) => { e(0x81, 0xcb); d(mask); };
+  const cmpEaxImm = (value) => { e(0x3d); d(value); };
+  const call = (address) => { e(0xff, 0x15); d(address); };
+  const testEax = () => e(0x85, 0xc0);
+
+  e(0xbb); d(0); // mov ebx, 0 — the step mask
+  // CreateFileW("C:\save.dat", GENERIC_READ|GENERIC_WRITE, ... CREATE_ALWAYS) — 7 argument
+  pushImm(0); pushImm(0); pushImm(2); pushImm(0); pushImm(0);
+  pushImm(0xc0000000 | 0x80000000);
+  pushImm(addr(0x00)); // LPCWSTR — wide path is 2 byte per char, pushed as one dword
+  e(0xff, 0x15); d(iat.CreateFileW);
+  testEax();
+  o.je("fail");
+  orMask(0x1);
+  e(0x8b, 0xf8); // mov edi, eax — the file handle
+  // WriteFile(edi, "SAVE", 4, &written, 0)
+  pushImm(0); pushImm(addr(0x50)); pushImm(4); pushImm(addr(0x40)); e(0x57);
+  call(iat.WriteFile);
+  cmpEaxImm(1);
+  o.jne("fail");
+  orMask(0x2);
+  // SetFilePointerEx(edi, 0, NULL, FILE_BEGIN) — handle, distLow, distHigh, ptr, origin
+  pushImm(0); pushImm(0); pushImm(0); pushImm(0); e(0x57);
+  call(iat.SetFilePointerEx);
+  testEax();
+  o.jne("fail");
+  orMask(0x4);
+  // ReadFile(edi, readBack, 4, &written, 0)
+  pushImm(0); pushImm(addr(0x50)); pushImm(4); pushImm(addr(0x50)); e(0x57);
+  call(iat.ReadFile);
+  cmpEaxImm(1);
+  o.jne("fail");
+  orMask(0x8);
+  // SetEndOfFile(edi) at position 4 keeps the file bounded
+  pushImm(0); e(0x57);
+  call(iat.SetEndOfFile);
+  cmpEaxImm(1);
+  o.jne("fail");
+  orMask(0x10);
+  // GetFileType(edi) == FILE_TYPE_DISK
+  pushImm(0); e(0x57);
+  call(iat.GetFileType);
+  cmpEaxImm(3);
+  o.jne("fail");
+  orMask(0x20);
+  // FlushFileBuffers(edi)
+  pushImm(0); e(0x57);
+  call(iat.FlushFileBuffers);
+  cmpEaxImm(1);
+  o.jne("fail");
+  orMask(0x40);
+  // CloseHandle(edi)
+  pushImm(0); e(0x57);
+  call(iat.CloseHandle);
+  cmpEaxImm(1);
+  o.jne("fail");
+  orMask(0x80);
+  // RegCreateKeyA(HKEY_CURRENT_USER, "Software\BPTK", &key)
+  pushImm(addr(0x80)); pushImm(addr(0x60)); pushImm(0x80000001);
+  call(iat.RegCreateKeyA);
+  testEax();
+  o.jne("fail");
+  orMask(0x100);
+  // RegSetValueExA(key, "step", 0, REG_SZ, data, 2)
+  e(0x8b, 0x3d); d(addr(0x80)); // mov edi, [key]
+  pushImm(2); pushImm(addr(0xa0)); pushImm(1); pushImm(0); pushImm(addr(0x90)); e(0x57);
+  call(iat.RegSetValueExA);
+  testEax();
+  o.jne("fail");
+  orMask(0x200);
+  // RegQueryValueExA(key, "step", NULL, NULL, data, &size) — value data lands at 0xa0
+  pushImm(addr(0xb0)); pushImm(addr(0xa0)); pushImm(0); pushImm(0); pushImm(addr(0x90)); e(0x57);
+  call(iat.RegQueryValueExA);
+  cmpEaxImm(0);
+  o.jne("fail");
+  orMask(0x400);
+  // RegCloseKey(key)
+  e(0x57);
+  call(iat.RegCloseKey);
+  cmpEaxImm(0);
+  o.jne("fail");
+  orMask(0x800);
+  // Exit: through ExitProcess with the settled mask
+  pushImm(0x5a5a);
+  call(iat.ExitProcess);
+
+  o.mark("fail");
+  o.emit(0x53); // push ebx — the partial step mask
+  call(iat.ExitProcess);
+  o.resolve();
+  const packagePath = createHlePackage(context, "fix008.exe", createImportPe32(imports, o.bytes(), { data, import_layout: plan }));
+  const report = readRun(packagePath);
+  assert.equal(report.state, "probe_executed", JSON.stringify({ exception: report.exception, reached: report.hle?.trace?.map((entry) => entry.symbol), count: report.instruction_count }));
+  assert.equal(report.stop_reason, "process_exit");
+  assert.equal(report.exit_code, 0x5a5a);
+  const goldenTrace = [
+    "CreateFileW", "WriteFile", "SetFilePointerEx", "ReadFile", "SetEndOfFile", "GetFileType",
+    "FlushFileBuffers", "CloseHandle", "RegCreateKeyA", "RegSetValueExA", "RegQueryValueExA", "RegCloseKey", "ExitProcess",
+  ];
+  assert.deepEqual(report.hle.trace.map((entry) => entry.symbol), goldenTrace);
+  assert.ok(report.hle.trace.some((entry) => entry.library === "advapi32.dll"));
+  // The read-back dword equals what the write put in the file: "SAVE" (0x45564153).
+  assert.ok(report.hle.trace.find((entry) => entry.symbol === "ReadFile"));
+});
+
+test("FIX-008 slice: repeated storage exerciser run keeps trace and memory hashes stable", (context) => {
+  const build = () => {
+    const kernel32Symbol = ["ExitProcess", "CreateFileW", "WriteFile", "ReadFile", "SetFilePointerEx", "CloseHandle", "GetFileType"];
+    const imports = [
+      ...kernel32Symbol.map((name) => ({ library: "kernel32.dll", symbol: name })),
+      { library: "advapi32.dll", symbol: "RegCreateKeyA" },
+    ];
+    const plan = planImports(imports);
+    const iat = Object.fromEntries(imports.map((entry) => [entry.symbol, plan.addressOf(entry.library, entry.symbol)]));
+    const data = Buffer.alloc(0x200);
+    data.write(String.raw`C:\save.dat`, 0x00, "utf16le");
+    const o = createEmitter();
+    const e = o.emit, d = o.emitDword;
+    const pushImm = (value) => { e(0x68); d(value); };
+    e(0xbb); d(0);
+    pushImm(0); pushImm(0); pushImm(2); pushImm(0); pushImm(0);
+    pushImm(0xc0000000 | 0x80000000);
+    pushImm(dataAddress(0x00));
+    e(0xff, 0x15); d(iat.CreateFileW);
+    e(0x85, 0xc0);
+    o.je("fail");
+    e(0x81, 0xcb); d(1);
+    pushImm(0x5a5a);
+    e(0xff, 0x15); d(iat.ExitProcess);
+    o.mark("fail");
+    e(0x53);
+    e(0xff, 0x15); d(iat.ExitProcess);
+    o.resolve();
+    return { file: createImportPe32(imports, o.bytes(), { data, import_layout: plan }) };
+  };
+  const first = readRun(createHlePackage(context, "fix008.exe", build().file));
+  const second = readRun(createHlePackage(context, "fix008.exe", build().file));
+  assert.equal(first.hle.trace_sha256, second.hle.trace_sha256);
+  assert.equal(first.memory_sha256, second.memory_sha256);
 });
 
 test("RaiseException: an unhandled guest exception is a structured stop with the guest code", (context) => {

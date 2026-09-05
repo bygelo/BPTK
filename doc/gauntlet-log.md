@@ -71,9 +71,35 @@ FreeLibrary), and synchronization (WaitForSingleObject → BPTK-025). The i386
 CPU subset (BPTK-009) is the other lever: real CRT startup uses operand-size
 override and SSE, so real binaries cannot reach `entry` until both widen.
 
+## 2026-09-05 — cycle 2
+
+### Implemented: BPTK-015 slice 1 — the Win32 storage surface (virtual drive + registry + console mode)
+
+- The unserved ledger ranked the file/console family first (SetFilePointerEx,
+  GetFileType, SetStdHandle, GetConsoleMode, ReadConsoleW, GetConsoleCP,
+  CreateFileW, CloseHandle, ReadFile, WaitForSingleObject — each imported by
+  both real i386 entry), so the cycle took the roadmap owner BPTK-015's Win32
+  half: one bounded virtual drive in guest memory (open dispositions, cursor
+  reads and writes, 64-bit seek with negative-seek refusal, truncate, flush,
+  type, close), a declared output-only console (modes served, input honestly
+  refused), and an in-memory advapi32 hive under the real predefined roots
+  (create/open/query with the MORE_DATA contract/set/close). Traversal and UNC
+  fail closed; storage bounds are declared constants. The copy-on-write
+  overlay, quota transaction, reload persistence, and OPFS bridge stay red —
+  they need the browser runtime host.
+- Proof: 26 new conformance case (110 total, all 84 served export covered);
+  the FIX-008 storage exerciser reaches a normal exit through a 13-call golden
+  trace (file lifecycle + registry round-trip) with hash-stable repeats; full
+  suite 121 test, 0 failing.
+- Real payload: coverage ledger 62 → **79 covered** of the real 356-symbol
+  import surface (OpenTTD i386 serves 75 of 302 import, Plink i386 61 of 142).
+  Reached stage of the two i386 entry stays honestly at `loaded`.
+
 ### State after the commit
 
-- Implemented 37 → 38; passing stays 0 (no benchmark runner exists yet).
-- Next highest-leverage target: BPTK-015 storage/registry slice or the BPTK-009
-  instruction-subset widening (operand-size override first), ranked by the
-  unserved ledger above.
+- Implemented 37 → 39 across the two cycle; passing stays 0 (no benchmark
+  runner exists yet).
+- Next highest-leverage target: the locale/codepage family (GetACP,
+  GetLocaleInfoW, MultiByteToWideChar, CompareStringW → BPTK-059) or module
+  loading (LoadLibraryA, FreeLibrary), then the BPTK-009 instruction-subset
+  widening (operand-size override first) toward a real binary reaching `entry`.

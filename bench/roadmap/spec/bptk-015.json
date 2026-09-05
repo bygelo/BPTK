@@ -4,14 +4,25 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The command validates a profile and preserves the base without writing, but no virtual drive, registry, copy-on-write overlay, or OPFS bridge exists.",
-  "prerequisite": ["BPTK-004", "BPTK-010"],
+  "gate": "active",
+  "exclusion_reason": "Implemented but red because the copy-on-write overlay, quota transaction, reload persistence, and OPFS bridge cannot pass while the browser runtime host does not exist. The Win32 storage slice exists in the HLE core (lib/hle.mjs): one bounded virtual drive in guest memory with real CreateFileW open and disposition semantics, ReadFile, WriteFile at the file cursor, SetFilePointerEx with 64-bit distance and negative-seek refusal, SetEndOfFile, FlushFileBuffers, CloseHandle, GetFileType, SetStdHandle, and a declared output-only console (GetConsoleMode, GetConsoleCP, ReadConsoleW refused), plus one in-memory advapi32 registry hive under the real predefined root handle with RegCreateKeyA, RegOpenKeyA, RegOpenKeyExW, RegQueryValueExA with the MORE_DATA contract, RegSetValueExA, and RegCloseKey. Path traversal and UNC fail closed, and every storage bound is declared.",
+  "prerequisite": [
+    "BPTK-004",
+    "BPTK-010"
+  ],
   "promotion_trigger": "Promote when FIX-008 passes path, case, read-only base, copy-on-write, registry, quota, transaction, reload, and rollback assertions.",
   "expected_failing_assertion": "The storage fixture cannot persist and recover the golden state safely.",
   "owner_item": "BPTK-015",
-  "active_gate_evidence": "test/boundary.test.mjs proves a temporary package stays read-only, creates no overlay, and rejects a path-shaped profile.",
-  "fixture": ["FIX-008"],
-  "procedure": ["Apply the deterministic file and registry mutation under normal and quota-failure conditions.", "Reload the origin and compare base, overlay, registry, and rollback artifact."],
-  "pass_criterion": ["The saved state survives reload without modifying the base.", "Traversal, alias, quota, and interrupted transaction cases fail closed."]
+  "active_gate_evidence": "The conformance suite carries 110 case over all 84 served export including 26 storage and registry case with the oracle return, last-error, and MORE_DATA behavior; the FIX-008 storage exerciser (a generated PE32 with a kernel32 and advapi32 import directory) creates, writes, seeks, reads, truncates, types, flushes, and closes a virtual-drive file and round-trips a registry value through the real run surface, exiting through its golden trace with repeat runs hash-stable; the coverage ledger on the real corpus import surface rose from 62 to 79 covered symbol (OpenTTD i386 serves 75 of 302, Plink i386 61 of 142).",
+  "fixture": [
+    "FIX-008"
+  ],
+  "procedure": [
+    "Apply the deterministic file and registry mutation under normal and quota-failure conditions.",
+    "Reload the origin and compare base, overlay, registry, and rollback artifact."
+  ],
+  "pass_criterion": [
+    "The saved state survives reload without modifying the base.",
+    "Traversal, alias, quota, and interrupted transaction cases fail closed."
+  ]
 }
