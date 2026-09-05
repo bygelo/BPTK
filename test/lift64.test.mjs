@@ -258,6 +258,130 @@ test("the lifter refuses an unserved opcode as a structured node, never a wrong 
   assert.equal(report.exception.opcode, 0x0f0b);
 });
 
+// -------------------- x87 FPU conformance --------------------
+// Each x87 microprogram is hand-encoded and its end state frozen from the
+// instruction semantics: an FP result is written to the stack and read back into
+// a GPR so the assertion is on exact IEEE bits, never on a float print.
+
+test("x87: FLD1 twice then FADDP yields exactly 2.0 (0x4000000000000000)", () => {
+  // fld1; fld1; faddp st1,st0; fstp qword[rsp-8]; mov rax,[rsp-8]; ret
+  const report = run([0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1, 0xdd, 0x5c, 0x24, 0xf8, 0x48, 0x8b, 0x44, 0x24, 0xf8, 0xc3]);
+  assertState(report, { register: { rax: 0x4000000000000000n } });
+});
+
+test("x87: FILD/FMULP/FISTP computes 6*7=42 through the register stack", () => {
+  // mov dword[rsp-4],6; mov dword[rsp-8],7; fild [rsp-4]; fild [rsp-8];
+  // fmulp st1,st0; fistp dword[rsp-16]; mov eax,[rsp-16]; ret
+  const report = run([
+    0xc7, 0x44, 0x24, 0xfc, 0x06, 0x00, 0x00, 0x00,
+    0xc7, 0x44, 0x24, 0xf8, 0x07, 0x00, 0x00, 0x00,
+    0xdb, 0x44, 0x24, 0xfc,
+    0xdb, 0x44, 0x24, 0xf8,
+    0xde, 0xc9,
+    0xdb, 0x5c, 0x24, 0xf0,
+    0x8b, 0x44, 0x24, 0xf0,
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 42n } });
+});
+
+test("x87: FDIV st0,st1 with FILD operands computes 20/4=5", () => {
+  // mov dword[rsp-4],20; mov dword[rsp-8],4; fild [rsp-8]; fild [rsp-4];
+  // fdiv st0,st1; fistp dword[rsp-16]; mov eax,[rsp-16]; ret
+  const report = run([
+    0xc7, 0x44, 0x24, 0xfc, 0x14, 0x00, 0x00, 0x00,
+    0xc7, 0x44, 0x24, 0xf8, 0x04, 0x00, 0x00, 0x00,
+    0xdb, 0x44, 0x24, 0xf8,
+    0xdb, 0x44, 0x24, 0xfc,
+    0xd8, 0xf1,
+    0xdb, 0x5c, 0x24, 0xf0,
+    0x8b, 0x44, 0x24, 0xf0,
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 5n } });
+});
+
+test("x87: FLD m32 then FSTP m32 round-trips the single-real bits of 1.5", () => {
+  // mov dword[rsp-4],0x3fc00000; fld dword[rsp-4]; fstp dword[rsp-8]; mov eax,[rsp-8]; ret
+  const report = run([
+    0xc7, 0x44, 0x24, 0xfc, 0x00, 0x00, 0xc0, 0x3f,
+    0xd9, 0x44, 0x24, 0xfc,
+    0xd9, 0x5c, 0x24, 0xf8,
+    0x8b, 0x44, 0x24, 0xf8,
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 0x3fc00000n } });
+});
+
+test("x87: FLD m80 then FSTP m80 preserves the double identity of 1.5", () => {
+  // Store 1.5 as f64, load it, FSTP to m80, FLD the m80 back, FSTP to f64, read.
+  // mov rax,0x3ff8000000000000; mov [rsp-8],rax; fld qword[rsp-8];
+  // fstp tbyte[rsp-24]; fld tbyte[rsp-24]; fstp qword[rsp-40]; mov rax,[rsp-40]; ret
+  const report = run([
+    0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x3f,
+    0x48, 0x89, 0x44, 0x24, 0xf8,
+    0xdd, 0x44, 0x24, 0xf8,
+    0xdb, 0x7c, 0x24, 0xe8,
+    0xdb, 0x6c, 0x24, 0xe8,
+    0xdd, 0x5c, 0x24, 0xd8,
+    0x48, 0x8b, 0x44, 0x24, 0xd8,
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 0x3ff8000000000000n } });
+});
+
+test("x87: FCOMI sets EFLAGS greater (1.0 vs 0.0) — CF=ZF=PF=0", () => {
+  // fldz; fld1; fcomi st0,st1; ret  (st0=1.0, st1=0.0)
+  const report = run([0xd9, 0xee, 0xd9, 0xe8, 0xdb, 0xf1, 0xc3]);
+  assert.equal(report.flag.cf, false);
+  assert.equal(report.flag.zf, false);
+  assert.equal(report.flag.pf, false);
+});
+
+test("x87: FCOMI sets ZF when the operands are equal (1.0 vs 1.0)", () => {
+  // fld1; fld1; fcomi st0,st1; ret
+  const report = run([0xd9, 0xe8, 0xd9, 0xe8, 0xdb, 0xf1, 0xc3]);
+  assert.equal(report.flag.zf, true);
+  assert.equal(report.flag.cf, false);
+  assert.equal(report.flag.pf, false);
+});
+
+test("x87: FCOMPP then FNSTSW AX reports the C3 (equal) condition code", () => {
+  // fld1; fld1; fcompp; fnstsw ax; ret  -> AX = C3 (0x4000), top back to 0
+  const report = run([0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xd9, 0xdf, 0xe0, 0xc3]);
+  assertState(report, { register: { rax: 0x4000n } });
+});
+
+test("x87: FLDCW then FNSTCW round-trips the control word", () => {
+  // mov word[rsp-2],0x0f7f; fldcw [rsp-2]; fnstcw [rsp-4]; movzx eax,word[rsp-4]; ret
+  const report = run([
+    0x66, 0xc7, 0x44, 0x24, 0xfe, 0x7f, 0x0f,
+    0xd9, 0x6c, 0x24, 0xfe,
+    0xd9, 0x7c, 0x24, 0xfc,
+    0x0f, 0xb7, 0x44, 0x24, 0xfc,
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 0x0f7fn } });
+});
+
+test("x87: FXCH swaps st0 and st1, FSUBR computes the reversed difference", () => {
+  // fild [rsp-4]=10; fild [rsp-8]=3; fxch st1; fsubrp st1,st0 -> (10-3)=7
+  // fld order: after two filds st0=3, st1=10; fxch -> st0=10, st1=3;
+  // fsubrp st1,st0 -> st1 = st0 - st1 = 10-3 = 7, pop -> st0=7
+  const report = run([
+    0xc7, 0x44, 0x24, 0xfc, 0x0a, 0x00, 0x00, 0x00,
+    0xc7, 0x44, 0x24, 0xf8, 0x03, 0x00, 0x00, 0x00,
+    0xdb, 0x44, 0x24, 0xfc,
+    0xdb, 0x44, 0x24, 0xf8,
+    0xd9, 0xc9,
+    0xde, 0xe1,
+    0xdb, 0x5c, 0x24, 0xf0,
+    0x8b, 0x44, 0x24, 0xf0,
+    0xc3,
+  ]);
+  assertState(report, { register: { rax: 7n } });
+});
+
 test("cross-check: the structured decode agrees with x64decode on every served plink instruction", () => {
   if (!existsSync(plinkPath)) {
     // The staged corpus is read-only and optional in a stripped checkout.
