@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { buildCompatibilityDatabase, buildReplayArtifact, compareReplay, computeCompatibilityRating, exportCompatibilityDatabase, verifyCompatibilityRow, verifyReplayArtifact } from "../lib/report.mjs";
+import { buildCompatibilityDatabase, buildReplayArtifact, compareReplay, computeCompatibilityRating, exportCompatibilityDatabase, resolveRatingDisplay, verifyCompatibilityRow, verifyReplayArtifact } from "../lib/report.mjs";
 
 const provenance = { boots: "replay:aa", in_game: "replay:bb", playable: "replay:cc", complete: "replay:dd" };
 
@@ -118,4 +118,23 @@ test("a row carrying personal data is refused", () => {
   const db = buildCompatibilityDatabase({ revision: "sha256:rev1", row: [{ ...goodRow, environment: "user PERSONAL_DATA_MARKER" }] });
   assert.equal(db.is_publishable, false);
   assert.match(db.refused[0].reason.join(" "), /personal data/);
+});
+
+const backedRow = { ...goodRow, replay_deterministic: true };
+
+test("a rating shows only when a reproducible run backs it at the current profile and revision", () => {
+  const shown = resolveRatingDisplay(backedRow, { revision: "sha256:rev1", browser: "chrome-141" });
+  assert.equal(shown.display, "shown");
+});
+
+test("a rating greys out when its revision or browser pin is stale", () => {
+  const staleRev = resolveRatingDisplay(backedRow, { revision: "sha256:rev2", browser: "chrome-141" });
+  assert.equal(staleRev.display, "greyed");
+  const staleBrowser = resolveRatingDisplay(backedRow, { revision: "sha256:rev1", browser: "chrome-200" });
+  assert.equal(staleBrowser.display, "greyed");
+});
+
+test("a rating with no backing replay or a non-reproducible run is hidden", () => {
+  assert.equal(resolveRatingDisplay({ ...backedRow, evidence_sha256: undefined }, {}).display, "hidden");
+  assert.equal(resolveRatingDisplay({ ...backedRow, replay_deterministic: false }, {}).display, "hidden");
 });
