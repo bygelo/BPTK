@@ -88,6 +88,33 @@ test("hosting publishes an in-date grant and refuses an expired one", (context) 
   assert.equal(JSON.parse(unlicensedRun.stdout).is_published, false);
 });
 
+test("submission maps to a tracker entry; unattested never promotes; proprietary and PII refused", (context) => {
+  const rootPath = scratch(context);
+  const attested = join(rootPath, "attested.json");
+  writeFileSync(attested, JSON.stringify({ title: "Demo runs", claim: "reaches menu", attestation: { signer: "contributor-1", is_attested: true } }));
+  const attestedRun = run(["library", "submit", attested, "--json"]);
+  assert.equal(attestedRun.status, 0);
+  const attestedReport = JSON.parse(attestedRun.stdout);
+  assert.equal(attestedReport.tracker_entry.status, "accepted");
+  assert.equal(attestedReport.is_promotable, true);
+
+  const unattested = join(rootPath, "unattested.json");
+  writeFileSync(unattested, JSON.stringify({ title: "Demo runs", claim: "reaches menu" }));
+  const unattestedRun = run(["library", "submit", unattested, "--json"]);
+  assert.equal(unattestedRun.status, 1);
+  const unattestedReport = JSON.parse(unattestedRun.stdout);
+  assert.equal(unattestedReport.tracker_entry.status, "rejected_unattested");
+  assert.equal(unattestedReport.is_promotable, false);
+
+  const proprietary = join(rootPath, "proprietary.json");
+  writeFileSync(proprietary, JSON.stringify({ title: "Leak", claim: "x", asset_payload: "GAMEBYTES", attestation: { signer: "s", is_attested: true } }));
+  assert.equal(run(["library", "submit", proprietary, "--json"]).status, 1);
+
+  const pii = join(rootPath, "pii.json");
+  writeFileSync(pii, JSON.stringify({ title: "Contact me at person@example.com", claim: "x", attestation: { signer: "s", is_attested: true } }));
+  assert.equal(run(["library", "submit", pii, "--json"]).status, 1);
+});
+
 test("modding overlays a base without changing it and refuses an oversized mod", (context) => {
   const rootPath = scratch(context);
   const projectPath = join(rootPath, "base-project");
