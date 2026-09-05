@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The census routes SafeDisc evidence to refuse but the full labelled protection corpus is unavailable while BPTK-002 stays red.",
+  "gate": "active",
+  "exclusion_reason": "The protection census now covers SafeDisc, SecuROM, LaserLock, StarForce, and Tages on documented static signature, and the import boundary refuses a refused-route input before any artifact is written. The benchmark remains red because the labelled protection corpus needed for the corpus-wide refusal benchmark is unavailable while BPTK-002 remains red.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every corpus entry refuses with the protection named and the artifact scan is empty.",
   "expected_failing_assertion": "The labelled protection corpus is unavailable.",
   "owner_item": "BPTK-132",
-  "active_gate_evidence": "The census keeps routing protection evidence to refuse without executing the input.",
+  "active_gate_evidence": "The security test refuses a SafeDisc-evidence directory through the real ingest with census_protection_refused and proves no staging artifact exists afterward.",
   "fixture": [
     "FIX-009"
   ],

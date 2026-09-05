@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The security command performs bounded analysis but no threat-signature scan exists.",
+  "gate": "active",
+  "exclusion_reason": "The bounded pre-execution threat scan is implemented: a known-bad signature hit refuses the input at the import boundary (quarantine from every staging path) and the benign corpus passes, but the corpus-wide benign and known-bad benchmark waits on the BPTK-002 denominator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the benign corpus passes, the known-bad set is flagged pre-execution, and quarantine holds within the bound.",
   "expected_failing_assertion": "No threat scan exists in the inspect path.",
   "owner_item": "BPTK-133",
-  "active_gate_evidence": "The security command keeps hostile-code control within its declared boundary and local-first posture.",
+  "active_gate_evidence": "The security test refuses an EICAR-carrier input with threat_scan_flagged, proves the quarantine leaves no artifact, and the corpus run passes nine lawful entry through the same boundary.",
   "fixture": [
     "FIX-009"
   ],

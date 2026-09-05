@@ -4,15 +4,15 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "BPTK-001 approval remains open and no graph resolution exists in the legal surface.",
+  "gate": "active",
+  "exclusion_reason": "The license graph resolver is implemented in the legal surface: one frozen disposition table resolves the declared license family, and unknown, unlicensed, and expired node refuse publication through bptk legal. The benchmark remains red because the named-reviewer approval (BPTK-001) that would make the graph authoritative is still open.",
   "prerequisite": [
     "BPTK-001"
   ],
   "promotion_trigger": "Promote when every component and title resolves in the graph and the refusal cases fail closed through the legal surface.",
   "expected_failing_assertion": "The legal command reports open approval and no graph resolution exists.",
   "owner_item": "BPTK-127",
-  "active_gate_evidence": "The legal command keeps requiring named review and the third-party inventory stays reconciled.",
+  "active_gate_evidence": "The legal surface reports the resolved component disposition and the graph refusal, and the security test covers the unknown, unlicensed, expired, and current-grant case at the real CLI.",
   "fixture": [
     "LICENSE",
     "NOTICE",

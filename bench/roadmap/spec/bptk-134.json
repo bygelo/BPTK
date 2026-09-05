@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The probe containment policy denies host capability by absence but no manifest-driven enforcement exists.",
+  "gate": "active",
+  "exclusion_reason": "The least-privilege capability manifest is synthesized by default on every packaged bundle, a declared grant or an out-of-policy capability is refused at the run surface, and the surfaced capability report distinguishes granted from denied. The benchmark remains red because the runtime serves no capability yet and the browser-side consent surface is absent.",
   "prerequisite": [
     "BPTK-089"
   ],
   "promotion_trigger": "Promote when undeclared use is denied with surfaced reason and the defaults hold on every lane.",
   "expected_failing_assertion": "No capability manifest enforcement exists.",
   "owner_item": "BPTK-134",
-  "active_gate_evidence": "The containment policy keeps refusing an execution manifest that declares capability outside it.",
+  "active_gate_evidence": "The security test refuses a granted network capability and an out-of-policy clipboard capability with containment_policy_violation, and the clean run reports is_least_privilege true with zero grant.",
   "fixture": [
     "FIX-017"
   ],

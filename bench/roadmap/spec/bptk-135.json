@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "The security surface reports review control but no tier model exists.",
+  "gate": "active",
+  "exclusion_reason": "The trust tier grades input from the payload byte and recorded evidence alone \u2014 attested through the corpus pin, unknown-untrusted for everything else, refused on protection or threat evidence \u2014 and the grade never upgrades silently. The benchmark remains red because the attested workflow beyond the corpus pin (BPTK-001) remains open.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every tier boundary holds including the no-upgrade property under retry.",
   "expected_failing_assertion": "No trust tier exists in the security surface.",
   "owner_item": "BPTK-135",
-  "active_gate_evidence": "The security command keeps its review boundary and the census keeps protection refusal.",
+  "active_gate_evidence": "The security test grades a byte-mismatched lookalike as unknown_untrusted with no upgrade possible, and the refused tier is exercised by the threat and protection case.",
   "fixture": [
     "FIX-009"
   ],
