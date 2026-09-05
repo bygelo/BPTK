@@ -122,7 +122,18 @@ yield-not-spin busy-wait.
 
 Gate: exit 0.
 
+## Cycle 8 — BPTK-102 virtual drive geometry / optical volume (implemented, red/active)
+Added a declared drive profile in lib/hle.mjs: fixed C: (NTFS) and read-only
+optical D: (CDFS, zero free) served through GetLogicalDrives, GetDriveTypeA/W,
+GetVolumeInformationA/W, GetDiskFreeSpaceExA, and GetDiskFreeSpaceA. Served
+kernel32 export 130→137; total 218→225. Every export carries a conformance case;
+added a test proving drive presence, drive types, label/serial round-trip, and
+zero free bytes on the optical volume. Implemented count 50→51; passing 0. Still
+red: no ISO/CUE image is mounted (no hash-matching sector read or in-sync disc
+audio).
+
+Gate: exit 0.
+
 ## Progress
-Implemented 43→50 (BPTK-101, 098, 011, 012, 099, 096, 104). Served HLE export
-156→218. Remaining owned planned items: BPTK-097 (full input), 100 (FMV),
-102 (installer/optical).
+Implemented 43→51 (BPTK-101, 098, 011, 012, 099, 096, 104, 102). Served HLE
+export 156→225. Remaining owned planned items: BPTK-097 (full input), 100 (FMV).

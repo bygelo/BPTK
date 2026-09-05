@@ -480,6 +480,31 @@ test("BPTK-101: GetSystemTime writes a SYSTEMTIME derived from the one guest clo
   assert.equal(memory.readMemory(info + 28, 4), 65536, "dwAllocationGranularity");
 });
 
+test("BPTK-102: the virtual drive geometry reports a fixed C: and a read-only optical D:", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const path = base + 0x40;
+  const out = base + 0x80;
+  assert.equal(invoke(guest, "kernel32.dll", "GetLogicalDrives", []), 0x0c, "C: and D: are present");
+  guest.writeAnsiString(path, "C:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDriveTypeA", [path]), 3, "DRIVE_FIXED");
+  guest.writeAnsiString(path, "D:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDriveTypeA", [path]), 5, "DRIVE_CDROM");
+  guest.writeAnsiString(path, "Z:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDriveTypeA", [path]), 1, "DRIVE_NO_ROOT_DIR for an absent drive");
+  // The optical volume label, serial, and CDFS name round-trip.
+  guest.writeAnsiString(path, "D:\\", 16);
+  const serialPtr = out + 0x40;
+  assert.equal(invoke(guest, "kernel32.dll", "GetVolumeInformationA", [path, out, 32, serialPtr, 0, 0, 0, 0]), 1);
+  assert.equal(guest.readAnsiString(out), "BPTK_MEDIA");
+  assert.equal(memory.readMemory(serialPtr, 4), 0x4344524f);
+  // The optical volume reports zero free bytes (read-only media).
+  guest.writeAnsiString(path, "D:\\", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "GetDiskFreeSpaceExA", [path, out, out + 8, out + 16]), 1);
+  assert.equal(memory.readMemory(out, 4), 0, "free-to-caller low dword");
+  assert.equal(memory.readMemory(out + 8, 4), 0x28000000, "total low dword");
+});
+
 test("BPTK-099: the ws2_32 lifecycle marshals WSADATA, serves the handle table, and refuses an offline dial", () => {
   const { guest, memory } = createConformanceMachine();
   const base = guest.layout.arena_base;
