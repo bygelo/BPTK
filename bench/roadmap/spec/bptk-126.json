@@ -4,15 +4,15 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No agent-contribution disclosure rule or unified pipeline exists.",
+  "gate": "active",
+  "exclusion_reason": "The human and AI-agent contribution pipeline is implemented: an agent PR without an AI-use disclosure is refused before the gate, and a disclosed-agent PR and a human PR take the byte-identical gate path. The benchmark stays red because the gate itself cannot prove a browser game runtime behaves — only that the contribution process is uniform.",
   "prerequisite": [
     "BPTK-122"
   ],
   "promotion_trigger": "Promote when an agent PR and a human PR pass through the identical gate with disclosure recorded.",
   "expected_failing_assertion": "No authorship-disclosure rule exists in the contribution path.",
   "owner_item": "BPTK-126",
-  "active_gate_evidence": "The contribution policy and the roadmap workflow apply one gate to every push and pull request.",
+  "active_gate_evidence": "test/governance.test.mjs asserts an undisclosed agent PR is refused and that a disclosed-agent PR and a human PR resolve to the identical gate path.",
   "fixture": [
     "FIX-000"
   ],
