@@ -182,3 +182,75 @@ the pinned corpus sha256, and kept out of git.
   0xcc int3, 0xec port, 0x06/0x07 seg push/pop, and the 0f 10/13/38/62 SSE
   map (next cycle). OpenTTD's lead gaps are 0xff, 0xcc, 0xec, the one-byte
   0xf1 icebp, 0x06/0x07, and 0x64 fs-override (the thread lane's TEB job).
+
+## 2026-09-05 — cycle 3: the SSE/SSE2 scalar + packed FP core
+
+### Implemented (generic; no payload or title branch anywhere)
+
+- Eight 128-bit xmm registers (lib/runtime.mjs `xmm`, raw little-endian
+  Buffer) with the mandatory-prefix decode routing every 0f byte in the SSE
+  map to its packed-single (no prefix), packed-double (0x66), scalar-single
+  (0xf3), or scalar-double (0xf2) form. The 6e/6f/7e/7f bytes stay MMX in the
+  no-prefix form and route to SSE only under a prefix, so the two families
+  share one dispatch without collision.
+- Data movement: movups/movupd/movss/movsd (0f 10/11), movaps/movapd (0f
+  28/29), movdqa/movdqu (0f 6f/7f under 0x66/0xf3), movd/movq xmm (0f 6e/7e
+  under 0x66/0xf3). The scalar register-to-register move preserves the
+  destination's upper lanes; the scalar memory load zero-extends, exactly
+  like the SDM.
+- Arithmetic in all four forms: add/mul/sub/div (0f 58/59/5c/5e), min/max
+  (0f 5d/5f), sqrt (0f 51). The bitwise logical andps/andnps/orps/xorps (0f
+  54-57) over the full 128 bit. The ordered compare ucomiss/ucomisd and
+  comiss/comisd (0f 2e/2f) set ZF/PF/CF from the low lane with the unordered
+  all-set result.
+- Conversion: cvtsi2ss/sd and cvtpi2ps (0f 2a), cvttss2si/cvttsd2si and
+  cvtss2si/cvtsd2si and the cvt(t)ps2pi mm forms (0f 2c/2d), cvtss2sd,
+  cvtsd2ss, cvtps2pd, cvtpd2ps (0f 5a). The float-to-int of an out-of-range
+  or NaN source yields the 0x80000000 integer-indefinite. The MXCSR is
+  declared fixed at round-nearest-even, mask-all.
+- Honesty: the FP lanes compute in the host IEEE-754, which is
+  correctly-rounded for every served operation — a float32 result computed
+  in float64 then rounded back is bit-exact for add/sub/mul/div/sqrt because
+  float64 carries more than 2p+2 bit of a float32 operand — so the reference
+  state is exact within IEEE. The declared strict fallback is this scalar
+  lane computation; the WASM-SIMD acceleration is a deferred performance
+  item, not a semantic one, and is recorded as such rather than pretended.
+  Every unimplemented SSE form (cmpps/shufps with the imm8 predicate, an
+  invalid prefix on movaps) stops as a structured `unsupported_opcode`, never
+  a silent identity. The xmm write is commit-last, so a faulting operand read
+  rolls back cleanly without an xmm shadow.
+
+### Proof
+
+- 14 new microprogram conformance cases (test/i386.test.mjs): the probe now
+  reports the xmm register file (`report.xmm`, eight 32-hex-digit strings),
+  and every case freezes the IEEE reference lane assembled by the
+  independent `xmmSingle`/`xmmDouble` builders (float32/float64 writes per
+  the SDM lane semantics, never from running the probe). cvtsi2ss+addss+mulss,
+  sqrtss's direct float32 rounding, packed addps, the double add/div,
+  movss's upper-lane preservation, movaps's full-128 copy, movdqa/movq's
+  packed-integer move, the cvt widen/narrow pair, cvttss2si-vs-cvtss2si
+  round modes, ucomiss's four ordered results, xorps-to-zero, minss/maxss,
+  and the movsd memory round-trip each carry a case; two unimplemented forms
+  carry the structured-refusal case.
+- The inventory-consistency walk extends to the SSE map: every declared 0f
+  extension executes its no-prefix form without the unsupported stop.
+- Full suite: 189 test, 0 failing. `npm run gate` exit 0 in this worktree.
+
+### Measured delta on the real DRM-free corpus
+
+Same committed `sweepI386Text` method, identical binaries, before at the MMX
+commit (`ffb36f7`) vs this tree.
+
+- Plink 0.74 i386 (win32): 95.26% → **95.56%** (6,165 → 5,771 unsupported;
+  −394).
+- OpenTTD 1.10.3 i386 (win32): 95.23% → **95.71%** (40,219 → 36,157
+  unsupported; −4,062). OpenTTD's game math is SSE-heavy, so the lift is
+  large — the biggest single-cycle drop on that binary so far.
+- Cumulative from the cycle-0 baseline (`271a421`) through this cycle: Plink
+  87.5% → 95.56%, OpenTTD 86.2% → 95.71%.
+- Top remaining Plink gaps: 0xff indirect /reg breadth, 0xc4 les, 0xcc int3
+  padding, 0xec port, the 0f 38 (SSSE3) and 0f 62 (punpckldq SSE2-integer)
+  map, and 0x06/0x07 seg push/pop. The SSSE3/AVX map and the SSE2 packed
+  integer family are the next SIMD frontier; the one-byte les/lds and
+  segment-register families are the remaining ranked one-byte cycle.
