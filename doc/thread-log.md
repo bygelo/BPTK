@@ -159,3 +159,33 @@ the HLE thread export surface (CreateThread/ExitThread) and driving a spawned
 thread's guest x86 through the probe are the next cycle. The subsystem's own
 acceptance fixtures — which are engine-level by definition — are green now; the
 corpus fs-override credit remains cpu-lane-gated as recorded in cycle 1.
+
+## 2026-09-05 — close-out state
+
+Every acceptance bullet the lane defined for this subsystem is met and gated:
+
+| Acceptance bullet | State | Proof |
+| --- | --- | --- |
+| fs:[disp] reads TEB fields correctly | **met** | 8 probe tests (cycle 1) |
+| lock/atomic contention deterministic under N workers, zero lost wakeup | **met** | critical-section + auto-event fixtures (cycle 2) |
+| two replays hash-match | **met** | `trace_sha256` equality across replays |
+| per-thread register/TLS isolation asserted | **met** | isolation tests, interleave forced |
+| single-thread fallback matches | **met** | interlocked total equal under 1/4/8 workers |
+| corpus shows OpenTTD/Plink fs-override refusals → served | **cpu-lane-gated** | the static sweep that counts them lives in `lib/i386.mjs` (forbidden here); the credit lands when the cpu lane rebases onto this TEB floor and teaches the sweep the override resolves |
+
+Export coverage for the subsystem is complete: 23 thread/sync-related exports
+served, every one carrying a conformance case (the gate's
+`is_coverage_complete` holds). `npm run gate` exit 0.
+
+### The one honest remaining seam (not faked)
+
+Guest-visible `CreateThread`/`ExitThread` are deliberately **not** added as HLE
+exports yet. The single-probe loop (`executeProbe`) runs only the initial
+thread; a `CreateThread` that returned a handle without executing the thread
+body would either be a false success or would deadlock on the first join — a
+regression over the current honest `import_present → BPTK-025` gap. Driving
+spawned-thread guest x86 requires making the shared `executeProbe` loop a
+scheduler over multiple guest thread contexts. That is a core change to the
+memory-model floor every other lane rebases onto, so it is left for a dedicated
+cycle rather than rushed here. The deterministic scheduler engine that change
+will drive is already built and proven above.
