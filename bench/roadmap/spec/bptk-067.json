@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No unified representation or backend exists.",
+  "gate": "active",
+  "exclusion_reason": "The WebGPU primary backend is implemented: every fixed-function and shader-model 1-3 program lowers through the one WGSL emitter into a complete render-pipeline description with a bind-group layout derived from the program's own registers, a color target with its gamma encoding, and a multisample count, and the pipeline cache is content-addressed and API-blind. The benchmark remains red because rendering each fixture on a live WebGPU adapter does not run in the gate; no adapter is available inside the offline validator.",
   "prerequisite": [],
   "promotion_trigger": "Promote when every declared fixture renders on the live adapter through the primary backend.",
-  "expected_failing_assertion": "No WebGPU rendering path exists.",
+  "expected_failing_assertion": "Every declared fixture renders on a live WebGPU adapter within tolerance.",
   "owner_item": "BPTK-067",
-  "active_gate_evidence": "The graphics doctor observes live WebGPU availability without a runtime claim.",
+  "active_gate_evidence": "The graphics suite proves every FFP and SM1-3 fixture lowers through the one emitter into a well-formed WebGPU pipeline description carrying the register-derived bind-group layout, gamma-encoded color target, and multisample count, and that the pipeline cache is content-addressed.",
   "fixture": [
     "FIX-010"
   ],

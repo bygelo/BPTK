@@ -4,13 +4,13 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No console framebuffer prototype exists.",
+  "gate": "active",
+  "exclusion_reason": "The console EDRAM tile-resolve prototype is implemented: it models the tile address function, resolves a tiled framebuffer back into the linear layout a WebGPU texture samples, and round-trips a tiled fixture provably, and it reports the WebGPU copy-region resolve mapping. This is prototype-only ([P4]) and the feasibility verdict is prototype-backed. The benchmark remains red because measuring the resolve on the declared live adapter set does not run in the gate.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the report and prototype resolve a research tile fixture on the declared adapter set.",
-  "expected_failing_assertion": "The console research surface defers with no prototype.",
+  "expected_failing_assertion": "The tile resolve is measured bit-exact on the declared live adapter set.",
   "owner_item": "BPTK-072",
-  "active_gate_evidence": "The modern-API scan keeps reporting signal without a framebuffer claim.",
+  "active_gate_evidence": "The shader suite proves the tile-resolve prototype round-trips a tiled framebuffer to linear, reports the WebGPU resolve mapping, and refuses an invalid framebuffer.",
   "fixture": [
     "FIX-026"
   ],

@@ -4,13 +4,13 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No compute prototype exists.",
+  "gate": "active",
+  "exclusion_reason": "The compute/UAV-SSBO prototype is implemented: it models an element-wise compute dispatch over a storage buffer, computes the software reference output, describes the dispatch and its storage bindings, and names any above-limit content (workgroup size beyond the invocation limit, or an op outside the compute subset) rather than dropping it. This is prototype-only ([P4]); compute is WebGPU/compatibility-only. The benchmark remains red because bit-identity on the declared live adapter set is not measured in the gate.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the compute fixture is bit-identical on the declared adapter set and above-limit content is named-blocked.",
-  "expected_failing_assertion": "The modern research surface defers with no compute prototype.",
+  "expected_failing_assertion": "The compute fixture is measured bit-identical on the declared live adapter set.",
   "owner_item": "BPTK-073",
-  "active_gate_evidence": "The modern-API scan keeps reporting signal with live WebGPU observation.",
+  "active_gate_evidence": "The shader suite proves the compute prototype computes the reference output over a storage buffer and names above-limit workgroup size and out-of-subset ops rather than dropping them.",
   "fixture": [
     "FIX-026"
   ],

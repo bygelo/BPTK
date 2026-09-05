@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No shader translator exists to contain.",
+  "gate": "active",
+  "exclusion_reason": "The shader-translator containment is implemented: the Direct3D 9 frontend is bounded and total, every token read is bounds-checked so no stream can read out of bounds, an instruction budget is the deterministic time bound, and a containment wrapper converts any malformed, truncated, over-budget, or fuzzed stream into a structured refusal that never propagates as a crash. A two-thousand-case deterministic fuzz sweep escapes zero faults. The benchmark remains red because the DXBC and DXIL classes (BPTK-060, P4) are not yet part of the fuzzed surface; only the shader-model 1-3 class is contained today.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the declared hostile-bytecode corpus is refused within the frozen bound with zero escape.",
-  "expected_failing_assertion": "No translator surface exists to fuzz.",
+  "expected_failing_assertion": "The DXBC and DXIL hostile-bytecode classes are refused within the frozen bound with zero escape.",
   "owner_item": "BPTK-074",
-  "active_gate_evidence": "The declared resource-bound layer keeps extraction and execution bounded and the importer refuses unclassified input.",
+  "active_gate_evidence": "The shader suite proves every malformed, truncated, over-size, over-budget, and pseudo-random shader stream is contained and refused with a structured reason, that a two-thousand-case fuzz sweep escapes zero faults, and that the size and instruction budgets are enforced.",
   "fixture": [
     "FIX-013",
     "FIX-009"

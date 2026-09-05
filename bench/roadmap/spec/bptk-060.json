@@ -4,13 +4,13 @@
   "kind": "evidence",
   "threshold_owner": null,
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No DXBC or DXIL reader exists and the modern-API scan only reports signal presence.",
+  "gate": "active",
+  "exclusion_reason": "The DXBC/DXIL frontend prototype is implemented: a bounded reader parses the DXBC chunk table, locates the SHDR/SHEX or DXIL chunk, and emits a complete named-opcode coverage table where every encountered shader-model 4/5 opcode is named and one the prototype cannot lower is named-blocked by its numeric identity, never dropped; a DXIL chunk is named as an unresolved bitcode-lowering surface. This is prototype-only ([P4]): the container is read and the opcode surface is enumerated, but no Direct3D 10-12 program is lowered into the unified representation, which is the red half of this item.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the prototype reader consumes the research fixture and emits a complete named-opcode coverage table.",
-  "expected_failing_assertion": "The d3d11 research surface defers with no reader prototype.",
+  "expected_failing_assertion": "A Direct3D 10-12 program lowers from DXBC/DXIL into the unified representation and renders on a live adapter.",
   "owner_item": "BPTK-060",
-  "active_gate_evidence": "The modern-API scan keeps reporting DXGI, D3D11, and DXBC signal with live WebGPU observation.",
+  "active_gate_evidence": "The shader suite proves the DXBC prototype reader parses the container, emits a complete named-opcode coverage table (every opcode named, unsupported ones named-blocked by numeric identity), names DXIL bitcode as blocked, and refuses a non-DXBC or truncated container.",
   "fixture": [
     "FIX-025",
     "doc/research-2026-wasm-native.md"

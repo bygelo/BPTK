@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No backend exists and the browser probe reports feature availability only.",
+  "gate": "active",
+  "exclusion_reason": "The WebGPU compatibility-mode backend is implemented: the declared subset lowers through the one emitter and an out-of-subset construct (storage, atomic, workgroup, or storage texture) is caught at emit rather than failing on a live device. The benchmark remains red because rendering the subset on a live Chrome 146 compatibility-level adapter does not run in the gate.",
   "prerequisite": [],
   "promotion_trigger": "Promote when the declared subset renders on the compatibility-mode feature level and out-of-subset emission fails at emit.",
-  "expected_failing_assertion": "No compatibility-mode backend exists.",
+  "expected_failing_assertion": "The declared subset renders on a live compatibility-mode feature level.",
   "owner_item": "BPTK-069",
-  "active_gate_evidence": "The graphics doctor reports observed feature availability without a runtime claim.",
+  "active_gate_evidence": "The graphics suite proves the compatibility backend lowers the declared subset through the one emitter and catches an out-of-subset construct at emit.",
   "fixture": [
     "FIX-010"
   ],

@@ -15,12 +15,21 @@ import { test } from "node:test";
 import {
   assertCapsWithinSupport,
   computeFrameDiff,
+  containShaderInput,
   declaredCaps,
   emitWgsl,
+  evaluateProgram,
   formatProgram,
   generateFixedFunction,
+  generateProjectiveTexgen,
   generateReferenceFrame,
   parseD3d9PixelShader,
+  prototypeComputeDispatch,
+  prototypeDxbcCoverage,
+  prototypeTileResolve,
+  referenceProjectiveTexgenFrame,
+  renderProjectiveTexgenFrame,
+  tileFramebuffer,
 } from "../lib/shader.mjs";
 
 function assemblePixelShader(model, instructions) {
@@ -87,6 +96,170 @@ test("one fixed-function generator is API-blind: identical state yields identica
   const wgslLeft = emitWgsl(left.program);
   const wgslRight = emitWgsl(right.program);
   assert.equal(wgslLeft, wgslRight);
+});
+
+test("the numeric evaluator runs one program and performs the projective divide", () => {
+  const program = [
+    { op: "mov", dest: { type: "temp", index: 0 }, dest_mask: "xyzw", src: [{ type: "constant", index: 0, swizzle: "" }] },
+    { op: "div", dest: { type: "temp", index: 1 }, dest_mask: "xy", src: [{ type: "temp", index: 0, swizzle: "xy" }, { type: "temp", index: 0, swizzle: "w" }] },
+  ];
+  const file = evaluateProgram(program, { constant: { 0: [4, 8, 0, 2] } });
+  assert.deepEqual(file.temp[1].slice(0, 2), [2, 4]);
+});
+
+test("the projective texgen generator is API-blind and lowers through the one emitter", () => {
+  const state = { mode: "spotlight_cookie", texture_stage_count: 1 };
+  const d3d = generateProjectiveTexgen({ ...state, api: "d3d9" });
+  const gl = generateProjectiveTexgen({ ...state, api: "opengl" });
+  assert.deepEqual(formatProgram(d3d.program), formatProgram(gl.program));
+  assert.equal(d3d.has_projection_divide, true);
+  assert.match(emitWgsl(d3d.program), /\//);
+  assert.throws(() => generateProjectiveTexgen({ mode: "bogus" }), (error) => error.input_code === "unsupported_texgen_mode");
+});
+
+test("the spotlight-cookie and planar-shadow fixtures render within tolerance and the dropped divide fails closed", () => {
+  const matrix = [
+    [0.5, 0, 0, 0.5],
+    [0, 0.5, 0, 0.5],
+    [0, 0, 1, 0],
+    [0, 0, 0, 2],
+  ];
+  const scene = {
+    matrix,
+    vertex: [
+      [0.4, 0.4, 0, 1],
+      [-0.2, 0.3, 0, 1],
+      [0.6, -0.5, 0, 1],
+      [0.1, 0.1, 0, 1],
+    ],
+  };
+  for (const mode of ["spotlight_cookie", "planar_shadow"]) {
+    const reference = referenceProjectiveTexgenFrame(scene);
+    const rendered = renderProjectiveTexgenFrame({ mode }, scene);
+    const report = computeFrameDiff(rendered, reference, { mean_tolerance: 1.0, reference_source: "projective oracle computed at test time" });
+    assert.equal(report.pass, true, `${mode} must render within tolerance`);
+    assert.equal(report.committed_baseline, false);
+    const mutated = renderProjectiveTexgenFrame({ mode, drop_projection_divide: true }, scene);
+    const mutatedReport = computeFrameDiff(mutated, reference, { mean_tolerance: 1.0 });
+    assert.equal(mutatedReport.pass, false, `${mode} with the projection divide dropped must fail closed`);
+  }
+});
+
+test("hostile shader bytecode is contained: every fuzzed stream is refused within bound, none crashes", () => {
+  const hostile = [
+    { name: "empty", byte: new Uint8Array(0) },
+    { name: "one byte", byte: new Uint8Array([0xff]) },
+    { name: "truncated operand", byte: new Uint8Array(Uint32Array.from([0xffff0200, 0x00000005, 0x00000000]).buffer) },
+    { name: "bad opcode", byte: new Uint8Array(Uint32Array.from([0xffff0200, 0x0000abcd, destTemp(0), srcConstant(0)]).buffer) },
+    { name: "vertex stream", byte: new Uint8Array(Uint32Array.from([0xfffe0200, 0x0000ffff]).buffer) },
+    { name: "future model", byte: new Uint8Array(Uint32Array.from([0xffff0900, 0x0000ffff]).buffer) },
+    { name: "not a byte array", byte: [1, 2, 3] },
+  ];
+  for (const { name, byte } of hostile) {
+    const report = containShaderInput(byte);
+    assert.equal(report.contained, true, `${name} must be contained`);
+    assert.equal(report.refused, true, `${name} must be refused`);
+    assert.equal(typeof report.reason, "string", `${name} must name a structured reason`);
+    assert.equal(report.program, null, `${name} must not yield a program`);
+  }
+  // Deterministic fuzz: a large sweep of pseudo-random streams, none may crash.
+  let seed = 0x1234abcd;
+  for (let trial = 0; trial < 2000; trial += 1) {
+    const length = seed % 64;
+    const byte = new Uint8Array(length);
+    for (let index = 0; index < length; index += 1) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      byte[index] = seed & 0xff;
+    }
+    const report = containShaderInput(byte);
+    assert.equal(report.contained, true, `fuzz trial ${trial} must be contained`);
+  }
+});
+
+test("the containment enforces the size and instruction budget", () => {
+  const oversize = containShaderInput(new Uint8Array(4096), { max_byte: 1024 });
+  assert.equal(oversize.reason, "shader_size_bound_exceeded");
+  const token = [0xffff0200];
+  for (let index = 0; index < 40; index += 1) token.push(1, destTemp(0), srcConstant(0));
+  token.push(0x0000ffff);
+  const overBudget = containShaderInput(new Uint8Array(Uint32Array.from(token).buffer), { instruction_budget: 8 });
+  assert.equal(overBudget.reason, "shader_instruction_budget_exceeded");
+  const valid = containShaderInput(new Uint8Array(assemblePixelShader(0x0200, [[1, [destTemp(0), srcConstant(0)]]]).buffer));
+  assert.equal(valid.refused, false);
+  assert.equal(valid.model, "2.0");
+});
+
+function assembleDxbc(fourcc, chunkDword) {
+  const header = 8 + 20 + 4; // magic + checksum + version/size/count fields, one chunk offset
+  const chunkOffset = 32 + 4;
+  const chunkByteLength = 8 + chunkDword.length * 4;
+  const total = chunkOffset + chunkByteLength;
+  const byte = new Uint8Array(total);
+  const view = new DataView(byte.buffer);
+  byte.set([0x44, 0x58, 0x42, 0x43]); // "DXBC"
+  view.setUint32(20, 1, true); // version
+  view.setUint32(24, total, true); // total size
+  view.setUint32(28, 1, true); // chunk count
+  view.setUint32(32, chunkOffset, true); // chunk offset
+  for (let index = 0; index < 4; index += 1) byte[chunkOffset + index] = fourcc.charCodeAt(index);
+  view.setUint32(chunkOffset + 4, chunkByteLength - 8, true); // chunk size
+  for (const [index, dword] of chunkDword.entries()) view.setUint32(chunkOffset + 8 + index * 4, dword, true);
+  return byte;
+}
+
+const dxbcInstruction = (opcode) => (opcode & 0x7ff) | (1 << 24);
+
+test("the DXBC prototype reader emits a complete named-opcode coverage table", () => {
+  // versionToken, dwordCount, then add(0), mad(50), sample(69), unknown(700)
+  const instruction = [dxbcInstruction(0), dxbcInstruction(50), dxbcInstruction(69), dxbcInstruction(700)];
+  const chunk = [0x00000050, instruction.length, ...instruction];
+  const report = prototypeDxbcCoverage(assembleDxbc("SHEX", chunk));
+  assert.equal(report.is_prototype, true);
+  assert.equal(report.shader_chunk, "SHEX");
+  assert.equal(report.is_complete, true, "every encountered opcode must be named");
+  const names = report.coverage.map((entry) => entry.name);
+  assert.deepEqual(names, ["add", "mad", "sample", "unsupported_opcode_700"]);
+  assert.ok(report.named_blocked.includes("sample"), "sample is enumerated but named-blocked");
+  assert.ok(report.named_blocked.includes("unsupported_opcode_700"), "the unknown opcode is named, not dropped");
+  assert.equal(report.lowerable_count, 2, "add and mad are lowerable");
+});
+
+test("the DXBC prototype names DXIL bitcode as blocked and refuses a non-DXBC container", () => {
+  const dxil = prototypeDxbcCoverage(assembleDxbc("DXIL", [0, 0]));
+  assert.equal(dxil.is_dxil_bitcode, true);
+  assert.deepEqual(dxil.named_blocked, ["dxil_bitcode_lowering"]);
+  const notDxbc = new Uint8Array(64);
+  notDxbc.set([0x46, 0x4f, 0x4f, 0x00]);
+  assert.throws(() => prototypeDxbcCoverage(notDxbc), (error) => error.input_code === "not_a_dxbc_container");
+  assert.throws(() => prototypeDxbcCoverage(new Uint8Array(8)), (error) => error.input_code === "dxbc_container_truncated");
+});
+
+test("the console tile-resolve prototype round-trips a tiled framebuffer to linear", () => {
+  const width = 40;
+  const height = 40;
+  const pixel = Array.from({ length: width * height }, (_, index) => index % 251);
+  const tiled = tileFramebuffer({ width, height, tile_size: 32, pixel });
+  const resolved = prototypeTileResolve(tiled);
+  assert.equal(resolved.is_prototype, true);
+  assert.equal(resolved.is_device_measured, false);
+  assert.deepEqual(resolved.linear, pixel, "the resolve must round-trip the tiled memory to linear");
+  assert.equal(resolved.webgpu_resolve.target, "texture_2d");
+  assert.throws(() => prototypeTileResolve({ width: 0, height: 4, tiled: [] }), (error) => error.input_code === "invalid_framebuffer");
+});
+
+test("the compute prototype computes the reference and names above-limit content", () => {
+  const within = prototypeComputeDispatch({ op: "add", operand: 3, workgroup_size: 64, input: [1, 2, 3, 4] });
+  assert.equal(within.within_limit, true);
+  assert.deepEqual(within.reference_output, [4, 5, 6, 7]);
+  assert.equal(within.is_device_bit_identical, false);
+  assert.equal(within.dispatch_count, 1);
+  const oversized = prototypeComputeDispatch({ op: "add", operand: 1, workgroup_size: 1024, input: [1] });
+  assert.equal(oversized.within_limit, false);
+  assert.match(oversized.named_blocked[0], /workgroup size 1024/);
+  const badOp = prototypeComputeDispatch({ op: "raytrace", input: [1] });
+  assert.equal(badOp.within_limit, false);
+  assert.match(badOp.named_blocked.join(" "), /raytrace/);
+  assert.throws(() => prototypeComputeDispatch({ op: "add", input: "not-an-array" }), (error) => error.input_code === "invalid_compute_input");
 });
 
 test("the frame diff computes its reference at test time with no committed baseline", (context) => {

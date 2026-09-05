@@ -4,13 +4,13 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No unified representation or WebGPU backend exists to fall back from.",
+  "gate": "active",
+  "exclusion_reason": "The WebGL2 fallback is implemented: the same unified program lowers into a GLSL ES 3.0 pipeline description that reuses the WebGPU register model and never reads the API name, and an op above the GLSL ES 3.0 floor is named-blocked in the emitted source rather than dropped. The benchmark remains red because comparing the fallback frame against the live WebGPU output within the looser tolerance requires two live adapters, which the gate does not run.",
   "prerequisite": [],
   "promotion_trigger": "Promote when within-floor fixture match the WebGPU output within the declared looser tolerance and above-floor content is named-blocked.",
-  "expected_failing_assertion": "No WebGL2 fallback path exists.",
+  "expected_failing_assertion": "The within-floor fixture match the live WebGPU output within the looser tolerance on a live WebGL2 adapter.",
   "owner_item": "BPTK-068",
-  "active_gate_evidence": "The graphics doctor reports the degraded isolation state and observed WebGL2 support.",
+  "active_gate_evidence": "The graphics suite proves the WebGL2 fallback lowers the same program into GLSL ES 3.0 and names any op above the floor rather than dropping it.",
   "fixture": [
     "FIX-010"
   ],
