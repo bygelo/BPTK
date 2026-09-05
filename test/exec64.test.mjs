@@ -117,15 +117,50 @@ test("microprogram: a read outside every mapped region is a named fault", () => 
   assert.equal(/outside the mapped memory/.test(report.exception.message), true, report.exception.message);
 });
 
-test("PuTTY x64 reaches entry execution and stops honestly at its first import", { skip: existsSync(puttyPath) ? false : "PuTTY x64 corpus package absent" }, () => {
+test("a served import dispatches through the Win64 ABI and execution continues", () => {
+  // A synthetic image whose entry calls an IAT slot bound to a served, zero-arg
+  // export (GetCurrentThreadId), then returns. With the Win32 core HLE wired
+  // (milestone M4), the call is dispatched under the Win64 convention — the
+  // result lands in RAX and control returns to the instruction after the call —
+  // so the probe runs past the import instead of stopping at it.
+  //   0: FF 15 02 00 00 00   call qword ptr [rip+2]   (slot at rva 8)
+  //   6: 90                  nop
+  //   7: C3                  ret                       (reads the return sentinel)
+  //   8: <8-byte IAT slot>
+  const image = Buffer.from([0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0x90, 0xc3, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const mapped = {
+    image,
+    input_path: "synthetic.exe",
+    load_base: loadBase,
+    entry_rva: 0,
+    image_size_byte: image.length,
+    section: [],
+    tls_callback: [],
+    relocation_count: 0,
+    resolution_blocker: [],
+    runtime_blocker: [],
+    import: [{ library: "kernel32.dll", symbol: "GetCurrentThreadId", ordinal: null, iat_slot_rva: 8 }],
+  };
+  const probe = executeProbe64(mapped, 4096);
+  assert.equal(probe.state, "probe_executed");
+  // call (served) + nop + ret = three instructions, then the entry return.
+  assert.equal(probe.instruction_count, 3, `instruction_count ${probe.instruction_count}`);
+  assert.equal(probe.stop_reason, "entry_return");
+  assert.equal(probe.import_reached, null, "a served import is not a reached-import stop");
+  assert.equal(probe.register.rax, "0x1", "RAX carries the GetCurrentThreadId result (thread id 1)");
+});
+
+test("PuTTY x64 executes past its first import through the served Win64 HLE", { skip: existsSync(puttyPath) ? false : "PuTTY x64 corpus package absent" }, () => {
   const mapped = mapPe64State(puttyPath);
   const probe = executeProbe64(mapped, 2000000);
-  assert.equal(probe.state, "probe_executed", `state with exception ${JSON.stringify(probe.exception)}`);
-  assert.equal(probe.instruction_count >= 1, true, `instruction_count ${probe.instruction_count}`);
+  assert.equal(probe.state, "probe_executed");
   assert.equal(probe.is_executed, true);
-  // The bounded probe drives the CRT prologue to its first IAT call; no HLE is
-  // served, so the honest stop is import_present naming the reached symbol.
-  assert.equal(probe.stop_reason, "import_present");
-  assert.equal(probe.import_reached.library.length > 0, true);
-  assert.equal(typeof probe.import_reached.symbol === "string" || typeof probe.import_reached.ordinal === "number", true);
+  // Before M4 the CRT prologue stopped at the first IAT call
+  // (kernel32!GetSystemTimeAsFileTime) after 13 instructions. With the Win64
+  // HLE dispatch that import is served and execution continues well past it —
+  // the honest stop is now a later structured boundary (an opcode outside the
+  // read-only lift subset, e.g. CPUID), never the first call.
+  assert.equal(probe.instruction_count > 13, true, `instruction_count ${probe.instruction_count}`);
+  assert.notEqual(probe.stop_reason, "import_present");
+  assert.equal(["unsupported_opcode", "fault", "instruction_budget_exhausted", "process_exit", "guest_exception", "hle_fault"].includes(probe.stop_reason), true, `stop_reason ${probe.stop_reason}`);
 });
