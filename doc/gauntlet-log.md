@@ -209,3 +209,52 @@ override and SSE, so real binaries cannot reach `entry` until both widen.
   (operand-size override first) toward a real binary reaching `entry`, since
   the remaining unserved families need the thread, exception, window, audio,
   and socket models their item own.
+
+## 2026-09-05 — cycle 8
+
+### Widened: BPTK-009 — the byte-granular integer space and the microprogram conformance machine
+
+- The committed decode sweep (lib/i386.mjs) measured the real i386 corpus
+  .text first: the dominant gap was the entire byte-granular integer family
+  (the 0x00-0x3d byte column, the 0x80 byte immediate group, 0x88/0x8a byte
+  mov), then cdq, xchg, the loop family, inc/dec r/m8, the flat-model
+  segment and lock prefix, cmovcc, and the integer 0x0f extensions. The
+  cycle implemented exactly that surface, generically: the two-operand ALU
+  space with the direction bit honored, cwde/cbw/cdq/cwd with the high-word
+  rule, xchg, pop r/m with the post-pop esp effective address, pusha/popa,
+  sahf/lahf with the reserved-bit contract, wait, xlat, jecxz/loop/loope/
+  loopne, cmovcc, bt/bts/btr/btc (register form modulo the operand size,
+  memory form with the signed byte offset), bsf/bsr with the declared
+  zero-destination choice, shld/shrd over exact BigInt intermediates,
+  cmpxchg, xadd, and the hint NOP family. fs/gs refuses with a named
+  diagnostic (no declared thread-environment block); hlt/cli/sti and the
+  port family stop as named privileged-instruction refusal, which is what a
+  real CPU does in user mode. Two latent bugs fell to the new suite: rep
+  cmps compared [esi] with EAX instead of [edi], and lahf wrote its result
+  into al instead of ah.
+- Proof: the new microprogram conformance suite (test/i386.test.mjs, 38
+  test) freezes hand-derived reference machine state — every register and
+  every architecturally defined flag, bit-exact, through the real run
+  surface — with the BT-family and BSF/BSR undefined field declared rather
+  than invented; the declared opcode inventory (lib/i386.mjs) is proven
+  consistent with the probe over ~560 executed microprogram (every
+  declared-served opcode executes, every undeclared opcode stops with the
+  stable structured diagnostic); full suite 164 test, 0 failing (the
+  isolated-commit gate exits 0; the shared tree carries the in-flight
+  thread session's uncommitted file, which its own commit will reconcile).
+- Real payload: decode coverage of the real .text moved Plink i386
+  87.5% → 94.0% and OpenTTD i386 86.2% → 95.1% (the committed sweep is the
+  canonical method from this cycle on; the run record lives in
+  [the CPU subsystem log](cpu-log.md)). `bptk corpus run` reached stage
+  honestly unchanged (`loaded` → BPTK-010 import_present) and the
+  served-import ledger is unchanged because no HLE export moved; the CPU
+  acceptance line is the decode sweep.
+
+### State after the commit
+
+- Implemented count stays 40; passing stays 0. Next for BPTK-009, ranked by
+  the sweep histogram: fs-relative addressing over a declared
+  thread-environment block (pairs with the in-flight thread subsystem), MMX
+  over the FPU 64-bit lane, SSE/SSE2 via WASM SIMD with the strict
+  fallback, x87 80-bit intermediate precision, and the CPUID leaf breadth.
+

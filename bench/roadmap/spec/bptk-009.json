@@ -5,7 +5,7 @@
   "threshold_owner": "BPTK-002",
   "state": "red",
   "gate": "active",
-  "exclusion_reason": "Implemented but red because the frozen FIX-002 instruction, flag, FPU, exception, self-modification, and memory suite cannot be assembled while BPTK-002 owns no frozen denominator, and full instruction coverage does not exist. The bounded subset now covers the operand-size override (0x66): the 16-bit forms of the register push and pop decrement and restore the stack by two byte with the high word of the 32-bit register preserved, 16-bit arithmetic and immediate forms set the 16-bit carry, zero, sign, and overflow flags exactly, and the genuinely rare 16-bit control forms (ret16, call16, jmp16, pushf16, popf16, and the r/m16 call and jump) stay structured unsupported instead of mis-executing.",
+  "exclusion_reason": "Implemented but red because the frozen FIX-002 instruction, flag, FPU, exception, self-modification, and memory suite cannot be assembled while BPTK-002 owns no frozen denominator, and the MMX, SSE/SSE2, x87 80-bit intermediate precision, fs-relative addressing, address-size override, and full CPUID leaf breadth do not exist. The bounded subset now covers the byte-granular integer space (the two-operand ALU byte column, the al,imm8 column, the 0x80/0x82 byte immediate group, byte mov/moffs/test, the 0xfe group), cwde/cbw/cdq/cwd, xchg, pop r/m, pusha/popa, the carry operation, sahf/lahf, wait, xlat, the loop family, cmovcc, the bt/bts/btr/btc family, bsf/bsr, shld/shrd, cmpxchg, xadd, the hint NOP family, and the flat-model segment and lock prefix, while fs/gs and the privileged and port instruction stop as named structured refusal; rep serves cmps/scas under a declared 2^20 iteration bound and the cmps operand bug (EAX instead of [edi]) is fixed.",
   "prerequisite": [
     "BPTK-005",
     "BPTK-008"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when FIX-002 passes the pinned instruction, flag, FPU, exception, self-modification, and memory suite.",
   "expected_failing_assertion": "The complete i386 microprogram suite cannot execute to its frozen reference machine state while BPTK-002 owns no frozen denominator, and instruction outside the bounded subset stop as structured unsupported.",
   "owner_item": "BPTK-009",
-  "active_gate_evidence": "Thirty-five runtime check exercise the real bptk run surface and now cover the widened bounded subset: the operand-size override with the high-word preservation rule, 16-bit carry-out semantics, the exact two-byte stack adjustment of a 16-bit push captured mid-run, the structured refusals of the rare 16-bit control forms, CPUID serving the declared processor identity leaf table with undeclared leaves stopping structured, plus the prior integer, flag, memory, rollback, and determinism coverage.",
+  "active_gate_evidence": "Seventy-three runtime check exercise the real bptk run surface: the 38-case microprogram conformance suite in test/i386.test.mjs freezes hand-derived reference machine state (every register and every architecturally defined flag, bit-exact, with the BT-family and BSF/BSR undefined field declared) and the declared opcode inventory is proven consistent with the probe over ~560 executed microprogram where every declared-served opcode executes and every undeclared opcode stops with the stable structured diagnostic; plus the prior integer, flag, memory, rollback, and determinism coverage. The committed decode sweep moved the real corpus .text coverage to Plink i386 94.0% and OpenTTD i386 95.1%.",
   "fixture": [
     "FIX-002"
   ],
