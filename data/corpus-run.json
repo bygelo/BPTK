@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "command": "corpus run",
+  "stage_dir": "C:\\Users\\maran\\Code\\bptk-corpus\\stage",
+  "record": [
+    {
+      "entry_id": "CORPUS-001",
+      "title": "PuTTY",
+      "kind": "program",
+      "runtime_class": "program",
+      "payload_kind": "executable",
+      "architecture": "x86_64",
+      "classification": "pe32_plus",
+      "reached_stage": "packaged",
+      "gap_code": "machine_x86_64",
+      "gap_item": "BPTK-031",
+      "gap_note": "PE machine 0x8664 is not i386",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 13,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-002",
+      "title": "Plink",
+      "kind": "program",
+      "runtime_class": "program",
+      "payload_kind": "executable",
+      "architecture": "x86_64",
+      "classification": "pe32_plus",
+      "reached_stage": "packaged",
+      "gap_code": "machine_x86_64",
+      "gap_item": "BPTK-031",
+      "gap_note": "PE machine 0x8664 is not i386",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 7,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-003",
+      "title": "jq",
+      "kind": "program",
+      "runtime_class": "program",
+      "payload_kind": "executable",
+      "architecture": "x86_64",
+      "classification": "pe32_plus",
+      "reached_stage": "packaged",
+      "gap_code": "machine_x86_64",
+      "gap_item": "BPTK-031",
+      "gap_note": "PE machine 0x8664 is not i386",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 6,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-004",
+      "title": "7-Zip extra",
+      "kind": "program",
+      "runtime_class": "program",
+      "payload_kind": "archive",
+      "architecture": null,
+      "classification": "unknown_file",
+      "reached_stage": "classified",
+      "gap_code": "unsupported_executable_format",
+      "gap_item": "BPTK-007",
+      "gap_note": "The input does not carry an MZ executable signature",
+      "command": [
+        "verify",
+        "ingest"
+      ],
+      "duration_ms": 5,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-005",
+      "title": "OpenTTD",
+      "kind": "game",
+      "runtime_class": "game",
+      "payload_kind": "archive",
+      "architecture": "x86_64",
+      "classification": "zip_archive",
+      "reached_stage": "packaged",
+      "gap_code": "machine_x86_64",
+      "gap_item": "BPTK-031",
+      "gap_note": "PE machine 0x8664 is not i386",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 191,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-006",
+      "title": "Dwarf Fortress classic",
+      "kind": "game",
+      "runtime_class": "game",
+      "payload_kind": "archive",
+      "architecture": "x86_64",
+      "classification": "zip_archive",
+      "reached_stage": "packaged",
+      "gap_code": "machine_x86_64",
+      "gap_item": "BPTK-031",
+      "gap_note": "PE machine 0x8664 is not i386",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 370,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-007",
+      "title": "Chocolate Doom",
+      "kind": "game",
+      "runtime_class": "game",
+      "payload_kind": "archive",
+      "architecture": "x86_64",
+      "classification": "zip_archive",
+      "reached_stage": "packaged",
+      "gap_code": "machine_x86_64",
+      "gap_item": "BPTK-031",
+      "gap_note": "PE machine 0x8664 is not i386",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 127,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-008",
+      "title": "OpenTTD 1.10.3 win32",
+      "kind": "game",
+      "runtime_class": "game",
+      "payload_kind": "archive",
+      "architecture": "i386",
+      "classification": "zip_archive",
+      "reached_stage": "loaded",
+      "gap_code": "import_present",
+      "gap_item": "BPTK-010",
+      "gap_note": "The image imports 302 function and no Win32 HLE serves them; execution stays opt-in under the containment policy",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 165,
+      "is_playable_claim": false
+    },
+    {
+      "entry_id": "CORPUS-009",
+      "title": "Plink 0.74 win32",
+      "kind": "program",
+      "runtime_class": "program",
+      "payload_kind": "executable",
+      "architecture": "i386",
+      "classification": "pe32",
+      "reached_stage": "loaded",
+      "gap_code": "import_present",
+      "gap_item": "BPTK-010",
+      "gap_note": "The image imports 142 function and no Win32 HLE serves them; execution stays opt-in under the containment policy",
+      "command": [
+        "verify",
+        "ingest",
+        "run"
+      ],
+      "duration_ms": 9,
+      "is_playable_claim": false
+    }
+  ],
+  "run_count": 9,
+  "reached": {
+    "staged": 0,
+    "classified": 1,
+    "packaged": 6,
+    "loaded": 2,
+    "entry": 0,
+    "interactive": 0
+  },
+  "refused_count": 0,
+  "gap": {
+    "BPTK-031": 6,
+    "BPTK-007": 1,
+    "BPTK-010": 2
+  },
+  "records_path": "C:\\Users\\maran\\Code\\bptk-corpus\\stage\\corpus-run.json",
+  "privacy": {
+    "is_local_only": true,
+    "is_uploaded": false,
+    "payload_committed": false,
+    "personal_data": false
+  }
+}

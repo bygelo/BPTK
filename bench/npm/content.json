@@ -7,6 +7,8 @@
     "NOTICE",
     "README.md",
     "bin/bptk.mjs",
+    "data/corpus.json",
+    "data/corpus-run.json",
     "data/status.json",
     "lib/benchmark.mjs",
     "lib/bound.mjs",

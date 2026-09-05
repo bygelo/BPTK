@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No corpus acquisition or guest runtime exists to execute.",
+  "gate": "active",
+  "exclusion_reason": "The run harness is implemented: bptk corpus run drives every staged entry through the real ingest and run path and records the reached stage with a named generic gap mapped to a roadmap item (nine entry run; the two i386 image reach the loaded stage and stop at 302 imported function with no Win32 HLE). The benchmark remains red because a full stage ladder over the frozen denominator waits on BPTK-002 and the missing runtime.",
   "prerequisite": [
     "BPTK-081",
     "BPTK-083"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when every corpus binary yields a reproducible run record with stage and generic-gap classification.",
   "expected_failing_assertion": "No corpus binary can be executed end to end.",
   "owner_item": "BPTK-084",
-  "active_gate_evidence": "The ingest path classifies and packages without executing, and the bounded probe runs a declared subset only.",
+  "active_gate_evidence": "The committed run record data/corpus-run.json carries every entry with a reached stage and a named generic gap mapped to a roadmap item, and the harness refuses to mark any entry playable.",
   "fixture": [
     "FIX-009"
   ],

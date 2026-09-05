@@ -1,0 +1,293 @@
+// Copyright 2026 Maphy Technologies
+// SPDX-License-Identifier: Apache-2.0
+
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import { acquireCorpus, computeGeneralizationDelta, loadAcquisitionManifest, loadRunRecords, runCorpus } from "../lib/corpus.mjs";
+import { ingestInput } from "../lib/ingest.mjs";
+import { createExtractionBound, assertChunkRatioBound } from "../lib/bound.mjs";
+
+const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
+
+function run(argument = []) {
+  return spawnSync(process.execPath, [binPath, ...argument], { encoding: "utf8" });
+}
+
+function createPe32() {
+  const file = Buffer.alloc(0x800);
+  file.writeUInt16LE(0x5a4d, 0);
+  file.writeUInt32LE(0x80, 0x3c);
+  file.writeUInt32LE(0x00004550, 0x80);
+  file.writeUInt16LE(0x14c, 0x84);
+  file.writeUInt16LE(1, 0x86);
+  file.writeUInt16LE(224, 0x94);
+  file.writeUInt16LE(0x10b, 0x98);
+  file.writeUInt32LE(0x1000, 0xa8);
+  file.writeUInt32LE(0x400000, 0xb4);
+  file.writeUInt32LE(0x2000, 0xd0);
+  file.writeUInt32LE(0x200, 0xd4);
+  file.writeUInt32LE(0x10000, 0xe0);
+  file.writeUInt32LE(0x1000, 0xe4);
+  file.writeUInt32LE(0x10000, 0xe8);
+  file.writeUInt32LE(0x1000, 0xec);
+  file.writeUInt32LE(16, 0xf4);
+  const sectionOffset = 0x178;
+  file.write(".text", sectionOffset);
+  file.writeUInt32LE(0x1000, sectionOffset + 8);
+  file.writeUInt32LE(0x1000, sectionOffset + 12);
+  file.writeUInt32LE(0x60000020, sectionOffset + 36);
+  file.writeUInt32LE(0x600, sectionOffset + 16);
+  file.writeUInt32LE(0x200, sectionOffset + 20);
+  file[0x200] = 0xc3;
+  file.writeUInt32LE(0x1100, 0x98 + 96 + 8);
+  file.writeUInt32LE(40, 0x98 + 96 + 12);
+  file.writeUInt32LE(0x1140, 0x300);
+  file.writeUInt32LE(0x1180, 0x30c);
+  file.writeUInt32LE(0x1150, 0x310);
+  file.writeUInt32LE(0x1190, 0x200 + 0x1140 - 0x1000);
+  file.writeUInt32LE(0x1190, 0x200 + 0x1150 - 0x1000);
+  file.write("KERNEL32.dll", 0x200 + 0x1180 - 0x1000);
+  file.writeUInt16LE(0, 0x200 + 0x1190 - 0x1000);
+  file.write("ExitProcess", 0x200 + 0x1192 - 0x1000);
+  return file;
+}
+
+function createStoredZip(entry) {
+  const local = [];
+  const central = [];
+  let offset = 0;
+  for (const item of entry) {
+    const name = Buffer.from(item.path, "utf8");
+    const data = item.data ?? Buffer.alloc(0);
+    const isDirectory = item.path.endsWith("/");
+    const localHeader = Buffer.alloc(30);
+    localHeader.writeUInt32LE(0x04034b50, 0);
+    localHeader.writeUInt16LE(20, 4);
+    localHeader.writeUInt16LE(0, 8);
+    localHeader.writeUInt32LE(data.length, 18);
+    localHeader.writeUInt32LE(data.length, 22);
+    localHeader.writeUInt16LE(name.length, 26);
+    local.push(localHeader, name, isDirectory ? Buffer.alloc(0) : data);
+    const centralHeader = Buffer.alloc(46);
+    centralHeader.writeUInt32LE(0x02014b50, 0);
+    centralHeader.writeUInt16LE(20, 4);
+    centralHeader.writeUInt16LE(20, 6);
+    centralHeader.writeUInt32LE(data.length, 20);
+    centralHeader.writeUInt32LE(data.length, 24);
+    centralHeader.writeUInt16LE(name.length, 28);
+    centralHeader.writeUInt32LE(offset, 42);
+    central.push(centralHeader, name);
+    offset += 30 + name.length + data.length;
+  }
+  const centralBuffer = Buffer.concat(central);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(entry.length, 10);
+  eocd.writeUInt32LE(centralBuffer.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat([...local, centralBuffer, eocd]);
+}
+
+function createStage(context, entryId, payload) {
+  const stage = mkdtempSync(join(tmpdir(), "bptk-corpus-stage-"));
+  context.after(() => rmSync(stage, { recursive: true, force: true }));
+  const entryDir = join(stage, entryId.toLowerCase());
+  mkdirSync(entryDir, { recursive: true });
+  const payloadPath = join(entryDir, "payload.exe");
+  writeFileSync(payloadPath, payload);
+  return { stage, payloadPath };
+}
+
+function createManifest(context, entry, stageDir) {
+  const root = mkdtempSync(join(tmpdir(), "bptk-corpus-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const manifestPath = join(root, "corpus.json");
+  writeFileSync(manifestPath, JSON.stringify({ schema_version: 1, record: [entry] }));
+  process.env.BPTK_ACQUISITION_PATH = manifestPath;
+  return { manifestPath, restore: () => { delete process.env.BPTK_ACQUISITION_PATH; } };
+}
+
+test("the acquisition manifest resolves every entry to a lawful basis and pin", () => {
+  const manifest = loadAcquisitionManifest();
+  assert.ok(manifest.record.length >= 5);
+  for (const entry of manifest.record) {
+    assert.ok(entry.license, `${entry.entry_id} carries a license`);
+    assert.ok(entry.redistribution_basis && entry.redistribution_basis.length > 20, `${entry.entry_id} carries a redistribution basis`);
+    assert.match(entry.source_url, /^https:/, `${entry.entry_id} names an https source`);
+    assert.match(entry.sha256, /^[a-f0-9]{64}$/, `${entry.entry_id} pins a sha256`);
+    assert.ok(Number.isInteger(entry.size_byte) && entry.size_byte > 0, `${entry.entry_id} pins a size`);
+    assert.ok(["game", "program"].includes(entry.kind), `${entry.entry_id} is a game or program`);
+  }
+});
+
+test("acquire verifies a staged payload against its pin without downloading", async (context) => {
+  const payload = createPe32();
+  const { stage } = createStage(context, "CORPUS-901", payload);
+  const entry = {
+    entry_id: "CORPUS-901",
+    title: "generated probe fixture",
+    kind: "program",
+    source_url: "https://corpus.invalid/fixture/payload.exe",
+    license: "MIT",
+    redistribution_basis: "Generated in-test fixture with no upstream claim",
+    size_byte: payload.length,
+    sha256: createHash("sha256").update(payload).digest("hex"),
+    game_loop: false,
+    state: "acquired",
+  };
+  const { restore } = createManifest(context, entry);
+  context.after(restore);
+  const report = await acquireCorpus({ stage });
+  assert.equal(report.verified_count, 1);
+  assert.equal(report.downloaded_count, 0);
+  assert.equal(report.record[0].action, "verified");
+  assert.equal(report.payload_in_repository, false);
+});
+
+test("acquire refuses a staged payload whose byte differ from the pin", async (context) => {
+  const payload = createPe32();
+  const { stage, payloadPath } = createStage(context, "CORPUS-902", payload);
+  payload[payload.length - 1] ^= 0xff;
+  writeFileSync(payloadPath, payload);
+  const entry = {
+    entry_id: "CORPUS-902",
+    title: "tampered fixture",
+    kind: "program",
+    source_url: "https://corpus.invalid/fixture/payload.exe",
+    license: "MIT",
+    redistribution_basis: "Generated in-test fixture with no upstream claim",
+    size_byte: payload.length,
+    sha256: createHash("sha256").update(createPe32()).digest("hex"),
+    game_loop: false,
+    state: "acquired",
+  };
+  const { restore } = createManifest(context, entry);
+  context.after(restore);
+  const report = await acquireCorpus({ stage });
+  assert.equal(report.refused_count, 1);
+  assert.match(report.record[0].reason, /differs from the manifest pin/);
+});
+
+test("the run harness records the real stage and the named generic gap", async (context) => {
+  const payload = createPe32();
+  const { stage } = createStage(context, "CORPUS-903", payload);
+  const entry = {
+    entry_id: "CORPUS-903",
+    title: "generated probe fixture",
+    kind: "program",
+    source_url: "https://corpus.invalid/fixture/payload.exe",
+    license: "MIT",
+    redistribution_basis: "Generated in-test fixture with no upstream claim",
+    size_byte: payload.length,
+    sha256: createHash("sha256").update(payload).digest("hex"),
+    game_loop: false,
+    state: "acquired",
+  };
+  const { restore } = createManifest(context, entry);
+  context.after(restore);
+  const report = runCorpus({ stage });
+  const record = report.record[0];
+  assert.equal(record.architecture, "i386");
+  assert.equal(record.reached_stage, "loaded");
+  assert.equal(record.gap_item, "BPTK-010");
+  assert.equal(record.is_playable_claim, false);
+  assert.ok(record.command.includes("run"));
+});
+
+test("the generalization gate refuses a single-beneficiary fix", () => {
+  const before = { record: [
+    { entry_id: "a", reached_stage: "classified" },
+    { entry_id: "b", reached_stage: "classified" },
+  ] };
+  const after = { record: [
+    { entry_id: "a", reached_stage: "loaded" },
+    { entry_id: "b", reached_stage: "classified" },
+  ] };
+  const report = computeGeneralizationDelta(before, after);
+  assert.equal(report.verdict, "refused_single_beneficiary");
+  assert.equal(report.is_generic, false);
+});
+
+test("the generalization gate accepts breadth and refuses regression", () => {
+  const before = { record: [
+    { entry_id: "a", reached_stage: "classified" },
+    { entry_id: "b", reached_stage: "classified" },
+    { entry_id: "c", reached_stage: "loaded" },
+  ] };
+  const after = { record: [
+    { entry_id: "a", reached_stage: "loaded" },
+    { entry_id: "b", reached_stage: "loaded" },
+    { entry_id: "c", reached_stage: "classified" },
+  ] };
+  const accepted = computeGeneralizationDelta(before, { record: after.record.slice(0, 2) });
+  assert.equal(accepted.verdict, "generic_accepted");
+  assert.equal(accepted.beneficiary_count, 2);
+  const refused = computeGeneralizationDelta(before, after);
+  assert.equal(refused.verdict, "refused_regression");
+  const adapter = computeGeneralizationDelta(
+    { record: [{ entry_id: "a", reached_stage: "classified" }] },
+    { record: [{ entry_id: "a", reached_stage: "loaded" }] },
+    { adapter: true },
+  );
+  assert.equal(adapter.verdict, "adapter_accepted");
+});
+
+test("a stored zip stages through ingest under the declared bound", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-corpus-zip-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const zipPath = join(root, "game.zip");
+  writeFileSync(zipPath, createStoredZip([
+    { path: "data/" },
+    { path: "data/readme.txt", data: Buffer.from("lawful payload") },
+    { path: "game.exe", data: createPe32() },
+  ]));
+  const outputDir = join(root, "out");
+  const report = ingestInput(zipPath, { output: outputDir });
+  assert.equal(report.is_ingested, true);
+  assert.equal(report.package_manifest.executable, "game.exe");
+  assert.equal(report.extraction.installer_family, "zip");
+});
+
+test("a zip path escape is refused before any write", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-corpus-zip-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const zipPath = join(root, "evil.zip");
+  writeFileSync(zipPath, createStoredZip([
+    { path: "../evil.txt", data: Buffer.from("escape") },
+  ]));
+  const outputDir = join(root, "out");
+  assert.throws(() => ingestInput(zipPath, { output: outputDir }), (error) => error.input_code === "archive_path_escape");
+});
+
+test("the amplification guard ignores small output and refuses large", () => {
+  const bound = createExtractionBound();
+  assert.doesNotThrow(() => assertChunkRatioBound(bound, 5351, 196662));
+  assert.throws(() => assertChunkRatioBound(bound, 8192, 8 * 1024 * 1024), (error) => error.input_code === "bound_ratio_exceeded");
+});
+
+test("the generalize command refuses on the live record set through the CLI", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-corpus-cli-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const recordPath = join(root, "records.json");
+  writeFileSync(recordPath, JSON.stringify({ record: [
+    { entry_id: "a", reached_stage: "classified" },
+    { entry_id: "b", reached_stage: "loaded" },
+  ] }));
+  const result = run(["corpus", "generalize", recordPath, recordPath, "--json"]);
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).verdict, "refused_single_beneficiary");
+});
+
+test("loadRunRecords refuses a file without a record array", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-corpus-cli-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  const badPath = join(root, "bad.json");
+  writeFileSync(badPath, JSON.stringify({ no_record: true }));
+  assert.throws(() => loadRunRecords(badPath), (error) => error.input_code === "run_record_invalid");
+});

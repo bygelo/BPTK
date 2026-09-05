@@ -4,15 +4,15 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No acquisition pipeline or corpus manifest exists and BPTK-002 freezing remains red.",
+  "gate": "active",
+  "exclusion_reason": "The acquisition pipeline is implemented: data/corpus.json pins nine lawful freeware entry to a redistribution basis, license, source, size, and sha256, and bptk corpus acquire verifies every staged byte against the pin byte-stably (9 verified, 0 refused). The benchmark remains red because the approved-denominator measurement waits on the BPTK-002 corpus freeze that is still red.",
   "prerequisite": [
     "BPTK-127"
   ],
   "promotion_trigger": "Promote when the manifest rebuilds byte-stably from named source with provenance and the non-redistributable case is refused.",
   "expected_failing_assertion": "No acquisition pipeline or manifest exists.",
   "owner_item": "BPTK-083",
-  "active_gate_evidence": "The corpus command publishes no denominator without approval and the research note records the lawful source survey.",
+  "active_gate_evidence": "The manifest pins every entry to a redistribution basis, license, source, and sha256; the acquire command verifies byte-stability (9 / 9 verified, 0 refused); no payload byte is committed; and the corpus command still publishes no denominator without approval.",
   "fixture": [
     "FIX-009",
     "doc/research-game-sources.md"

@@ -4,8 +4,8 @@
   "kind": "runtime",
   "threshold_owner": "BPTK-002",
   "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "No empirical harness exists to measure a delta.",
+  "gate": "active",
+  "exclusion_reason": "The generalization gate is implemented: bptk corpus generalize computes the per-fix corpus-wide delta from run record, refuses a single-beneficiary merge, refuses regression, and admits the declared sandboxed adapter; the refusal holds on the live record set. The benchmark remains red because a before-and-after measurement over a real fix needs corpus breadth that only more acquisition and runtime bring.",
   "prerequisite": [
     "BPTK-081",
     "BPTK-084"
@@ -13,7 +13,7 @@
   "promotion_trigger": "Promote when the gate computes the per-fix delta from harness record and blocks the single-beneficiary case.",
   "expected_failing_assertion": "No per-fix corpus delta exists to compute.",
   "owner_item": "BPTK-085",
-  "active_gate_evidence": "The gate keeps failing on roadmap-package inconsistency, which is the same merge-blocking mechanism.",
+  "active_gate_evidence": "The gate refuses the live record set with refused_single_beneficiary and the unit test covers the single-beneficiary, breadth, regression, and sandboxed-adapter case.",
   "fixture": [
     "FIX-009"
   ],

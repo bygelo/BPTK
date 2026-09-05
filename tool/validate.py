@@ -154,6 +154,8 @@ ALLOWED_NAME = {"LICENSE", "NOTICE"}
 ALLOWED_SPECIAL_PATH = {Path(".gitignore"), Path(".github/workflows/roadmap.yml")}
 ALLOWED_MJS_PATH = {
     Path("bin/bptk.mjs"),
+    Path("data/corpus.json"),
+    Path("data/corpus-run.json"),
     Path("lib/benchmark.mjs"),
     Path("lib/bound.mjs"),
     Path("lib/census.mjs"),
@@ -188,6 +190,7 @@ ALLOWED_MJS_PATH = {
     Path("script/package.mjs"),
     Path("script/status.mjs"),
     Path("test/cli.test.mjs"),
+    Path("test/corpus.test.mjs"),
     Path("test/benchmark.test.mjs"),
     Path("test/boundary.test.mjs"),
     Path("test/census.test.mjs"),
@@ -233,7 +236,7 @@ def validate_path(error: list[str]) -> None:
 
     for path in ROOT.rglob("*"):
         relative = path.relative_to(ROOT)
-        if ".git" in relative.parts or "node_modules" in relative.parts:
+        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts:
             continue
         if path.is_dir() and path.name in BANNED_DIRECTORY:
             error.append(f"plural directory name is disallowed: {relative}")
@@ -343,6 +346,8 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "NOTICE",
         "README.md",
         "bin/bptk.mjs",
+        "data/corpus.json",
+        "data/corpus-run.json",
         "data/status.json",
         "lib/benchmark.mjs",
         "lib/bound.mjs",
