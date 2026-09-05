@@ -49,6 +49,7 @@
     "lib/replay.mjs",
     "lib/report.mjs",
     "lib/research.mjs",
+    "lib/rsrc.mjs",
     "lib/runtime.mjs",
     "lib/run.mjs",
     "lib/security.mjs",
