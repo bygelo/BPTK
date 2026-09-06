@@ -83,6 +83,19 @@ function stringToBytes(text, encoding) {
   if (name === "utf8") return Array.from(encoder.encode(text));
   if (name === "hex") return hexToBytes(text);
   if (name === "base64") return base64ToBytes(text);
+  if (name === "utf16le") {
+    // Two little-endian bytes per UTF-16 code unit (Node utf16le / ucs2). Every
+    // guest wide string (module filename, wide argv, config paths) rides this;
+    // without it Buffer.from(str,"utf16le") wrote one byte per char and the
+    // read-back garbled every other byte.
+    const out = new Array(text.length * 2);
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      out[index * 2] = code & 0xff;
+      out[index * 2 + 1] = (code >> 8) & 0xff;
+    }
+    return out;
+  }
   const out = new Array(text.length);
   if (name === "ascii") {
     for (let index = 0; index < text.length; index += 1) out[index] = text.charCodeAt(index) & 0x7f;
@@ -106,6 +119,13 @@ function bytesToString(bytes, encoding, start, end) {
     return out;
   }
   if (name === "base64") return bytesToBase64(bytes, lo, hi);
+  if (name === "utf16le") {
+    // Decode little-endian UTF-16 code units; a trailing odd byte is dropped,
+    // matching Node. The inverse of the utf16le branch in stringToBytes.
+    let out = "";
+    for (let index = lo; index + 1 < hi; index += 2) out += String.fromCharCode(bytes[index] | (bytes[index + 1] << 8));
+    return out;
+  }
   let out = "";
   if (name === "ascii") {
     for (let index = lo; index < hi; index += 1) out += String.fromCharCode(bytes[index] & 0x7f);

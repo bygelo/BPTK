@@ -79,18 +79,25 @@ test("buffer shim integer and float read/write match node:buffer byte for byte",
 
 test("buffer shim string codecs match node:buffer", () => {
   const raw = [0x48, 0x65, 0x6c, 0x6c, 0x6f, 0xff, 0x00, 0x41, 0x7f, 0x80];
-  for (const encoding of ["ascii", "latin1", "hex", "base64", "utf8"]) {
+  for (const encoding of ["ascii", "latin1", "hex", "base64", "utf8", "utf16le", "ucs2"]) {
     assert.equal(
       BufferShim.from(raw).toString(encoding),
       Buffer.from(raw).toString(encoding),
       `toString ${encoding}`,
     );
   }
-  for (const [text, encoding] of [["Hello, wörld!", "utf8"], ["cafe", "ascii"], ["deadBEEF01", "hex"], ["SGVsbG8=", "base64"], ["Ünïcødé", "latin1"]]) {
+  // Wide strings ride utf16le: every guest module filename / wide argv / config
+  // path is encoded here, so a one-byte-per-char shim garbled every other byte.
+  for (const [text, encoding] of [["Hello, wörld!", "utf8"], ["cafe", "ascii"], ["deadBEEF01", "hex"], ["SGVsbG8=", "base64"], ["Ünïcødé", "latin1"], ["C:\\game\\chocolate-doom.exe\0", "utf16le"], ["wíde\0", "ucs2"]]) {
     assert.equal(
       BufferShim.from(text, encoding).toString("hex"),
       Buffer.from(text, encoding).toString("hex"),
       `from(${encoding})`,
+    );
+    assert.equal(
+      BufferShim.from(text, encoding).toString(encoding),
+      Buffer.from(text, encoding).toString(encoding),
+      `roundtrip ${encoding}`,
     );
   }
 });
