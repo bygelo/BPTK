@@ -445,6 +445,159 @@ test("call: runaway recursion is bounded by the iteration cap (budget_exhausted,
   assert.equal(jit2.statusName, "budget_exhausted", "a smaller cap also stops the runaway recursion");
 });
 
+// -------------------- external HLE import-call boundary (WASM import) --------------------
+//
+// A `call` to a target OUTSIDE the compiled set is an HLE import. With a bound host
+// callback the codegen now emits a REAL WASM import call: spill the register file +
+// flags to the shared memory, call (import "env" "hostCall" (func (param i64)
+// (result i32))) with the target VA, then reload — the host performs the effect
+// over the same memory and writes e.g. rax back. Each microprogram is run through
+// BOTH the interpreter ORACLE (the external effect realized by an IN-IMAGE stub the
+// interpreter naturally calls) and the WASM module (the SAME image, with those stub
+// addresses marked external so the WASM path routes them through hostCall). The two
+// are asserted bit-exact on GPRs, flags, AND the pushed return-address stack bytes.
+// The callback is also asserted to OBSERVE the correct spilled guest state.
+
+// Runs the image through the interpreter (stub reached in-image) and the WASM module
+// (stubs at externalRva routed through hostCall), asserting bit-exact GPRs + flags.
+function assertExternalEquivalent(code, externalRva, hostCall, label) {
+  const image = Buffer.from(code);
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "entry_return", `${label}: oracle stop_reason ${oracle.stop_reason} ${oracle.exception?.message ?? ""}`);
+
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall, externalRva });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, `${label}: codegen incomplete — fell back on ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.usesHost, `${label}: the module must import and call the host boundary`);
+  assert.ok(compiled.branchKind.includes("call_external"), `${label}: an external call boundary must be emitted`);
+
+  const jit = runFunction(image, { image, loadBase, decodeStructured, hostCall, externalRva });
+  assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}, expected ok`);
+  for (const name of REG) {
+    assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} WASM ${jit.flag[name]} != oracle ${oracle.flag[name]}`);
+  }
+  return { jit, compiled };
+}
+
+test("external call: host sets rax, caller uses it (mov ecx,5; call ext; add eax,ecx → 105)", () => {
+  // The interpreter runs the in-image stub `mov eax,100; ret` at 0x0D; the WASM path
+  // marks 0x0D external, so the call routes through hostCall (which sets rax=100).
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00, // 0x00 mov ecx,5
+    0xe8, 0x03, 0x00, 0x00, 0x00, // 0x05 call ext (target 0x0D)
+    0x01, 0xc8,                   // 0x0A add eax,ecx
+    0xc3,                         // 0x0C ret (entry frame)
+    0xb8, 0x64, 0x00, 0x00, 0x00, // 0x0D ext: mov eax,100  (interpreter-side stub)
+    0xc3,                         // 0x12 ret
+  ];
+  let observed = null;
+  const hostCall = (targetAddr, ctx) => {
+    observed = ctx.readReg("rcx"); // the host must SEE the spilled guest state
+    ctx.writeReg("rax", 100n);
+    return 0;
+  };
+  const { jit } = assertExternalEquivalent(code, [0x0d], hostCall, "ext-rax");
+  assert.equal(jit.register.rax, 105n, "eax = host result (100) + ecx (5) = 105");
+  assert.equal(jit.register.rcx, 5n, "ecx is preserved across the import boundary");
+  assert.equal(observed, 5n, "the host callback observed ecx=5 from the register file before setting rax");
+  // The call pushed the return address (loadBase+0x0A) at rsp0-8; after the balanced
+  // boundary it remains as a stale qword — the exact byte the interpreter wrote.
+  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x0an, "the import-call return address is bit-exact on the guest stack");
+});
+
+test("external call: two import calls in sequence (each host effect distinct, bit-exact)", () => {
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00, // 0x00 mov ecx,5
+    0xe8, 0x08, 0x00, 0x00, 0x00, // 0x05 call extA (target 0x12)
+    0xe8, 0x09, 0x00, 0x00, 0x00, // 0x0A call extB (target 0x18)
+    0x01, 0xcb,                   // 0x0F add ebx,ecx
+    0xc3,                         // 0x11 ret
+    0xb8, 0x64, 0x00, 0x00, 0x00, // 0x12 extA: mov eax,100
+    0xc3,                         // 0x17 ret
+    0xbb, 0xc8, 0x00, 0x00, 0x00, // 0x18 extB: mov ebx,200
+    0xc3,                         // 0x1D ret
+  ];
+  const vaA = loadBase + 0x12n;
+  const vaB = loadBase + 0x18n;
+  const seen = [];
+  const hostCall = (targetAddr, ctx) => {
+    if (targetAddr === vaA) { seen.push(["A", ctx.readReg("rcx")]); ctx.writeReg("rax", 100n); return 0; }
+    if (targetAddr === vaB) { seen.push(["B", ctx.readReg("rax")]); ctx.writeReg("rbx", 200n); return 0; }
+    return 1;
+  };
+  const { jit } = assertExternalEquivalent(code, [0x12, 0x18], hostCall, "ext-seq");
+  assert.equal(jit.register.rax, 100n, "extA set rax=100");
+  assert.equal(jit.register.rbx, 205n, "extB set rbx=200, then add ebx,ecx → 205");
+  assert.deepEqual(seen, [["A", 5n], ["B", 100n]], "the host observed ecx=5 at the first boundary and rax=100 at the second");
+});
+
+test("external call: import call inside a counted loop (host accumulates, bit-exact)", () => {
+  // mov ecx,3; mov eax,0; loop: call ext; dec ecx; jnz loop; ret   ext: lea eax,[rax+5]; ret
+  // The stub uses LEA (no flag effect) so the host mock is identical at every step;
+  // the only flag-defining op is `dec ecx`, matched by both paths.
+  const code = [
+    0xb9, 0x03, 0x00, 0x00, 0x00, // 0x00 mov ecx,3
+    0xb8, 0x00, 0x00, 0x00, 0x00, // 0x05 mov eax,0
+    0xe8, 0x05, 0x00, 0x00, 0x00, // 0x0A loop: call ext (target 0x14)
+    0xff, 0xc9,                   // 0x0F dec ecx
+    0x75, 0xf7,                   // 0x11 jnz loop (rel -9 → 0x0A)
+    0xc3,                         // 0x13 ret
+    0x8d, 0x40, 0x05,             // 0x14 ext: lea eax,[rax+5]
+    0xc3,                         // 0x17 ret
+  ];
+  let firstObserved = null;
+  let calls = 0;
+  const hostCall = (targetAddr, ctx) => {
+    if (calls === 0) firstObserved = ctx.readReg("rax");
+    calls += 1;
+    ctx.writeReg("rax", (ctx.readReg("rax") + 5n) & 0xffffffffn); // lea eax,[rax+5] zero-extends
+    return 0;
+  };
+  const { jit } = assertExternalEquivalent(code, [0x14], hostCall, "ext-loop");
+  assert.equal(jit.register.rax, 15n, "three import calls accumulate 5+5+5 = 15");
+  assert.equal(jit.register.rcx, 0n, "the loop counter reaches 0");
+  assert.equal(calls, 3, "the host boundary ran once per loop iteration");
+  assert.equal(firstObserved, 0n, "the host observed eax=0 at the first iteration");
+});
+
+test("external call: an unhandled host call (nonzero status) returns an honest fallback", () => {
+  // The same shape as ext-rax, but the host reports 'unhandled' (nonzero). The module
+  // must return the fallback status rather than a wrong result.
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00, // mov ecx,5
+    0xe8, 0x03, 0x00, 0x00, 0x00, // call ext (target 0x0D)
+    0x01, 0xc8,                   // add eax,ecx
+    0xc3,                         // ret
+    0xb8, 0x64, 0x00, 0x00, 0x00, // ext: mov eax,100
+    0xc3,                         // ret
+  ];
+  const image = Buffer.from(code);
+  const hostCall = () => 1; // never handled
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall, externalRva: [0x0d] });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, "the boundary is emitted (completeness is a compile-time property)");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, hostCall, externalRva: [0x0d] });
+  assert.equal(jit.statusName, "fallback", "an unhandled host call must fall back, never return a wrong result");
+});
+
+test("external call: without a host binding it stays an honest, named fallback", () => {
+  // No hostCall bound → the external target is NOT emitted as an import call; it
+  // remains the honest control_call_external fallback (unchanged prior behavior).
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00,
+    0xe8, 0x03, 0x00, 0x00, 0x00,
+    0x01, 0xc8, 0xc3,
+    0xb8, 0x64, 0x00, 0x00, 0x00, 0xc3,
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000, externalRva: [0x0d] });
+  assert.equal(compiled.complete, false, "no host binding → the external call is a fallback");
+  assert.ok(compiled.coverage.unsupported.some((u) => u.reason === "control_call_external"), "named control_call_external");
+});
+
 test("multi-block: unmodelled call shapes are honest, named fallbacks (indirect, external, indirect jmp)", () => {
   // An indirect (computed-target) call is not modelled — an honest named fallback.
   const indImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xd0, 0xc3]); // mov eax,1; call rax; ret
