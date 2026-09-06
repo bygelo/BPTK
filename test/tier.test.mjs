@@ -177,3 +177,40 @@ test("report: tier counts and coverage are surfaced", () => {
   assert.ok(r.coverage[0].emitted.length > 0, "the WASM-tier function reports emitted op coverage");
   process.stdout.write(`[tier] report: wasm functions ${r.wasmFunctionRun}, interp functions ${r.interpFunctionRun}, interp instructions ${r.interpInstruction}\n`);
 });
+
+test("resume: a WASM-tier frame that stops at an indirect call is finished by the interpreter, bit-exact", () => {
+  // A (entry, 0x00): mov ecx,5; lea rbx,[rip+0x0e]; call rbx; add eax,ecx; ret
+  // B (0x1A, the indirect target): mov eax,0x40; ret
+  //
+  // A compiles COMPLETELY — an indirect call is a return-to-dispatch terminator, not
+  // a codegen fallback — so the entry frame runs on the WASM tier and stops at
+  // `call rbx` with a resume rip. The runner must FINISH that frame from the resume
+  // rip rather than hand its mid-run state back as the program's result: without the
+  // resume, rax would still be 0 and B would never run at all.
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00,             // 0x00 mov ecx,5
+    0x48, 0x8d, 0x1d, 0x0e, 0x00, 0x00, 0x00, // 0x05 lea rbx,[rip+0x0e] -> B (0x1A)
+    0xff, 0xd3,                               // 0x0C call rbx           (returns to 0x0E)
+    0x01, 0xc8,                               // 0x0E add eax,ecx
+    0xc3,                                     // 0x10 ret
+    0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, // 0x11 pad
+    0xb8, 0x40, 0x00, 0x00, 0x00,             // 0x1A B: mov eax,0x40
+    0xc3,                                     // 0x1F ret
+  ];
+  const image = Buffer.from(code);
+
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "entry_return", `oracle stop_reason ${oracle.stop_reason} ${oracle.exception?.message ?? ""}`);
+
+  const tiered = runTiered(image, { loadBase, entryRva: 0, budget: 100000 });
+  assert.equal(tiered.report.tier[0], "wasm", "an indirect call no longer keeps a function off the WASM tier");
+  assert.equal(tiered.report.wasmResumeRun, 1, "the frame stopped mid-function and was resumed exactly once");
+  assert.equal(tiered.statusName, "ok", "the resumed frame ran to its own RET");
+
+  assertMatchesOracle(tiered, oracle, "resume across an indirect call");
+  assert.equal(tiered.register.rax, 0x45n, "rax = 0x40 (set in the indirect callee) + 5 (added after the resume)");
+  // The frame the WASM module built is the real one: the return address its indirect
+  // call pushed is resident on the shared stack, one qword below the entry sentinel.
+  const retAddrOff = Number((oracle.balanced_rsp - 16n) - loadBase);
+  assert.equal(tiered.memory.readBigUInt64LE(retAddrOff), loadBase + 0x0en, "the indirect call's return address is bit-exact on the shared stack");
+});
