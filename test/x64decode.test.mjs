@@ -179,13 +179,9 @@ test("rejects an out-of-range offset argument", () => {
   assert.throws(() => decodeX64Instruction(null, 0), TypeError);
 });
 
-test("linear-sweeps a real x86-64 .text section with bounded lengths and a reported served fraction", () => {
-  if (!existsSync(PLINK_PATH)) {
-    // The staged corpus is a local, non-redistributable fixture; skip cleanly
-    // where it is absent rather than fail the portable gate.
-    console.log("x64decode sweep: staged plink.exe absent, skipping corpus sweep");
-    return;
-  }
+// A bare return here would print a green tick for a test that asserted nothing;
+// a real skip reports the gap instead of hiding it.
+test("linear-sweeps a real x86-64 .text section with bounded lengths and a reported served fraction", { skip: existsSync(PLINK_PATH) ? false : "corpus-002 not staged" }, () => {
   const state = mapPe64State(PLINK_PATH);
   assert.equal(state.machine, "x86_64");
   const text = state.section.find((entry) => entry.name === ".text");

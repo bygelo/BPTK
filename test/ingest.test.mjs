@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -239,7 +241,7 @@ test("an encrypted 7z folder is refused with a structured reason before any writ
 // hermetic, so this is gated on the staged file exactly like the other
 // corpus-dependent tests.
 const stagedSevenZip = process.env.BPTK_SEVENZIP_PAYLOAD
-  ?? join(process.env.BPTK_CORPUS_STAGE ?? join(fileURLToPath(new URL("../..", import.meta.url)), "bptk-corpus", "stage"), "corpus-004", "7z2501-extra.7z");
+  ?? join(resolveStageDir(), "corpus-004", "7z2501-extra.7z");
 
 test("the staged 7-Zip corpus payload recovers its x86-64 executable byte-for-byte", (context) => {
   if (!existsSync(stagedSevenZip)) {

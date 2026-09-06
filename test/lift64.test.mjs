@@ -685,11 +685,7 @@ test("x87: FXCH swaps st0 and st1, FSUBR computes the reversed difference", () =
   assertState(report, { register: { rax: 7n } });
 });
 
-test("cross-check: the structured decode agrees with x64decode on every served plink instruction", () => {
-  if (!existsSync(plinkPath)) {
-    // The staged corpus is read-only and optional in a stripped checkout.
-    return;
-  }
+test("cross-check: the structured decode agrees with x64decode on every served plink instruction", { skip: existsSync(plinkPath) ? false : "corpus-002 not staged" }, () => {
   const state = mapPe64State(plinkPath);
   const text = state.section.find((entry) => entry.name === ".text");
   assert.ok(text, "plink must carry a .text section");
