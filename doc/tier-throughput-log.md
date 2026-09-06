@@ -150,14 +150,51 @@ prior session, measured independently here.
   by widening eligibility alone either. Eligibility is at 57.7%; even 100% would
   not help while the end-to-end path is a net slowdown.
 
-### The prior blocker on measuring any of this
+### The specialization blocker — CLEARED at `a83675d`
 
-The tier cannot run Doom at all today: `runTieredImage` on chocolate-doom.exe
-stops after **164 instruction** with `tier_unsupported_specialization`, at the
-`_initterm` CRT-initializer specialization the tiered runner declines to drive.
-Doom never reaches its game loop on the tier, so no tier throughput number for
-Doom exists yet — every tier measurement in this log is PuTTY. Driving the
-specialization is the prerequisite for measuring, let alone achieving, the 64x.
+The tier previously could not run Doom at all: `runTieredImage` on
+chocolate-doom.exe stopped after **164 instruction** with
+`tier_unsupported_specialization`, at the `_initterm` CRT-initializer walk the
+tiered runner declined to drive. Doom never reached its game loop, so no Doom
+tier number existed and every earlier tier measurement in this log is PuTTY.
+
+`lib/exec64.mjs` now additively export the specialization step
+(`serveImportStop64`, `resumeSpecialization64`, `specializationSentinel64`) and
+the tiered runner drives the same walk the interpreter does, instead of refusing
+it by symbol name. Measured effect:
+
+| Binary | Tiered stop before | Tiered stop after |
+| --- | --- | --- |
+| chocolate-doom.exe | `tier_unsupported_specialization` @ **164** | runs freely; 20M instruction consumed, 148 WASM-tier function |
+| putty.exe | `tier_unsupported_specialization` @ 21,112 | `import_present` @ 22,742 — the real `ole32!CoInitialize` frontier |
+
+No specialization is refused by symbol name any more. The one refusal left is a
+sentinel rip with no live frame behind it, which means the guest jumped to a
+harness address on its own; stopping there is honest.
+
+### First Doom tier measurement
+
+Tiered versus the same runner under `forceInterpreter`, this host:
+
+| Budget | pure | tiered | ratio |
+| ---: | ---: | ---: | ---: |
+| 3,000,000 | 23973 ms | 22998 ms | **1.04x** |
+| 20,000,000 | 122139 ms | 110962 ms | **1.10x** |
+
+The tier is now **marginally faster than interpretation on Doom** — the first
+time it has beaten the interpreter on a real binary, against 2.3x slower on
+PuTTY. That is a floor rather than a ceiling: the comparison is at equal
+instruction budget while a WASM invocation is charged as one budget unit, so the
+tiered run performs strictly more guest work per unit.
+
+It is also nowhere near enough. Real time needs ~14 M ips; this is ~0.18 M ips,
+so **the remaining gap is still ~64x**, and it is not closed by eligibility or
+by driving more specialization.
+
+A measurement trap paid for here: `runTieredImage`'s result carrie no `guest`,
+so a frame count read off it is `undefined`, not zero. A frame-rate comparison
+must go through `runImage64`'s result shape or the live session, never the
+tiered runner's.
 
 `passing` stays 0. A frame rate is not a compatibility claim, and this section
 is a target, not a result.
