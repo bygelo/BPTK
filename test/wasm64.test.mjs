@@ -1802,3 +1802,29 @@ test("status: every exit classifies itself as resumable or discard", () => {
   assert.equal(faulted.statusName, "fault");
   assert.equal(faulted.resumable, false, "a lost store makes the run uncommitable — the host must re-interpret from the entry");
 });
+
+test("cache: a reused module re-seeds from THIS call's region bytes, never the first call's", () => {
+  // The compiled module and its region PLAN are cached across invocations, but a
+  // region's `init` is live guest state that differs every call. Seeding from the
+  // plan's copy would replay the first invocation's memory into every later one —
+  // silently, and with no status to show for it. mov rax,[0xF8000008]; ret reads a
+  // qword straight out of the arena, so each run must see its own arena bytes.
+  const code = [
+    0x48, 0xba, 0x08, 0x00, 0x00, 0xf8, 0x00, 0x00, 0x00, 0x00, // mov rdx,0xF8000008
+    0x48, 0x8b, 0x02,                                           // mov rax,[rdx]
+    0xc3,                                                       // ret
+  ];
+  const image = Buffer.from(code);
+  const runWithArena = (value) => {
+    const region = sparseLayout(image).map((r) => (r.kind === "arena" ? { ...r, init: (() => {
+      const buf = Buffer.alloc(r.size);
+      buf.writeBigUInt64LE(value, 8);
+      return buf;
+    })() } : r));
+    return runFunction(image, { image, loadBase, decodeStructured, region });
+  };
+  assert.equal(runWithArena(0x1111n).register.rax, 0x1111n, "first run reads its own arena bytes");
+  assert.equal(runWithArena(0x2222n).register.rax, 0x2222n, "the second run must NOT replay the first call's arena");
+  assert.equal(runWithArena(0x3333n).register.rax, 0x3333n, "and neither must the third");
+  assert.equal(runWithArena(0x1111n).register.rax, 0x1111n, "returning to the first value returns the first result");
+});

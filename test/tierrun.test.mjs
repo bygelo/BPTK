@@ -287,3 +287,64 @@ test("1:1 synthetic — an out-of-region FAULT is discarded, never committed", (
   assertSameMemory(tiered, pure, "fault-discard: tiered vs interpreter");
   assert.equal(tiered.tier_report.wasm_tier_function, 0, "the faulting function must not be reported as WASM-carried");
 });
+
+// The single-call case above proves one resume is exact. The pathological shape is
+// the REPEATED one: a hot caller that re-enters the same indirect-exiting function
+// on every iteration, so the tier compiles, runs, exits and resumes thousands of
+// times over one guest state. That is where a cached module or a reused instance
+// stops being an optimisation and starts being a source of stale bytes — this case
+// caught exactly that (a cached region plan replaying the FIRST call's stack into
+// every later invocation, which silently turned the caller's loop counter into an
+// infinite loop). It is cheap to run and it must stay.
+function buildHotIndirectImage(count, inner) {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const at = (o) => { p = o; };
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  // entry @0: mov ecx,count; L: push rcx; call F; pop rcx; dec ecx; jnz L; ret
+  emit(0xb9, count & 0xff, (count >> 8) & 0xff, 0x00, 0x00); // 0x00 mov ecx,count
+  emit(0x51);                                                // 0x05 L: push rcx
+  emit(0xe8, 0x35, 0x00, 0x00, 0x00);                        // 0x06 call F (0x40)
+  emit(0x59);                                                // 0x0B pop rcx
+  emit(0xff, 0xc9);                                          // 0x0C dec ecx
+  emit(0x75, 0xf5);                                          // 0x0E jnz L
+  emit(0xc3);                                                // 0x10 ret
+  // F @0x40: a real compiled loop, then an indirect call to G
+  at(0x40);
+  emit(0xba, inner & 0xff, (inner >> 8) & 0xff, 0x00, 0x00); // 0x40 mov edx,inner
+  emit(0x48, 0x83, 0xc0, 0x01);                              // 0x45 M: add rax,1
+  emit(0xff, 0xca);                                          // 0x49 dec edx
+  emit(0x75, 0xf8);                                          // 0x4B jnz M
+  emit(0x48, 0x8d, 0x1d, 0x2c, 0x00, 0x00, 0x00);            // 0x4D lea rbx,[rip+0x2c] -> G
+  emit(0xff, 0xd3);                                          // 0x54 call rbx
+  emit(0xc3);                                                // 0x56 ret
+  // G @0x80
+  at(0x80);
+  emit(0x48, 0x83, 0xc0, 0x01);                              // 0x80 add rax,1
+  emit(0xc3);                                                // 0x84 ret
+  return img;
+}
+
+test("1:1 synthetic — a hot caller re-entering an indirect-exiting function resumes bit-exactly every time", () => {
+  const count = 40;
+  const inner = 25;
+  const image = buildHotIndirectImage(count, inner);
+  const loadBase = 0x140000000n;
+  const option = { image, loadBase, entryRva: 0, budget: 200000 };
+
+  const oracle = runImage64(option);
+  const pure = runTieredImage({ ...option, forceInterpreter: true });
+  assert.equal(oracle.stop_reason, "entry_return", "the hot caller must run to its own return");
+  assertSameState(pure, { register: oracle.register, flag: oracle.flag, rip: oracle.rip, stop_reason: oracle.stop_reason }, "hot-indirect interpreter-tier vs runImage64");
+
+  const tiered = runTieredImage(option);
+  assertSameState(tiered, pure, "hot-indirect: tiered vs interpreter");
+  assertSameMemory(tiered, pure, "hot-indirect: tiered vs interpreter");
+  assert.equal(tiered.register.rax, BigInt(count * (inner + 1)), "every iteration of every invocation counted exactly once");
+  assert.equal(tiered.tier_report.wasm_tier_resume, count, "the tier carried, and resumed from, all forty invocations");
+  // The tier must be a real speed-up in WORK, not just in wall clock: the caller's
+  // loop is interpreted, but the callee's inner loop ran entirely on the WASM tier,
+  // so the tiered run executes far fewer interpreter instructions than pure does.
+  assert.ok(tiered.tier_report.interpreter_tier_instruction * 4 < pure.tier_report.interpreter_tier_instruction,
+    `the WASM tier must absorb most of the work (tiered ${tiered.tier_report.interpreter_tier_instruction} vs pure ${pure.tier_report.interpreter_tier_instruction} interpreted instructions)`);
+});
