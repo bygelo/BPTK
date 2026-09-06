@@ -17,7 +17,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { interpret, liftBlock, decodeStructured } from "../lib/lift64.mjs";
+import { interpret, liftBlock, decodeStructured, executeSse } from "../lib/lift64.mjs";
 import { compileBlock, runBlock, compileFunction, runFunction } from "../lib/wasm64.mjs";
 
 const loadBase = 0x140000000n;
@@ -484,4 +484,285 @@ test("multi-block: coverage report — control-flow shapes and branch kinds", ()
     assert.ok(branch.includes(kind), `expected branch kind ${kind} to be exercised bit-exact`);
   }
   assert.ok(shape.length >= 4, `expected at least 4 distinct control-flow shapes, got ${shape.length}`);
+});
+
+// -------------------- SSE / SSE2 packed SIMD (v128 codegen) --------------------
+//
+// Each microprogram below is a straight-line run of SSE/SSE2 ops ending in RET,
+// with all xmm/GPR inputs seeded through options (so the program itself is pure
+// SIMD). Every one is executed TWICE: once by the interpreter ORACLE — the exact
+// exported executeSse lib/lift64.mjs's interpret() drives, run against a faithful
+// machine shim — and once by the emitted WebAssembly module (real v128 SIMD, the
+// 0xFD opcode family). All sixteen 128-bit xmm registers AND the sixteen GPRs are
+// asserted BIT-EXACT, and the flags are asserted untouched (SSE defines none).
+
+const MASK64_T = (1n << 64n) - 1n;
+const MASK128_T = (1n << 128n) - 1n;
+const XMM = Array.from({ length: 16 }, (_, i) => i);
+const DEFAULT_FLAG_T = { cf: false, pf: true, af: false, zf: true, sf: false, of: false };
+
+// A faithful stand-in for lib/lift64.mjs's (unexported) Machine, exposing exactly
+// the surface executeSse touches: the xmm/GPR files, guest memory, and the operand
+// primitives — replicated byte-for-byte so the oracle here is the same oracle
+// interpret() runs, just seeded directly rather than through GPR setup ops.
+class MachineShim {
+  constructor(mem, loadBase) {
+    this.mem = mem;
+    this.loadBase = loadBase;
+    this.reg = new Array(16).fill(0n);
+    this.xmm = new Array(16).fill(0n);
+  }
+  translate(address, sizeByte) {
+    const offset = address - this.loadBase;
+    if (offset < 0n || offset + BigInt(sizeByte) > BigInt(this.mem.length)) throw new Error(`guest address 0x${address.toString(16)} outside memory`);
+    return Number(offset);
+  }
+  readMem(address, sizeByte) {
+    const off = this.translate(address, sizeByte);
+    let v = 0n;
+    for (let i = 0; i < sizeByte; i += 1) v |= BigInt(this.mem[off + i]) << (8n * BigInt(i));
+    return v;
+  }
+  writeMem(address, sizeByte, value) {
+    const off = this.translate(address, sizeByte);
+    for (let i = 0; i < sizeByte; i += 1) this.mem[off + i] = Number((value >> (8n * BigInt(i))) & 0xffn);
+  }
+  readReg(operand) {
+    const raw = this.reg[operand.index];
+    if (operand.size === 64) return raw & MASK64_T;
+    if (operand.size === 32) return raw & 0xffffffffn;
+    if (operand.size === 16) return raw & 0xffffn;
+    if (operand.high8) return (raw >> 8n) & 0xffn;
+    return raw & 0xffn;
+  }
+  writeReg(operand, value) {
+    const index = operand.index;
+    if (operand.size === 64) this.reg[index] = value & MASK64_T;
+    else if (operand.size === 32) this.reg[index] = value & 0xffffffffn;
+    else if (operand.size === 16) this.reg[index] = (this.reg[index] & ~0xffffn & MASK64_T) | (value & 0xffffn);
+    else if (operand.high8) this.reg[index] = (this.reg[index] & ~0xff00n & MASK64_T) | ((value & 0xffn) << 8n);
+    else this.reg[index] = (this.reg[index] & ~0xffn & MASK64_T) | (value & 0xffn);
+  }
+  effectiveAddress(mem, nextRip) {
+    let addr = 0n;
+    if (mem.rip_relative) addr = nextRip + BigInt(mem.disp);
+    else {
+      if (mem.base !== null) addr += this.reg[mem.base];
+      if (mem.index !== null) addr += this.reg[mem.index] * BigInt(mem.scale);
+      addr += BigInt(mem.disp);
+    }
+    return addr & MASK64_T;
+  }
+}
+
+const REG_INDEX = Object.fromEntries(REG.map((name, i) => [name, i]));
+
+// Runs the interpreter oracle over an SSE-only microprogram: seed the shim, step
+// each lifted SSE node through executeSse (the exact interpret() dispatch), stop
+// at RET. Returns the end-of-run xmm file, GPR file, and guest memory.
+function runSseOracle(image, { register = {}, xmm = {} }) {
+  const guestLen = image.length + 0x10000;
+  const mem = Buffer.alloc(guestLen);
+  Buffer.from(image).copy(mem, 0);
+  const machine = new MachineShim(mem, loadBase);
+  // seedState sets rsp to the same near-stack-top value the interpreter uses, so
+  // the oracle must default rsp identically before any per-test overrides.
+  const stackTop = loadBase + BigInt(image.length + 0x10000 - 16);
+  machine.reg[4] = stackTop - 8n;
+  for (const [name, value] of Object.entries(register)) machine.reg[REG_INDEX[name]] = BigInt(value) & MASK64_T;
+  for (const [i, value] of Object.entries(xmm)) machine.xmm[Number(i)] = BigInt(value) & MASK128_T;
+
+  const block = liftBlock(image, 0);
+  for (const node of block.node) {
+    if (node.op === "ret") { machine.reg[4] = (machine.reg[4] + BigInt(8 + (node.pop || 0))) & MASK64_T; break; }
+    if (node.op !== "sse") throw new Error(`runSseOracle: non-SSE op ${node.op} in an SSE microprogram`);
+    const nextRip = loadBase + BigInt(node.address) + BigInt(node.length);
+    executeSse(machine, node, nextRip);
+  }
+  return { xmm: machine.xmm.map((v) => v & MASK128_T), register: machine.reg.map((v) => v & MASK64_T), memory: mem };
+}
+
+const sseCoverage = new Set();
+
+// Lifts + runs an SSE microprogram through the interpreter oracle and the emitted
+// v128 WASM module, asserting bit-exact xmm (all 128 bits) + GPR agreement and
+// untouched flags. Returns the (agreeing) jit result and its coverage.
+function assertSseEquivalent(code, seed, label) {
+  const image = Buffer.from(code);
+  const oracle = runSseOracle(image, seed);
+
+  const block = liftBlock(image, 0);
+  const compiled = compileBlock(block, { loadBase, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+
+  const jit = runBlock(block, { image, loadBase, register: seed.register ?? {}, xmm: seed.xmm ?? {} });
+  assert.ok(jit.complete, `${label}: codegen incomplete — fell back on ${JSON.stringify(jit.coverage.unsupported)}`);
+
+  for (const i of XMM) {
+    assert.equal(jit.xmm[i], oracle.xmm[i], `${label}: xmm${i} WASM 0x${jit.xmm[i].toString(16)} != oracle 0x${oracle.xmm[i].toString(16)}`);
+  }
+  for (let i = 0; i < 16; i += 1) {
+    assert.equal(jit.register[REG[i]], oracle.register[i], `${label}: reg ${REG[i]} WASM 0x${jit.register[REG[i]].toString(16)} != oracle 0x${oracle.register[i].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], DEFAULT_FLAG_T[name], `${label}: SSE must not touch flag ${name}`);
+  }
+  for (const kind of jit.coverage.emitted) if (kind.startsWith("sse:")) sseCoverage.add(kind);
+  return jit;
+}
+
+// A fixed pair of 128-bit test patterns for the packed-lane ops (chosen so every
+// lane width sees distinct signed/unsigned lanes, carries, and sign bits).
+const PAT_A = 0x0011223344556677_8899aabbccddeeffn;
+const PAT_B = 0xfedcba9876543210_0123456789abcdefn;
+
+test("sse: movd gpr→xmm zero-extends into the low dword (66 0F 6E)", () => {
+  // movd xmm1, eax; ret  — xmm1 = eax, upper 96 bits zero
+  assertSseEquivalent([0x66, 0x0f, 0x6e, 0xc8, 0xc3], { register: { rax: 0xdeadbeefn }, xmm: { 1: PAT_A } }, "movd-load");
+});
+
+test("sse: movd xmm→gpr extracts the low dword (66 0F 7E), and movq round-trips", () => {
+  // movd eax, xmm1; ret  — eax = low dword of xmm1 (zero-extended into rax)
+  assertSseEquivalent([0x66, 0x0f, 0x7e, 0xc8, 0xc3], { xmm: { 1: PAT_A } }, "movd-store");
+  // movq xmm2, xmm3; ret (F3 0F 7E)  — low 64 bits, upper cleared
+  assertSseEquivalent([0xf3, 0x0f, 0x7e, 0xd3, 0xc3], { xmm: { 3: PAT_B } }, "movq-load");
+});
+
+test("sse: pxor xmm,xmm clears to zero (66 0F EF)", () => {
+  const jit = assertSseEquivalent([0x66, 0x0f, 0xef, 0xd2, 0xc3], { xmm: { 2: PAT_A } }, "pxor-zero");
+  assert.equal(jit.xmm[2], 0n, "pxor xmm2,xmm2 must zero the register");
+});
+
+test("sse: bitwise pand/pandn/por across lanes (66 0F DB/DF/EB)", () => {
+  assertSseEquivalent([0x66, 0x0f, 0xdb, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "pand");
+  assertSseEquivalent([0x66, 0x0f, 0xdf, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "pandn");
+  assertSseEquivalent([0x66, 0x0f, 0xeb, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "por");
+});
+
+test("sse: packed add at every lane width (paddb/w/d/q)", () => {
+  for (const [op, label] of [[0xfc, "paddb"], [0xfd, "paddw"], [0xfe, "paddd"], [0xd4, "paddq"]]) {
+    assertSseEquivalent([0x66, 0x0f, op, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, label);
+  }
+  // psubd too, to exercise the subtract path with borrows across lanes
+  assertSseEquivalent([0x66, 0x0f, 0xfa, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "psubd");
+});
+
+test("sse: packed compare eq/gt with signed lane semantics (pcmpeqd/pcmpgtd)", () => {
+  const same = 0x00000001_00000001_00000001_00000001n;
+  assertSseEquivalent([0x66, 0x0f, 0x76, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: same } }, "pcmpeqd");
+  // pcmpgtb is signed: mixes lanes above/below to prove sign handling
+  assertSseEquivalent([0x66, 0x0f, 0x64, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "pcmpgtb");
+});
+
+test("sse: pshufd broadcast and general permute (66 0F 70 /ib)", () => {
+  // pshufd xmm0, xmm1, 0x00  — broadcast lane 0 to all four dwords
+  const jit = assertSseEquivalent([0x66, 0x0f, 0x70, 0xc1, 0x00, 0xc3], { xmm: { 1: PAT_A } }, "pshufd-broadcast");
+  const lane0 = PAT_A & 0xffffffffn;
+  assert.equal(jit.xmm[0], lane0 | (lane0 << 32n) | (lane0 << 64n) | (lane0 << 96n), "pshufd imm8=0 broadcasts dword 0");
+  // pshufd xmm0, xmm1, 0x1b  — reverse the four dwords (3,2,1,0)
+  assertSseEquivalent([0x66, 0x0f, 0x70, 0xc1, 0x1b, 0xc3], { xmm: { 1: PAT_A } }, "pshufd-reverse");
+});
+
+test("sse: immediate shifts psll/psrl/psra clamp at the lane width", () => {
+  // pslld xmm0, 4 (66 0F 72 /6 ib)
+  assertSseEquivalent([0x66, 0x0f, 0x72, 0xf0, 0x04, 0xc3], { xmm: { 0: PAT_A } }, "pslld-imm");
+  // psrlw xmm0, 3 (66 0F 71 /2 ib)
+  assertSseEquivalent([0x66, 0x0f, 0x71, 0xd0, 0x03, 0xc3], { xmm: { 0: PAT_A } }, "psrlw-imm");
+  // psrad xmm0, 5 (66 0F 72 /4 ib) — arithmetic, sign-fills
+  assertSseEquivalent([0x66, 0x0f, 0x72, 0xe0, 0x05, 0xc3], { xmm: { 0: PAT_B } }, "psrad-imm");
+  // pslld xmm0, 40 — an over-width count must ZERO the lanes (WASM masks; codegen clamps)
+  const jit = assertSseEquivalent([0x66, 0x0f, 0x72, 0xf0, 0x28, 0xc3], { xmm: { 0: PAT_A } }, "pslld-overwidth");
+  assert.equal(jit.xmm[0], 0n, "pslld by 40 (> 32) must zero every dword lane");
+});
+
+test("sse: register-count shift pslld xmm,xmm with an over-width count (66 0F F2)", () => {
+  // pslld xmm0, xmm1 with xmm1 low = 3 → shift each dword left by 3
+  assertSseEquivalent([0x66, 0x0f, 0xf2, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: 3n } }, "pslld-reg");
+  // pslld xmm0, xmm1 with xmm1 low = 100 (> 32) → all lanes zero
+  const jit = assertSseEquivalent([0x66, 0x0f, 0xf2, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: 100n } }, "pslld-reg-overwidth");
+  assert.equal(jit.xmm[0], 0n, "a register shift count > lane width must zero the lanes");
+});
+
+test("sse: whole-register byte shift pslldq/psrldq (66 0F 73 /7,/3 ib)", () => {
+  assertSseEquivalent([0x66, 0x0f, 0x73, 0xf8, 0x03, 0xc3], { xmm: { 0: PAT_A } }, "pslldq-3");
+  assertSseEquivalent([0x66, 0x0f, 0x73, 0xd8, 0x05, 0xc3], { xmm: { 0: PAT_A } }, "psrldq-5");
+});
+
+test("sse: pmullw, pmuludq, punpck, and pack (multiply + interleave + saturate)", () => {
+  assertSseEquivalent([0x66, 0x0f, 0xd5, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "pmullw");
+  assertSseEquivalent([0x66, 0x0f, 0xf4, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "pmuludq");
+  assertSseEquivalent([0x66, 0x0f, 0x60, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "punpcklbw");
+  assertSseEquivalent([0x66, 0x0f, 0x6a, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "punpckhdq");
+  assertSseEquivalent([0x66, 0x0f, 0x63, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "packsswb");
+  assertSseEquivalent([0x66, 0x0f, 0x67, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "packuswb");
+});
+
+test("sse: sign-mask extracts (movmskps, pmovmskb) and pextrw into a GPR", () => {
+  // movmskps eax, xmm1 (0F 50) — 4 float sign bits into eax
+  assertSseEquivalent([0x0f, 0x50, 0xc1, 0xc3], { xmm: { 1: PAT_B } }, "movmskps");
+  // pmovmskb eax, xmm1 (66 0F D7) — 16 byte sign bits into eax
+  const jit = assertSseEquivalent([0x66, 0x0f, 0xd7, 0xc1, 0xc3], { xmm: { 1: PAT_B } }, "pmovmskb");
+  let mask = 0n;
+  for (let i = 0; i < 16; i += 1) if (((PAT_B >> BigInt(i * 8 + 7)) & 1n) === 1n) mask |= 1n << BigInt(i);
+  assert.equal(jit.register.rax, mask, "pmovmskb gathers the 16 byte sign bits");
+  // pextrw eax, xmm1, 3 (66 0F C5 /r ib)
+  assertSseEquivalent([0x66, 0x0f, 0xc5, 0xc1, 0x03, 0xc3], { xmm: { 1: PAT_A } }, "pextrw");
+});
+
+test("sse: lane moves movhlps/movlhps and the SSE3 dup moves", () => {
+  assertSseEquivalent([0x0f, 0x12, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "movhlps");     // 0F 12 (reg form)
+  assertSseEquivalent([0x0f, 0x16, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "movlhps");     // 0F 16 (reg form)
+  assertSseEquivalent([0xf2, 0x0f, 0x12, 0xc1, 0xc3], { xmm: { 1: PAT_A } }, "movddup");         // F2 0F 12
+  assertSseEquivalent([0xf3, 0x0f, 0x12, 0xc1, 0xc3], { xmm: { 1: PAT_A } }, "movsldup");        // F3 0F 12
+  assertSseEquivalent([0xf3, 0x0f, 0x16, 0xc1, 0xc3], { xmm: { 1: PAT_A } }, "movshdup");        // F3 0F 16
+});
+
+test("sse: xmm memory round-trip — movdqa store then reload (real WASM v128 memory)", () => {
+  // movdqa [rsi], xmm0; movdqa xmm3, [rsi]; ret  — store 128 bits, load them back
+  const code = [
+    0x66, 0x0f, 0x7f, 0x06, // movdqa [rsi], xmm0
+    0x66, 0x0f, 0x6f, 0x1e, // movdqa xmm3, [rsi]
+    0xc3,
+  ];
+  const image = Buffer.from(code);
+  // Point rsi at a zeroed stack slot well inside guest memory.
+  const target = loadBase + BigInt(image.length + 0x10000 - 0x100);
+  const jit = assertSseEquivalent(code, { register: { rsi: target }, xmm: { 0: PAT_A } }, "movdqa-roundtrip");
+  assert.equal(jit.xmm[3], PAT_A, "the reloaded xmm3 must equal the stored xmm0");
+  // Inspect the raw WASM memory bytes: the 128-bit pattern must be present, little-endian.
+  const offset = Number(target - loadBase);
+  const dv = new DataView(jit.memory.buffer, jit.memory.byteOffset, jit.memory.byteLength);
+  assert.equal(dv.getBigUint64(offset, true), PAT_A & MASK64_T, "stored low qword present in WASM memory");
+  assert.equal(dv.getBigUint64(offset + 8, true), (PAT_A >> 64n) & MASK64_T, "stored high qword present in WASM memory");
+});
+
+test("sse: movss/movsd scalar merge and load semantics", () => {
+  // movss xmm0, xmm1 (F3 0F 10) — merge low 32, preserve upper 96 of xmm0
+  const jit = assertSseEquivalent([0xf3, 0x0f, 0x10, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "movss-merge");
+  assert.equal(jit.xmm[0], (PAT_A & ~0xffffffffn & MASK128_T) | (PAT_B & 0xffffffffn), "movss reg-reg merges the low dword, preserves the rest");
+  // movsd xmm0, xmm1 (F2 0F 10) — merge low 64, preserve upper 64
+  assertSseEquivalent([0xf2, 0x0f, 0x10, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "movsd-merge");
+});
+
+test("sse: honest fallback for the float horizontal/interleaved ops (hadd/hsub/addsub)", () => {
+  // haddps xmm0, xmm1 (F2 0F 7C) — an SSE3 float horizontal add. WASM cannot
+  // express its exact IEEE lane pairing 1:1, so it MUST stay a named fallback,
+  // never a wrong-lane emission.
+  const image = Buffer.from([0xf2, 0x0f, 0x7c, 0xc1, 0xc3]);
+  const block = liftBlock(image, 0);
+  const compiled = compileBlock(block, { loadBase, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+  assert.equal(compiled.complete, false, "haddps must be an honest fallback, not emitted");
+  assert.ok(compiled.coverage.unsupported.some((u) => u.reason === "sse_hadd"), "the float horizontal add must be named sse_hadd");
+});
+
+test("sse: coverage report — v128 op kinds emitted bit-exact vs honest fallbacks", () => {
+  const emitted = [...sseCoverage].map((k) => k.slice(4)).sort();
+  process.stdout.write(`\n[wasm64] SSE ops emitted bit-exact as v128 (${emitted.length}): ${emitted.join(", ")}\n`);
+  process.stdout.write("[wasm64] SSE ops kept as honest named fallbacks (float IEEE lane pairing): hadd, hsub, addsub\n");
+  // The mission's required op families must all appear as real, bit-exact emissions.
+  for (const kind of ["movd_load", "movd_store", "bitwise", "padd", "psub", "pcmpeq", "pcmpgt", "pshufd", "psll", "psrl", "psra", "pslldq", "pmullw", "pmuludq", "punpckl", "punpckh", "packsswb", "movmskps", "pmovmskb", "pextrw", "movhlps", "movlhps", "movss", "movsd", "mov128"]) {
+    assert.ok(sseCoverage.has(`sse:${kind}`), `expected SSE op ${kind} to be emitted bit-exact`);
+  }
+  assert.ok(emitted.length >= 20, `expected at least 20 distinct SSE op kinds emitted, got ${emitted.length}`);
 });
