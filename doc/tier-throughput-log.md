@@ -255,3 +255,61 @@ an eligible callee stays inside WASM.
 
 `passing` stays 0. Residency is an engineering measurement, not a compatibility
 claim.
+
+## Throughput against budget — where the tier wins, and where the workload bites
+
+Every ratio above is a single budget. Measured across budget, the picture changes
+shape and the conclusion changes with it. Chocolate Doom, tier, whole run:
+
+| Budget | tier wall | tier M ips | marginal M ips over previous |
+| ---: | ---: | ---: | ---: |
+| 10,000,000 | 3358 ms | 2.98 | — |
+| 20,000,000 | 5802 ms | 3.45 | 4.11 |
+| 40,000,000 | 10079 ms | 3.98 | 4.70 |
+| 80,000,000 | 18056 ms | 4.45 | 5.04 |
+| 120,000,000 | 31510 ms | 3.81 | **2.95** |
+
+Two things fall out.
+
+**The tier's advantage GROWS with budget**, because compiling ~2000 region is a
+fixed cost paid once:
+
+| Budget | pure | tier | ratio |
+| ---: | ---: | ---: | ---: |
+| 20,000,000 | 39,570 ms | 8,791 ms | **4.50x** |
+| 80,000,000 | 114,577 ms | 18,056 ms | **6.34x** |
+| 120,000,000 | 176,916 ms | 31,510 ms | **5.61x** |
+
+So a short benchmark UNDERSTATES the tier. A real play session is long.
+
+**But throughput peaks near 40-80M and then falls.** That is not amortization
+running out — it is the workload changing. Doom present 11 frame by 20M and 61
+by 40M, so by 80M+ it is rendering in earnest.
+
+### The discriminator: it is not tier overhead
+
+In the same 80M-120M window pure interpretation collapses too:
+
+| Engine | marginal M ips, 80M -> 120M |
+| --- | ---: |
+| tier | 2.95 |
+| pure interpreter | 0.642 |
+| ratio | **4.59x** — unchanged from every other window |
+
+Both engine slow **proportionally**, so the late-phase cost is **shared host
+work**, not anything the tier does. It is the frame path: the HLE and
+`lib/sdl.mjs`'s present/blit, which both engine pay identically.
+
+### What this means for playability
+
+Playability needs ~14 M ips. The render-heavy phase — the phase that actually
+decides frame rate — delivers **2.95 M ips**, so roughly **4.7x** remains, and
+the remaining cost is NOT CPU emulation. The compiled code already runs at
+~14 M ips on its own; making it faster buys nothing here.
+
+The next lever is the per-frame host path, and the honest reading is that it is
+shared with the interpreter — so cutting it speeds up **both** engines and does
+not show up as a better tier RATIO. The ratio is the wrong scoreboard for this
+phase; wall time in the render window is the right one.
+
+`passing` stays 0.
