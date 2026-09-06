@@ -198,6 +198,14 @@ test("1:1 PuTTY x64 — tiered run is bit-exact to pure interpretation at a boun
   // The WASM tier genuinely carried PuTTY state: real functions ran WASM-tier.
   assert.ok(tiered.tier_report.wasm_tier_function >= 1, "at least one PuTTY function must run WASM-tier");
 
+  // The IN-MODULE IMPORT BOUNDARY really fired on a real binary. A tier that reached
+  // an import always ENDED the invocation there; now the HLE serves it while the
+  // module stays resident. This is asserted on the same run whose whole final state
+  // is proved bit-exact above, so the mechanism cannot regress into a difference
+  // without this file going red — and it cannot silently stop being exercised.
+  assert.ok(tiered.tier_report.wasm_tier_import >= 1,
+    `the WASM tier must serve at least one import without leaving the module (served ${tiered.tier_report.wasm_tier_import})`);
+
   // RESIDENCY, on a real binary, in the SAME unit for both engines. This is the
   // number the whole tier exists to move: if the interpreter still executes most of
   // the guest instruction then no amount of compiled speed can matter (Amdahl), and

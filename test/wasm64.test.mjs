@@ -691,6 +691,145 @@ test("external call: without a host binding it stays an honest, named fallback",
   assert.ok(compiled.coverage.unsupported.some((u) => u.reason === "control_call_external"), "named control_call_external");
 });
 
+// -------------------- the RUNTIME-DISPATCHED import call --------------------
+//
+// `mov reg,[iat]; call reg` is how a real x64 binary calls a Win32/CRT import through
+// a register, and the compiler cannot know the target — so this used to be the
+// pre-transfer stop below and the invocation ended there. With option.importThunkRange
+// the module TESTS the computed target against the host's import-thunk span and, in
+// range, takes the SAME import boundary a direct external call takes.
+//
+// The Win64 stack discipline is what these cases exist to pin. An earlier version of
+// this runtime pushed a return address the interpreter also pushed and left rsp eight
+// bytes off against real PuTTY, so every case below asserts the pushed and popped
+// BYTES, not just the end result: exactly one qword is pushed, it holds exactly the
+// address after the call, and a boundary the host does not serve leaves the stack and
+// rsp untouched.
+const THUNK_LO = 0x00500000n;
+const THUNK_HI = 0x00600000n;
+const THUNK_VA = 0x00500010n;
+
+// mov ecx,5; mov rbx,<target>; call rbx; add eax,ecx; ret
+function indirectImportImage(target) {
+  const imm = [];
+  for (let i = 0; i < 8; i += 1) imm.push(Number((target >> BigInt(8 * i)) & 0xffn));
+  return Buffer.from([
+    0xb9, 0x05, 0x00, 0x00, 0x00, // 0x00 mov ecx,5
+    0x48, 0xbb, ...imm,           // 0x05 mov rbx,<target>
+    0xff, 0xd3,                   // 0x0F call rbx
+    0x01, 0xc8,                   // 0x11 add eax,ecx
+    0xc3,                         // 0x13 ret (entry frame)
+  ]);
+}
+
+test("indirect import: a computed target inside the thunk span is served in-module, pushing exactly one qword", () => {
+  const image = indirectImportImage(THUNK_VA);
+  const rsp0 = loadBase + BigInt(image.length + 0x10000 - 16) - 8n;
+  let seenTarget = null;
+  let seenRsp = null;
+  let seenReturn = null;
+  let seenRcx = null;
+  // The host stands in for the HLE's own thunk service, which performs the Win64
+  // return marshal AND the guest's own return: it pops the address the call pushed
+  // and reports the rip it left the guest on, exactly as lib/exec64.mjs serveImport64
+  // does for an import reached through a register.
+  const hostCall = (targetAddr, ctx) => {
+    seenTarget = targetAddr;
+    seenRcx = ctx.readReg("rcx");
+    seenRsp = ctx.readReg("rsp");
+    seenReturn = ctx.readMem(seenRsp, 8);
+    ctx.writeReg("rax", 100n);
+    ctx.writeReg("rsp", seenRsp + 8n);
+    ctx.writeRip(seenReturn);
+    return 0;
+  };
+  const option = { image, loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall, importThunkRange: { lo: THUNK_LO, hi: THUNK_HI } };
+  const compiled = compileFunction(image, option);
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, `the region must compile completely — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.branchKind.includes("call_indirect_import"), "the runtime-dispatched import boundary must be emitted");
+
+  const jit = runFunction(image, option);
+  assert.equal(jit.statusName, "ok", "the module runs THROUGH the import and out of the entry frame");
+  assert.equal(seenTarget, THUNK_VA, "the host was handed the computed target");
+  assert.equal(seenRcx, 5n, "the host saw the spilled guest register file");
+  // THE STACK DISCIPLINE. Exactly one qword below the entry frame, holding exactly
+  // the address after `call rbx` — the same byte an interpreted call writes.
+  assert.equal(seenRsp, rsp0 - 8n, "the boundary pushed exactly 8 bytes before calling the host");
+  assert.equal(seenReturn, loadBase + 0x11n, "the pushed qword is the address after the call");
+  assert.equal(stackQword(jit, rsp0 - 8n), loadBase + 0x11n, "the return address stays on the guest stack, bit-exact");
+  // The host popped, so the module must NOT pop again: rsp comes back to the entry
+  // frame and the entry RET then unwinds it. Eight bytes either way is the exact
+  // divergence the 1:1 corpus oracle catches.
+  assert.equal(jit.register.rsp, rsp0 + 8n, "rsp is exactly the entry RET's, so the boundary was balanced");
+  assert.equal(jit.register.rax, 105n, "the import's result (100) reached the instruction after the call (+ecx)");
+  assert.equal(jit.instructionCount, 5, "every guest instruction is charged once: two movs, the call, the add and the ret");
+});
+
+test("indirect import: a computed target OUTSIDE the thunk span stops AT the transfer, having pushed nothing", () => {
+  // The identical shape with an ordinary in-image pointer. An uncertain target is
+  // never dispatched and never offered to the host: the terminator is the
+  // pre-transfer stop it has always been.
+  const image = indirectImportImage(loadBase + 0x11n);
+  const rsp0 = loadBase + BigInt(image.length + 0x10000 - 16) - 8n;
+  const before = 0n;
+  let called = 0;
+  const hostCall = () => { called += 1; return 1; };
+  const option = { image, loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall, importThunkRange: { lo: THUNK_LO, hi: THUNK_HI } };
+  const jit = runFunction(image, option);
+  assert.equal(jit.statusName, "fallback", "an out-of-span target hands back rather than dispatching");
+  assert.equal(jit.resumeRip, loadBase + 0x0fn, "the resume rip is the transfer instruction itself");
+  assert.equal(called, 0, "the host is never asked about a target that is not a thunk");
+  assert.equal(jit.register.rsp, rsp0, "nothing was pushed: rsp is untouched at the stop");
+  assert.equal(stackQword(jit, rsp0 - 8n), before, "no return address was written below the frame");
+  assert.equal(jit.instructionCount, 2, "only the two instruction before the transfer are charged");
+});
+
+test("indirect import: a boundary the host does not serve undoes its push and resumes at the call", () => {
+  const image = indirectImportImage(THUNK_VA);
+  const rsp0 = loadBase + BigInt(image.length + 0x10000 - 16) - 8n;
+  let called = 0;
+  const hostCall = () => { called += 1; return 1; }; // in range, but unhandled
+  const option = { image, loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall, importThunkRange: { lo: THUNK_LO, hi: THUNK_HI } };
+  const jit = runFunction(image, option);
+  assert.equal(called, 1, "the host was asked, because the target IS in the thunk span");
+  assert.equal(jit.statusName, "fallback", "an unhandled boundary is an honest hand-back, never a wrong result");
+  assert.equal(jit.resumeRip, loadBase + 0x0fn, "the interpreter resumes at the call itself, which it re-executes whole");
+  assert.equal(jit.register.rsp, rsp0, "the return-address push is UNDONE, so rsp is exactly what the call has not yet changed");
+  assert.equal(jit.instructionCount, 2, "the transfer performed nothing, so it is charged nothing");
+});
+
+test("indirect import: an import that does NOT return to the call site hands back at the host's rip", () => {
+  // A specialization (a CRT-initializer walk, a dialog re-entry) leaves the guest
+  // inside GUEST code on a fresh frame rather than back at the call. The module must
+  // commit and hand back THERE, never resume at the return address.
+  const image = indirectImportImage(THUNK_VA);
+  const elsewhere = loadBase + 0x13n;
+  const hostCall = (targetAddr, ctx) => {
+    ctx.writeReg("rax", 7n);
+    ctx.writeRip(elsewhere);
+    return 0;
+  };
+  const option = { image, loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall, importThunkRange: { lo: THUNK_LO, hi: THUNK_HI } };
+  const jit = runFunction(image, option);
+  assert.equal(jit.statusName, "fallback", "control left the region, so the module hands back");
+  assert.equal(jit.resumeRip, elsewhere, "the resume rip is the one the host reported");
+  assert.equal(jit.register.rax, 7n, "the host's effect is committed, not discarded");
+  assert.equal(jit.instructionCount, 3, "the two movs and the call itself are charged");
+});
+
+test("indirect import: without a thunk span the terminator is unchanged — no host call, no dispatch", () => {
+  const image = indirectImportImage(THUNK_VA);
+  let called = 0;
+  const hostCall = () => { called += 1; return 0; };
+  const compiled = compileFunction(image, { image, loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall });
+  assert.equal(compiled.branchKind.includes("call_indirect_import"), false, "no thunk span → no import dispatch is emitted");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, guestLen: image.length + 0x10000, hostCall });
+  assert.equal(jit.statusName, "fallback", "the historical pre-transfer stop");
+  assert.equal(jit.resumeRip, loadBase + 0x0fn, "…at the transfer instruction");
+  assert.equal(called, 0, "the host is never called");
+});
+
 test("multi-block: an indirect transfer COMPILES as a return-to-dispatch terminator", () => {
   // An indirect call/jmp is no longer a compile-time rejection: the function is
   // complete, the straight-line prefix runs on the WASM tier, and only the
