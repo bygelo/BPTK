@@ -17,8 +17,8 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { interpret, liftBlock } from "../lib/lift64.mjs";
-import { compileBlock, runBlock } from "../lib/wasm64.mjs";
+import { interpret, liftBlock, decodeStructured } from "../lib/lift64.mjs";
+import { compileBlock, runBlock, compileFunction, runFunction } from "../lib/wasm64.mjs";
 
 const loadBase = 0x140000000n;
 const REG = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];
@@ -197,4 +197,153 @@ test("coverage: report emitted IR op kinds and the interpret fallbacks", () => {
   process.stdout.write(`[wasm64] emitted variants (${kinds.length}): ${kinds.join(", ")}\n`);
   process.stdout.write("[wasm64] interpret fallbacks (honest, deferred to later milestone): jcc/jmp/call/ret-branch, div/mul-pair, rotate, 64-bit imul overflow, sse, x87, string\n");
   assert.ok(baseOps.size >= 12, `expected the codegen to emit at least 12 IR op kinds, got ${baseOps.size}`);
+});
+
+// -------------------- multi-block control-flow (compileFunction) --------------------
+//
+// Each microprogram below has REAL intra-function control flow — a forward
+// conditional skip, a backward counted loop, an if/else register select, and a
+// multi-block fall-through chain. Every one is run through BOTH the interpreter
+// oracle and the emitted MULTI-BLOCK WASM module (a `(block (loop (block…
+// (br_table))))` dispatch over a current-block index), and the sixteen GPRs plus
+// six flags are asserted BIT-EXACT. The block graph is recovered from lift64's
+// decoder; the branch condition is evaluated from the same flag locals the
+// straight-line codegen already matches. A bounded-loop case proves the iteration
+// cap stops a runaway, and two shapes the codegen does not model (a direct call
+// and an indirect jmp) are asserted to be honest, named fallbacks.
+
+const cflowShape = new Set();
+const cflowBranch = new Set();
+
+// Lifts-and-interprets the whole function (oracle) and runs the multi-block WASM
+// module, asserting bit-exact register + flag agreement and an OK run status.
+function assertFunctionEquivalent(code, label) {
+  const image = Buffer.from(code);
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "entry_return", `${label}: oracle stop_reason ${oracle.stop_reason} ${oracle.exception?.message ?? ""}`);
+
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, `${label}: codegen incomplete — fell back on ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.blockCount >= 2, `${label}: expected a multi-block function, got ${compiled.blockCount} block(s)`);
+
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}, expected ok`);
+
+  for (const name of REG) {
+    assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} WASM ${jit.flag[name]} != oracle ${oracle.flag[name]}`);
+  }
+  cflowShape.add(label);
+  for (const kind of jit.branchKind) cflowBranch.add(kind);
+  return { jit, compiled };
+}
+
+test("multi-block: forward conditional branch skips a block (jcc not-taken vs taken)", () => {
+  // mov eax,1; test eax,eax; jne skip; mov eax,7; skip: ret  — jne IS taken (ZF=0), eax stays 1
+  assertFunctionEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0x85, 0xc0, 0x75, 0x05, 0xb8, 0x07, 0x00, 0x00, 0x00, 0xc3], "fwd-skip-taken");
+  // mov eax,0; test eax,eax; jne skip; mov eax,7; skip: ret  — jne NOT taken (ZF=1), eax becomes 7
+  const { jit } = assertFunctionEquivalent([0xb8, 0x00, 0x00, 0x00, 0x00, 0x85, 0xc0, 0x75, 0x05, 0xb8, 0x07, 0x00, 0x00, 0x00, 0xc3], "fwd-skip-nottaken");
+  assert.equal(jit.register.rax, 7n, "the not-taken path must run the skipped block (eax=7)");
+});
+
+test("multi-block: backward loop sums 1..N (Jcc + a counter)", () => {
+  // mov eax,0; mov ecx,5; loop: add eax,ecx; dec ecx; jnz loop; ret  — eax = 5+4+3+2+1 = 15
+  const { jit, compiled } = assertFunctionEquivalent([0xb8, 0x00, 0x00, 0x00, 0x00, 0xb9, 0x05, 0x00, 0x00, 0x00, 0x01, 0xc8, 0xff, 0xc9, 0x75, 0xfa, 0xc3], "backward-loop");
+  assert.equal(jit.register.rax, 15n, "the counted loop must sum 1..5 = 15");
+  assert.equal(jit.register.rcx, 0n, "the loop counter must reach 0");
+  assert.ok(compiled.branchKind.includes("jcc"), "the backward branch is a jcc");
+});
+
+test("multi-block: if/else selects a register value (jg + jmp join)", () => {
+  // mov eax,10; cmp eax,5; jg L1; mov ebx,100; jmp done; L1: mov ebx,200; done: ret  — eax>5 so ebx=200
+  const { jit, compiled } = assertFunctionEquivalent([0xb8, 0x0a, 0x00, 0x00, 0x00, 0x83, 0xf8, 0x05, 0x7f, 0x07, 0xbb, 0x64, 0x00, 0x00, 0x00, 0xeb, 0x05, 0xbb, 0xc8, 0x00, 0x00, 0x00, 0xc3], "if-else-taken");
+  assert.equal(jit.register.rbx, 200n, "eax>5 selects the L1 arm (ebx=200)");
+  assert.ok(compiled.branchKind.includes("jmp"), "the then-arm jumps over the else-arm");
+  // mov eax,3; cmp eax,5; jg L1; mov ebx,100; jmp done; L1: mov ebx,200; done: ret  — eax<5 so ebx=100
+  const other = assertFunctionEquivalent([0xb8, 0x03, 0x00, 0x00, 0x00, 0x83, 0xf8, 0x05, 0x7f, 0x07, 0xbb, 0x64, 0x00, 0x00, 0x00, 0xeb, 0x05, 0xbb, 0xc8, 0x00, 0x00, 0x00, 0xc3], "if-else-nottaken");
+  assert.equal(other.jit.register.rbx, 100n, "eax<5 selects the fall-through arm (ebx=100)");
+});
+
+test("multi-block: fall-through chain of four blocks", () => {
+  // mov eax,1; cmp eax,1; jne X; mov ecx,2; cmp ecx,2; jne X; mov edx,3; X: ret
+  // Neither jne is taken, so control falls straight through all four blocks.
+  const { jit, compiled } = assertFunctionEquivalent([
+    0xb8, 0x01, 0x00, 0x00, 0x00, // mov eax,1
+    0x83, 0xf8, 0x01,             // cmp eax,1
+    0x75, 0x0f,                   // jne X
+    0xb9, 0x02, 0x00, 0x00, 0x00, // mov ecx,2
+    0x83, 0xf9, 0x02,             // cmp ecx,2
+    0x75, 0x05,                   // jne X
+    0xba, 0x03, 0x00, 0x00, 0x00, // mov edx,3
+    0xc3,                         // X: ret
+  ], "fallthrough-chain");
+  assert.equal(compiled.blockCount, 4, "the two jne targets split the run into four blocks");
+  assert.equal(jit.register.rax, 1n);
+  assert.equal(jit.register.rcx, 2n);
+  assert.equal(jit.register.rdx, 3n);
+  assert.ok(compiled.branchKind.includes("fallthrough"), "a split straight-line run terminates as a fall-through");
+});
+
+test("multi-block: memory + loop — sum an array in guest memory (store then reload each step)", () => {
+  // A loop that also touches guest memory, proving the multi-block path shares the
+  // interpreter's linear memory. mov ecx,3; mov eax,0; loop: dec ecx; mov [rsp-8],ecx;
+  // add eax,[rsp-8]; test ecx,ecx; jnz loop; ret  — eax = 2+1+0 = 3
+  const { jit } = assertFunctionEquivalent([
+    0xb9, 0x03, 0x00, 0x00, 0x00,       // mov ecx,3
+    0xb8, 0x00, 0x00, 0x00, 0x00,       // mov eax,0
+    0xff, 0xc9,                         // loop: dec ecx
+    0x48, 0x89, 0x4c, 0x24, 0xf8,       // mov [rsp-8],rcx
+    0x48, 0x03, 0x44, 0x24, 0xf8,       // add rax,[rsp-8]
+    0x85, 0xc9,                         // test ecx,ecx
+    0x75, 0xf0,                         // jnz loop (rel -16 back to dec)
+    0xc3,                               // ret
+  ], "mem-loop");
+  assert.equal(jit.register.rax, 3n, "the memory-touching loop accumulates 2+1+0 = 3");
+});
+
+test("multi-block: iteration cap stops a runaway loop (budget_exhausted, no hang)", () => {
+  // L: jmp L  (an infinite guest loop). The bounded dispatch must stop and report
+  // budget_exhausted rather than hanging the module.
+  const image = Buffer.from([0xeb, 0xfe]);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000, iterationCap: 1000 });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, "an in-function jmp self-loop is a compilable (if non-terminating) shape");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, iterationCap: 1000 });
+  assert.equal(jit.statusName, "budget_exhausted", "the iteration cap must stop the runaway with a budget status");
+  // A second run with a different cap still terminates (the cap is honored, not luck).
+  const jit2 = runFunction(image, { image, loadBase, decodeStructured, iterationCap: 5 });
+  assert.equal(jit2.statusName, "budget_exhausted", "a smaller cap also stops the runaway");
+});
+
+test("multi-block: unmodelled shapes are honest, named fallbacks (call, indirect jmp)", () => {
+  // A direct call is not modelled — the whole function is an honest fallback.
+  const callImage = Buffer.from([0xe8, 0x00, 0x00, 0x00, 0x00, 0xc3]); // call +0; ret
+  const callCompiled = compileFunction(callImage, { loadBase, decodeStructured, guestLen: callImage.length + 0x10000 });
+  assertRealModule(callCompiled.bytes);
+  assert.equal(callCompiled.complete, false, "a direct call must be an honest fallback, not emitted");
+  assert.ok(callCompiled.coverage.unsupported.some((u) => u.reason === "control_call"), "the call must be named as a control-flow fallback");
+  assert.equal(runFunction(callImage, { image: callImage, loadBase, decodeStructured }).statusName, "fallback", "a fallback module reports the fallback status");
+
+  // An indirect jmp (computed target) is likewise a named fallback.
+  const jmpImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xe0, 0xc3]); // mov eax,1; jmp rax; ret
+  const jmpCompiled = compileFunction(jmpImage, { loadBase, decodeStructured, guestLen: jmpImage.length + 0x10000 });
+  assertRealModule(jmpCompiled.bytes);
+  assert.equal(jmpCompiled.complete, false, "an indirect jmp must be an honest fallback");
+  assert.ok(jmpCompiled.coverage.unsupported.some((u) => u.reason === "control_jmpIndirect"), "the indirect jmp must be named");
+});
+
+test("multi-block: coverage report — control-flow shapes and branch kinds", () => {
+  const shape = [...cflowShape].sort();
+  const branch = [...cflowBranch].sort();
+  process.stdout.write(`\n[wasm64] multi-block control-flow shapes bit-exact (${shape.length}): ${shape.join(", ")}\n`);
+  process.stdout.write(`[wasm64] branch kinds emitted (${branch.length}): ${branch.join(", ")}\n`);
+  process.stdout.write("[wasm64] branch kinds on honest fallback: call/callIndirect, jmpIndirect, computed/out-of-function targets\n");
+  // conditional (jcc), unconditional (jmp), fall-through, and ret must all appear.
+  for (const kind of ["jcc", "jmp", "fallthrough", "ret"]) {
+    assert.ok(branch.includes(kind), `expected branch kind ${kind} to be exercised bit-exact`);
+  }
+  assert.ok(shape.length >= 4, `expected at least 4 distinct control-flow shapes, got ${shape.length}`);
 });
