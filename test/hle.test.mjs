@@ -552,6 +552,28 @@ test("BPTK-031: a staged host file reads its real bytes through fopen/fseek/ftel
   assert.equal(memory.readBlock(buffer, 8).toString("latin1"), "IWAD\x02\x00\x00\x00", "the real header bytes land in the guest buffer");
 });
 
+test("BPTK-031: a staged host file passed as a plain Uint8Array reads identically to a Buffer", () => {
+  // The browser host reads files through fetch().arrayBuffer(), which yields a
+  // plain Uint8Array, not a Node Buffer. Such a file must register and read
+  // exactly like a Buffer — otherwise it is silently dropped and a WAD-backed
+  // guest (Chocolate Doom) exits early having found no IWAD.
+  const source = Buffer.from("IWAD\x02\x00\x00\x00payloadbytes");
+  const wad = new Uint8Array(source); // a distinct plain view, not a Buffer
+  assert.equal(Buffer.isBuffer(wad), false, "the input is genuinely a plain Uint8Array");
+  const { guest, memory } = createHostMachine(new Map([["c:\\game\\freedoom1.wad", wad]]), { DOOMWADDIR: "C:\\game" });
+  const base = guest.layout.arena_base;
+  const path = base + 0x40;
+  const mode = base + 0x80;
+  const buffer = base + 0x100;
+  guest.writeAnsiString(path, "C:\\game\\freedoom1.wad", 40);
+  guest.writeAnsiString(mode, "rb", 4);
+  assert.equal(guest.virtualFileSize("c:\\game\\freedoom1.wad"), wad.length, "the Uint8Array file registers at its real size");
+  const stream = invokeHost(guest, "msvcrt.dll", "fopen", [path, mode]);
+  assert.notEqual(stream, 0, "the Uint8Array-backed file opens for read");
+  assert.equal(invokeHost(guest, "msvcrt.dll", "fread", [buffer, 1, 8, stream]), 8, "fread returns the item count");
+  assert.equal(memory.readBlock(buffer, 8).toString("latin1"), "IWAD\x02\x00\x00\x00", "the real header bytes land in the guest buffer");
+});
+
 test("BPTK-031: DOOMWADDIR is served through _wgetenv from the initial environment", () => {
   const { guest } = createHostMachine(new Map(), { DOOMWADDIR: "C:\\game" });
   const name = guest.layout.arena_base + 0x40;
