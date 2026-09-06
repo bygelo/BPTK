@@ -1276,7 +1276,7 @@ test("multi-region: a computed pointer lands in the ARENA region", () => {
   assert.equal(dv.getBigUint64(8, true), 0xcafen, "the store landed in the arena region's compact bytes at offset 8");
 });
 
-test("multi-region: an out-of-region access is an honest fallback, never a wrapped access", () => {
+test("multi-region: an out-of-region access is an honest FAULT, never a wrapped access", () => {
   // mov rdx,0x30000000 (a VA in NO mapped region); mov rax,[rdx]; ret. The dispatch
   // finds no region → sets the fault flag → the module returns 'fallback' rather
   // than reading a wrong/wrapped byte. The interpreter oracle would fault too.
@@ -1293,7 +1293,8 @@ test("multi-region: an out-of-region access is an honest fallback, never a wrapp
   assert.ok(compiled.complete, "the shape is compilable; the unmapped access is a RUNTIME fault, not a compile-time one");
   assert.ok(compiled.plan.multi, "the layout is a true multi-region map");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
-  assert.equal(jit.statusName, "fallback", "an out-of-region access must report an honest fallback");
+  assert.equal(jit.statusName, "fault", "an out-of-region access must report a FAULT, distinct from a resumable fallback");
+  assert.equal(jit.resumable, false, "a fault run must be discarded by the host, never committed");
   // The oracle confirms the access is genuinely unmapped (it throws on locate).
   assert.throws(() => interpretMultiRegion(image, region, { loadBase }), /outside the mapped regions/, "the reference machine also rejects the unmapped VA");
 });
@@ -1481,7 +1482,7 @@ test("resume: an unhandled import resumes AT the call, with the pushed frame und
   assertResumeEquivalent(image, jit, "import-resume");
 });
 
-test("resume: an out-of-region fault reports the faulting block's start VA", () => {
+test("resume: an out-of-region FAULT is non-resumable and reports the faulting block's start VA", () => {
   // mov eax,1; jmp L; L: mov rdx,badAddr; mov rax,[rdx]; ret — the fault happens in
   // the SECOND block, so resumeRip must name that block, not the function entry.
   const badAddr = 0x30000000n;
@@ -1498,8 +1499,9 @@ test("resume: an out-of-region fault reports the faulting block's start VA", () 
   assert.ok(compiled.complete, "the shape compiles; the unmapped access is a RUNTIME fault");
   assert.equal(compiled.blockCount, 2, "the jmp splits the function into two blocks");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
-  assert.equal(jit.statusName, "fallback", "an out-of-region access must report an honest fallback");
-  assert.equal(jit.resumeRip, loadBase + 0x07n, "resumeRip names the block whose body faulted");
+  assert.equal(jit.statusName, "fault", "an out-of-region access is a FAULT, not a resumable fallback");
+  assert.equal(jit.resumable, false, "the host must discard this run — a guest store went to the trap page");
+  assert.equal(jit.resumeRip, loadBase + 0x07n, "resumeRip names the block whose body faulted (valid only against the PRE-run state)");
 });
 
 test("resume: a compile-time fallback module resumes at the function entry", () => {
@@ -1664,7 +1666,8 @@ test("indirect: a target fetched from an UNMAPPED address stops at the transfer 
   const compiled = compileFunction(image, { loadBase, decodeStructured, region });
   assert.ok(compiled.complete, "the shape compiles; the unmapped fetch is a RUNTIME fault");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
-  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.statusName, "fault", "a target fetched through an unmapped address is a FAULT, not a resumable fallback");
+  assert.equal(jit.resumable, false, "the host must discard the run rather than jump to a trap-page value");
   assert.equal(jit.resumeRip, loadBase + 0x0fn, "resumeRip is the indirect jmp's own VA, not a trap-page value");
   assert.equal(jit.register.rsp, STACK_BASE + 0x10000n - 16n - 8n, "nothing was pushed (rsp is still the seeded sparse-stack rsp0)");
 });
@@ -1692,4 +1695,110 @@ test("indirect: a call inside a loop runs every prior iteration on the WASM tier
   assert.equal(jit.register.rcx, 0n, "all three loop iterations ran on the WASM tier before the exit");
   assert.equal(jit.resumeRip, loadBase + 0x17n);
   assertResumeEquivalent(image, jit, "loop-then-indirect");
+});
+
+// -------------------- the compiled-module cache --------------------
+//
+// A tiered host re-enters the SAME function entry constantly, and a function that
+// hands control back at an indirect transfer is re-entered on every call.
+// runFunction therefore caches the compiled module (and, when nothing can re-enter
+// it, the instance) per entry. The cache is only sound if two things hold, and both
+// are asserted here: a reused instance carries NO state from the previous run, and a
+// guest that rewrites its own code gets a RECOMPILE rather than a stale module.
+
+test("cache: repeated runs of one entry are identical and carry no state between runs", () => {
+  // mov [rsp-8],rcx ; mov rax,[rsp-8] ; add rax,rdx ; ret. The store lands in the
+  // stack region, so a REUSED instance would keep the previous run's byte there.
+  const code = [
+    0x48, 0x89, 0x4c, 0x24, 0xf8, // mov [rsp-8],rcx
+    0x48, 0x8b, 0x44, 0x24, 0xf8, // mov rax,[rsp-8]
+    0x48, 0x01, 0xd0,             // add rax,rdx
+    0xc3,                         // ret
+  ];
+  const image = Buffer.from(code);
+  const run = (rcx, rdx) => runFunction(image, { image, loadBase, decodeStructured, register: { rcx, rdx } });
+  const first = run(0x1111n, 2n);
+  const firstMemory = Buffer.from(first.memory);
+  const second = run(0x2222n, 3n);
+  const third = run(0x1111n, 2n);
+  assert.equal(first.statusName, "ok");
+  assert.equal(first.register.rax, 0x1113n, "first run computes rcx + rdx through memory");
+  assert.equal(second.register.rax, 0x2225n, "a reused instance re-seeds the register file and the stack region");
+  assert.equal(third.register.rax, first.register.rax, "re-running the first input reproduces the first result exactly");
+  assert.equal(Buffer.compare(Buffer.from(third.memory), firstMemory), 0, "and the whole guest memory image is identical, byte for byte");
+});
+
+test("cache: rewriting the guest's own code recompiles rather than reusing a stale module", () => {
+  // mov eax,imm32 ; ret — run it, then patch the immediate IN PLACE and run again.
+  // A module cached by entry alone would return the old immediate; the code-range
+  // checksum forces a recompile, so the second run must see the new one.
+  const image = Buffer.from([0xb8, 0x07, 0x00, 0x00, 0x00, 0xc3]);
+  const before = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(before.register.rax, 7n, "the original immediate");
+  image[1] = 0x29; // rewrite the immediate to 41
+  const after = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(after.register.rax, 0x29n, "the rewritten immediate — the cache revalidated the code bytes and recompiled");
+  image[1] = 0x07;
+  assert.equal(runFunction(image, { image, loadBase, decodeStructured }).register.rax, 7n, "restoring the byte restores the result");
+});
+
+test("cache: compileFunction reports the guest byte range its module depends on", () => {
+  // mov eax,1; jmp L; (pad); L: mov ecx,2; ret — the range must span entry through
+  // the last decoded byte of the last block, which is what the cache checksums.
+  const code = [
+    0xb8, 0x01, 0x00, 0x00, 0x00, // 0x00 mov eax,1
+    0xeb, 0x02,                   // 0x05 jmp +2 -> 0x09
+    0x90, 0x90,                   // 0x07 pad
+    0xb9, 0x02, 0x00, 0x00, 0x00, // 0x09 mov ecx,2
+    0xc3,                         // 0x0e ret
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.codeRange.startRva, 0, "the range starts at the lowest block start");
+  assert.equal(compiled.codeRange.endRva, 0x0f, "and ends past the last instruction the compilation decoded");
+});
+
+// -------------------- resumable vs fault: the host's commit decision --------------------
+//
+// STATUS_FALLBACK used to mean two incompatible things at once: a clean mid-run
+// hand-back whose state a host may COMMIT, and an out-of-region fault whose state
+// it must DISCARD. They are now different statuses, and `resumable` is the single
+// bit a host reads. This case walks every exit the module can take and asserts the
+// classification, because committing a fault run silently corrupts the guest.
+
+test("status: every exit classifies itself as resumable or discard", () => {
+  // OK — the entry RET unwound the frame.
+  const okImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+  const ok = runFunction(okImage, { image: okImage, loadBase, decodeStructured });
+  assert.equal(ok.statusName, "ok");
+  assert.equal(ok.resumable, true, "a completed run is trivially commitable");
+
+  // BUDGET — the cap fires at a block boundary, before that block ran.
+  const spin = Buffer.from([0xeb, 0xfe, 0xc3]); // jmp $
+  const budget = runFunction(spin, { image: spin, loadBase, decodeStructured, iterationCap: 8 });
+  assert.equal(budget.statusName, "budget_exhausted");
+  assert.equal(budget.resumable, true, "the cap stops at a block start — a state the interpreter could hold");
+
+  // FALLBACK — the return-to-dispatch terminator of an indirect transfer.
+  const ind = Buffer.from([0x48, 0xc7, 0xc0, 0x20, 0x00, 0x00, 0x00, 0xff, 0xe0, 0xc3]); // mov rax,0x20; jmp rax
+  const indirect = runFunction(ind, { image: ind, loadBase, decodeStructured });
+  assert.equal(indirect.statusName, "fallback");
+  assert.equal(indirect.resumable, true, "the indirect hand-back is a clean, commitable exit");
+  assert.equal(indirect.resumeRip, 0x20n, "and it names the computed target — the absolute VA the register held");
+
+  // FALLBACK — a compile-time fallback module runs nothing at all.
+  const bad = Buffer.from([0x0f, 0x0b, 0xc3]); // ud2; ret
+  const incomplete = runFunction(bad, { image: bad, loadBase, decodeStructured });
+  assert.equal(incomplete.statusName, "fallback");
+  assert.equal(incomplete.resumable, true, "nothing ran, so the seeded state is the state — resuming at the entry is exact");
+
+  // FAULT — an out-of-region store, redirected to the trap page.
+  const faultImage = Buffer.from([
+    0x48, 0xba, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, // mov rdx,0x30000000
+    0x48, 0x89, 0x02,                                           // mov [rdx],rax
+    0xc3,                                                       // ret
+  ]);
+  const faulted = runFunction(faultImage, { image: faultImage, loadBase, decodeStructured, region: sparseLayout(faultImage) });
+  assert.equal(faulted.statusName, "fault");
+  assert.equal(faulted.resumable, false, "a lost store makes the run uncommitable — the host must re-interpret from the entry");
 });
