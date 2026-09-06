@@ -172,34 +172,32 @@ No specialization is refused by symbol name any more. The one refusal left is a
 sentinel rip with no live frame behind it, which means the guest jumped to a
 harness address on its own; stopping there is honest.
 
-### First Doom tier measurement
+### First Doom tier measurement — CORRECTED
 
-Tiered versus the same runner under `forceInterpreter`, this host:
+An earlier revision of this file reported the tier as **1.10x faster** than
+interpretation on Doom and called it "the first time it has beaten the
+interpreter on a real binary." **That was wrong**, and the error is worth
+recording because of how it happened.
+
+Those number were measured while two full `npm run gate` run were saturating
+the same machine. Contention inflated both side unequally. Re-measured on an
+otherwise-idle machine, same binary, same budget, same command:
 
 | Budget | pure | tiered | ratio |
 | ---: | ---: | ---: | ---: |
-| 3,000,000 | 23973 ms | 22998 ms | **1.04x** |
-| 20,000,000 | 122139 ms | 110962 ms | **1.10x** |
+| 20,000,000 (contended) | 122139 ms | 110962 ms | 1.10x — **artifact** |
+| 20,000,000 (**idle**) | 54100 ms | 55791 ms | **0.97x** |
 
-The tier is now **marginally faster than interpretation on Doom** — the first
-time it has beaten the interpreter on a real binary, against 2.3x slower on
-PuTTY. That is a floor rather than a ceiling: the comparison is at equal
-instruction budget while a WASM invocation is charged as one budget unit, so the
-tiered run performs strictly more guest work per unit.
+Pure interpretation runs **2.3x faster on the idle machine** (54 s against 122
+s), which is the tell: any ratio taken under that load is noise. The honest
+statement is that **the tier has never been faster than interpretation on Doom.**
+It is close — 0.97x — but it does not win.
 
-It is also nowhere near enough. Real time needs ~14 M ips; this is ~0.18 M ips,
-so **the remaining gap is still ~64x**, and it is not closed by eligibility or
-by driving more specialization.
+**Rule this cost:** never benchmark while a gate, another lane, or a second
+measurement is running. A wall-clock ratio taken on a loaded machine is not
+evidence, and this one was reported as a headline result before it was checked.
 
-A measurement trap paid for here: `runTieredImage`'s result carrie no `guest`,
-so a frame count read off it is `undefined`, not zero. A frame-rate comparison
-must go through `runImage64`'s result shape or the live session, never the
-tiered runner's.
-
-`passing` stays 0. A frame rate is not a compatibility claim, and this section
-is a target, not a result.
-
-## Residency — why 1.10x, and the real ceiling
+## Residency — why the tier cannot win yet
 
 Driving every specialization let Doom run on the tier, but the tier still only
 reached 1.10x. The `tier_report` say exactly why. Chocolate Doom, budget
@@ -214,6 +212,15 @@ reached 1.10x. The `tier_report` say exactly why. Chocolate Doom, budget
 | `interpreter_tier_instruction` | **1,966,362** |
 
 Of 2,000,000 executed instruction, **1,966,362 (98.3%) ran in the INTERPRETER**.
+
+**Caveat on that ratio, found later:** the runner charged the budget **one unit
+per WASM invocation** regardless of how many guest instruction that invocation
+performed, while the interpreter charged one unit per instruction. So the two
+engine measured their budget in different unit and this figure is not a ratio of
+like thing. At the invocation count of the time (1,208 invocation carrying
+~33,600 instruction) the distortion is ~0.16% and the conclusion holds, but the
+accounting was fixed before residency was optimized, because at higher residency
+the same mismatch would have been large enough to invert the answer.
 The WASM tier carried ~33,600 instruction across 1,208 invocation — about **28
 instruction per invocation** before bailing back. And **53% of invocation end in
 a resume** rather than running to completion.
