@@ -1278,8 +1278,8 @@ test("multi-region: a computed pointer lands in the ARENA region", () => {
 
 test("multi-region: an out-of-region access is an honest FAULT, never a wrapped access", () => {
   // mov rdx,0x30000000 (a VA in NO mapped region); mov rax,[rdx]; ret. The dispatch
-  // finds no region → sets the fault flag → the module returns 'fallback' rather
-  // than reading a wrong/wrapped byte. The interpreter oracle would fault too.
+  // finds no region → the module leaves AT that instruction with a FAULT status
+  // rather than reading a wrong/wrapped byte. The interpreter oracle would fault too.
   const badAddr = 0x30000000n; // between arena (0xF8000000) and image, mapped by none
   const code = [
     0x48, 0xba, ...[...Array(8)].map((_, i) => Number((badAddr >> BigInt(8 * i)) & 0xffn)), // mov rdx,badAddr
@@ -1293,8 +1293,14 @@ test("multi-region: an out-of-region access is an honest FAULT, never a wrapped 
   assert.ok(compiled.complete, "the shape is compilable; the unmapped access is a RUNTIME fault, not a compile-time one");
   assert.ok(compiled.plan.multi, "the layout is a true multi-region map");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
-  assert.equal(jit.statusName, "fault", "an out-of-region access must report a FAULT, distinct from a resumable fallback");
-  assert.equal(jit.resumable, false, "a fault run must be discarded by the host, never committed");
+  assert.equal(jit.statusName, "fault", "an out-of-region access must report a FAULT, distinct from a clean fallback");
+  // A complete module exits AT the faulting instruction having performed none of
+  // its effects, so the state is the one interpretation holds there: the host may
+  // commit it and let the interpreter fault on the same access itself.
+  assert.equal(jit.preciseFault, true, "a complete multi-block module reports a PRECISE fault");
+  assert.equal(jit.resumable, true, "a precise fault is commitable — nothing past the faulting access ran");
+  assert.equal(jit.resumeRip, loadBase + 0x0an, "resumeRip names the faulting instruction itself (mov rax,[rdx])");
+  assert.equal(jit.register.rax, 0n, "the faulting load performed no effect: rax is untouched");
   // The oracle confirms the access is genuinely unmapped (it throws on locate).
   assert.throws(() => interpretMultiRegion(image, region, { loadBase }), /outside the mapped regions/, "the reference machine also rejects the unmapped VA");
 });
@@ -1482,9 +1488,11 @@ test("resume: an unhandled import resumes AT the call, with the pushed frame und
   assertResumeEquivalent(image, jit, "import-resume");
 });
 
-test("resume: an out-of-region FAULT is non-resumable and reports the faulting block's start VA", () => {
+test("resume: an out-of-region FAULT is resumable and reports the faulting INSTRUCTION's VA", () => {
   // mov eax,1; jmp L; L: mov rdx,badAddr; mov rax,[rdx]; ret — the fault happens in
-  // the SECOND block, so resumeRip must name that block, not the function entry.
+  // the SECOND block, and resumeRip must name the faulting instruction inside it,
+  // not the block start and not the function entry. That precision is what makes a
+  // fault commitable: everything before it really ran, nothing after it did.
   const badAddr = 0x30000000n;
   const code = [
     0xb8, 0x01, 0x00, 0x00, 0x00, // 0x00 mov eax,1
@@ -1499,9 +1507,11 @@ test("resume: an out-of-region FAULT is non-resumable and reports the faulting b
   assert.ok(compiled.complete, "the shape compiles; the unmapped access is a RUNTIME fault");
   assert.equal(compiled.blockCount, 2, "the jmp splits the function into two blocks");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
-  assert.equal(jit.statusName, "fault", "an out-of-region access is a FAULT, not a resumable fallback");
-  assert.equal(jit.resumable, false, "the host must discard this run — a guest store went to the trap page");
-  assert.equal(jit.resumeRip, loadBase + 0x07n, "resumeRip names the block whose body faulted (valid only against the PRE-run state)");
+  assert.equal(jit.statusName, "fault", "an out-of-region access is a FAULT, not a clean fallback");
+  assert.equal(jit.resumable, true, "the host may commit this run and continue at the faulting access");
+  assert.equal(jit.resumeRip, loadBase + 0x11n, "resumeRip names the faulting instruction (mov rax,[rdx]), not its block");
+  assert.equal(jit.register.rax, 1n, "the first block's mov eax,1 really ran and is carried out");
+  assert.equal(jit.register.rdx, 0x30000000n, "and so did the instruction before the faulting one");
 });
 
 test("resume: a compile-time fallback module resumes at the function entry", () => {
@@ -1813,7 +1823,8 @@ test("status: every exit classifies itself as resumable or discard", () => {
   ]);
   const faulted = runFunction(faultImage, { image: faultImage, loadBase, decodeStructured, region: sparseLayout(faultImage) });
   assert.equal(faulted.statusName, "fault");
-  assert.equal(faulted.resumable, false, "a lost store makes the run uncommitable — the host must re-interpret from the entry");
+  assert.equal(faulted.resumable, true, "the module stopped AT the store, so the state is the one interpretation holds there");
+  assert.equal(faulted.resumeRip, loadBase + 0x0an, "and it names the faulting store, which the interpreter then performs");
 });
 
 test("cache: a reused module re-seeds from THIS call's region bytes, never the first call's", () => {

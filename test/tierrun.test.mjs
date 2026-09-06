@@ -249,12 +249,19 @@ test("1:1 synthetic — a WASM-tier function that exits at an indirect call resu
   assert.equal(tiered.register.rcx, 5n, "F's push/pop pair survived the resume, so its frame was the real one");
 });
 
-// F increments a MAPPED qword and then stores through an address no region maps. The
-// WASM module redirects that store to its trap page, so the run is a FAULT: the host
-// must throw the whole run away, including the increment. Committing it and resuming
-// would re-run the increment when interpretation redid the block — the counter would
-// read 2 instead of 1 — so this case fails loudly if a fault is ever treated as a
-// resumable exit.
+// F increments a MAPPED qword and then stores through an address no region maps.
+// This is the case that decides whether a fault may be committed, and it is sharp
+// BECAUSE the increment is not idempotent: if the tier applied it and the host then
+// re-ran the block under the interpreter, the counter would read 2 instead of 1.
+//
+// The two engines now share ONE guest memory, so a run's stores cannot be un-done
+// and re-running is not an option. lib/wasm64.mjs therefore stops the module AT the
+// unmapped store, having performed none of its effects, and the host COMMITS that
+// state and continues there — the interpreter performs the same store and faults on
+// it. The increment happens exactly once, in the tier, and the final memory is
+// bit-identical to pure interpretation. This case fails loudly if the module ever
+// runs past its first out-of-region access, or if a fault is ever committed with a
+// register file from anywhere but the faulting instruction's start.
 function buildFaultImage() {
   const img = Buffer.alloc(0x200);
   let p = 0;
@@ -272,7 +279,7 @@ function buildFaultImage() {
   return img;
 }
 
-test("1:1 synthetic — an out-of-region FAULT is discarded, never committed", () => {
+test("1:1 synthetic — an out-of-region FAULT commits AT the fault and stays bit-exact", () => {
   const image = buildFaultImage();
   const loadBase = 0x140000000n;
   const option = { image, loadBase, entryRva: 0, budget: 10000 };
@@ -283,11 +290,11 @@ test("1:1 synthetic — an out-of-region FAULT is discarded, never committed", (
   const pure = runTieredImage({ ...option, forceInterpreter: true });
   const tiered = runTieredImage(option);
   assert.equal(pure.stop_reason, "fault", "the unmapped store faults under pure interpretation");
-  assertSameState(tiered, pure, "fault-discard: tiered vs interpreter");
-  // The memory comparison is the real assertion: a committed fault run would have
-  // applied the increment once in WASM and once again on re-interpretation.
-  assertSameMemory(tiered, pure, "fault-discard: tiered vs interpreter");
-  assert.equal(tiered.tier_report.wasm_tier_function, 0, "the faulting function must not be reported as WASM-carried");
+  assertSameState(tiered, pure, "fault-commit: tiered vs interpreter");
+  // The memory comparison is the real assertion: the increment must appear exactly
+  // once, whichever engine applied it.
+  assertSameMemory(tiered, pure, "fault-commit: tiered vs interpreter");
+  assert.equal(tiered.tier_report.wasm_tier_function, 1, "F really ran on the WASM tier up to the faulting store");
 });
 
 // The single-call case above proves one resume is exact. The pathological shape is
