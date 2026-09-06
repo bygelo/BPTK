@@ -38,6 +38,7 @@
     "lib/inspect.mjs",
     "lib/legal.mjs",
     "lib/lift64.mjs",
+    "lib/live.mjs",
     "lib/net.mjs",
     "lib/package.mjs",
     "lib/performance.mjs",
