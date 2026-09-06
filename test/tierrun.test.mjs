@@ -138,11 +138,13 @@ function puttyOption(mapped, budget) {
   };
 }
 
-test("1:1 PuTTY x64 — tiered run is bit-exact to pure interpretation at a bounded budget", () => {
-  if (!existsSync(PUTTY_PATH)) {
-    console.log("tierrun: staged PuTTY x64 absent, skipping corpus 1:1 proof");
-    return;
-  }
+// A corpus-gated case must SKIP when its payload is absent, never return early —
+// an early return prints a green tick for a test that asserted nothing, which is
+// exactly how a real-binary regression reaches a reviewer marked passing. This is
+// the guard shape test/live.test.mjs, test/sdl.test.mjs and test/exec64.test.mjs use.
+const CORPUS_SKIP = existsSync(PUTTY_PATH) ? false : "corpus-001 not staged (set BPTK_CORPUS_STAGE)";
+
+test("1:1 PuTTY x64 — tiered run is bit-exact to pure interpretation at a bounded budget", { skip: CORPUS_SKIP }, () => {
   const bytes = new Uint8Array(readFileSync(PUTTY_PATH));
   const mapped = mapPe64State(bytes);
   assert.equal(mapped.machine, "x86_64", "PuTTY is a PE32+ x86-64 image");

@@ -1516,18 +1516,28 @@ test("resume: a compile-time fallback module resumes at the function entry", () 
 // -------------------- indirect transfers: return to dispatch --------------------
 //
 // An INDIRECT jmp/call (0xFF /4, 0xFF /2) used to reject the WHOLE function from
-// the WASM tier. It is now a real terminator: the module computes the target with
-// the same operand emission every other access uses (register file for a register
-// target, base+index*scale+disp / rip-relative through the region map for a memory
-// target), reports it as `resumeRip`, and exits. The function is `complete: true`,
-// so the straight-line code before the transfer runs at WASM speed.
+// the WASM tier. It is now a real terminator: a PRE-TRANSFER stop. The block's
+// straight-line body runs at WASM speed, then the module stops immediately BEFORE
+// the transfer instruction — performing none of its effects — and reports that
+// instruction's own VA as `resumeRip`. The function is `complete: true`.
 //
-// Each case below asserts THREE things: the target address is exactly the one the
-// interpreter computes, the guest stack bytes a callIndirect pushed are bit-exact,
-// and CONTINUING interpretation from resumeRip over the module's own end-of-run
-// state reaches the same final state as interpreting the whole program.
+// WHY NOT RESUME AT THE TARGET. The codegen can compute the target exactly, and this
+// terminator used to do that and hand it back. The PuTTY 1:1 oracle proved it wrong.
+// An indirect transfer through an IAT slot is not a transfer at all in this runtime:
+// lib/exec64.mjs executeNode returns `import_present` for `call/jmp [iat]` BEFORE any
+// stack effect, and the import machinery serves the symbol. A module that pushes a
+// return address and hands back the resolved thunk leaves the guest one qword deeper
+// than interpretation — an 8-byte rsp divergence, silent until the run stops. The
+// module cannot see which slots are import slots, so it must not decide; stopping
+// before the instruction gives that judgement to the interpreter, which models it.
+//
+// Each case below therefore asserts: the module stops AT the transfer instruction,
+// it performed none of the transfer's effects (rsp is untouched, nothing pushed),
+// the work BEFORE the transfer really ran, and — the real proof — CONTINUING
+// interpretation from resumeRip over the module's own end-of-run state reaches the
+// same final state as interpreting the whole program with no WASM tier at all.
 
-test("indirect: call through a register reports the computed target and pushes the frame", () => {
+test("indirect: call through a register stops AT the call, having pushed nothing", () => {
   const code = [
     0xb9, 0x05, 0x00, 0x00, 0x00,             // 0x00 mov ecx,5
     0x48, 0x8d, 0x05, 0x07, 0x00, 0x00, 0x00, // 0x05 lea rax,[rip+7] -> 0x13
@@ -1546,15 +1556,14 @@ test("indirect: call through a register reports the computed target and pushes t
 
   const jit = runFunction(image, { image, loadBase, decodeStructured });
   assert.equal(jit.statusName, "fallback", "the indirect transfer hands control back to the interpreter");
-  assert.equal(jit.resumeRip, loadBase + 0x13n, "resumeRip is the target the register held");
+  assert.equal(jit.resumeRip, loadBase + 0x0cn, "resumeRip is the CALL's own VA — the interpreter performs the transfer");
   assert.equal(jit.register.rcx, 5n, "the prefix really ran on the WASM tier");
-  assert.equal(jit.register.rax, loadBase + 0x13n, "the lea ran too");
-  assert.equal(jit.register.rsp, initialRsp(code) - 8n, "the call pushed exactly one qword");
-  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x0en, "the pushed return address is bit-exact");
+  assert.equal(jit.register.rax, loadBase + 0x13n, "the lea ran too, so the target IS available — the module just does not act on it");
+  assert.equal(jit.register.rsp, initialRsp(code), "the module pushed nothing: the call's stack effect is the interpreter's to perform");
   assertResumeEquivalent(image, jit, "call-indirect-reg");
 });
 
-test("indirect: jmp through a register reports the computed target and touches no stack", () => {
+test("indirect: jmp through a register stops AT the jmp and touches no stack", () => {
   const code = [
     0xb9, 0x05, 0x00, 0x00, 0x00,             // 0x00 mov ecx,5
     0x48, 0x8d, 0x05, 0x07, 0x00, 0x00, 0x00, // 0x05 lea rax,[rip+7] -> 0x13
@@ -1572,14 +1581,14 @@ test("indirect: jmp through a register reports the computed target and touches n
 
   const jit = runFunction(image, { image, loadBase, decodeStructured });
   assert.equal(jit.statusName, "fallback");
-  assert.equal(jit.resumeRip, loadBase + 0x13n, "resumeRip is the tail-call target");
+  assert.equal(jit.resumeRip, loadBase + 0x0cn, "resumeRip is the JMP's own VA");
   assert.equal(jit.register.rsp, initialRsp(code), "an indirect jmp must not move rsp");
   assertResumeEquivalent(image, jit, "jmp-indirect-reg");
 });
 
-test("indirect: call through MEMORY reads the target before pushing (call qword [rsp-8])", () => {
-  // The pointer slot and the pushed return address are the SAME guest qword, so
-  // this fails loudly if the codegen pushed before reading the target.
+test("indirect: a call through MEMORY leaves the pointer slot untouched (call qword [rsp-8])", () => {
+  // The pointer slot and the qword a real push would land on are the SAME guest
+  // address, so this fails loudly if the codegen performed any part of the transfer.
   const code = [
     0x48, 0x8d, 0x05, 0x0c, 0x00, 0x00, 0x00, // 0x00 lea rax,[rip+0x0c] -> 0x13
     0x48, 0x89, 0x44, 0x24, 0xf8,             // 0x07 mov [rsp-8],rax
@@ -1596,9 +1605,9 @@ test("indirect: call through MEMORY reads the target before pushing (call qword 
 
   const jit = runFunction(image, { image, loadBase, decodeStructured });
   assert.equal(jit.statusName, "fallback");
-  assert.equal(jit.resumeRip, loadBase + 0x13n, "resumeRip is the pointer the memory slot held");
-  assert.equal(jit.register.rsp, initialRsp(code) - 8n, "one pushed qword");
-  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x10n, "the return address overwrote the pointer slot, exactly as the interpreter leaves it");
+  assert.equal(jit.resumeRip, loadBase + 0x0cn, "resumeRip is the CALL's own VA");
+  assert.equal(jit.register.rsp, initialRsp(code), "nothing pushed");
+  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x13n, "the pointer slot still holds the POINTER — no return address overwrote it");
   assertResumeEquivalent(image, jit, "call-indirect-mem");
 });
 
@@ -1620,14 +1629,15 @@ test("indirect: a rip-relative import-thunk shape (jmp qword [rip+disp]) resolve
   assert.ok(compiled.complete, `the IAT tail-jump shape must compile — ${JSON.stringify(compiled.coverage.unsupported)}`);
   const jit = runFunction(image, { image, loadBase, decodeStructured });
   assert.equal(jit.statusName, "fallback");
-  assert.equal(jit.resumeRip, loadBase + 0x0cn, "resumeRip is the qword the rip-relative slot held");
+  assert.equal(jit.resumeRip, loadBase + 0x05n, "resumeRip is the JMP's own VA — this IS the IAT shape the target-resume got wrong");
   assert.equal(jit.register.rcx, 3n, "the prefix ran on the WASM tier");
   assertResumeEquivalent(image, jit, "jmp-indirect-rip-slot");
 });
 
-test("indirect: the transfer honours the MULTI-REGION map (target read out of the arena)", () => {
+test("indirect: a multi-region store before the transfer is committed, and the transfer is not", () => {
   // Store a code pointer into the HLE-style arena at 0xF8000000, then jump through
-  // it. Both the store and the target read go through the compact region dispatch.
+  // it. The store goes through the compact region dispatch and must be committed;
+  // the transfer itself must be left entirely to the interpreter.
   const code = [
     0x48, 0xba, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00, 0x00, 0x00, // 0x00 mov rdx,0xf8000000 (ARENA_BASE)
     0x48, 0x8d, 0x05, 0x0d, 0x00, 0x00, 0x00, // 0x0A lea rax,[rip+0x0d] -> 0x1E
@@ -1645,16 +1655,18 @@ test("indirect: the transfer honours the MULTI-REGION map (target read out of th
   assert.ok(compiled.plan.multi, "a true multi-region map");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
   assert.equal(jit.statusName, "fallback");
-  assert.equal(jit.resumeRip, loadBase + 0x1en, "the target came out of the ARENA region, region-translated");
+  assert.equal(jit.resumeRip, loadBase + 0x14n, "resumeRip is the JMP's own VA");
   // The reference machine over the SAME region map agrees on the stored pointer.
   const arena = jit.region.find((r) => r.kind === "arena");
   const stored = new DataView(arena.bytes.buffer, arena.bytes.byteOffset, arena.bytes.byteLength).getBigUint64(0, true);
   assert.equal(stored, loadBase + 0x1en, "the pointer really landed in the arena region's bytes");
 });
 
-test("indirect: a target fetched from an UNMAPPED address stops at the transfer itself", () => {
-  // mov rdx,0x30000000 (mapped by no region); jmp qword [rdx]. The target read
-  // faults, so the module must resume AT the jmp — no state moved, nothing guessed.
+test("indirect: an UNMAPPED target slot is not even read — the stop is clean, not a fault", () => {
+  // mov rdx,0x30000000 (mapped by no region); jmp qword [rdx]. Because the module
+  // stops BEFORE the transfer it never reads that slot, so what used to be an
+  // out-of-region FAULT (discard the whole run) is now a clean resumable stop, and
+  // the interpreter faults honestly when it performs the transfer itself.
   const code = [
     0xb9, 0x09, 0x00, 0x00, 0x00,                                     // 0x00 mov ecx,9
     0x48, 0xba, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00,       // 0x05 mov rdx,0x30000000
@@ -1664,11 +1676,12 @@ test("indirect: a target fetched from an UNMAPPED address stops at the transfer 
   const image = Buffer.from(code);
   const region = sparseLayout(image);
   const compiled = compileFunction(image, { loadBase, decodeStructured, region });
-  assert.ok(compiled.complete, "the shape compiles; the unmapped fetch is a RUNTIME fault");
+  assert.ok(compiled.complete, "the shape compiles");
   const jit = runFunction(image, { image, loadBase, decodeStructured, region });
-  assert.equal(jit.statusName, "fault", "a target fetched through an unmapped address is a FAULT, not a resumable fallback");
-  assert.equal(jit.resumable, false, "the host must discard the run rather than jump to a trap-page value");
-  assert.equal(jit.resumeRip, loadBase + 0x0fn, "resumeRip is the indirect jmp's own VA, not a trap-page value");
+  assert.equal(jit.statusName, "fallback", "the unmapped slot is never touched, so there is no fault to report");
+  assert.equal(jit.resumable, true, "the state is clean: the body ran, the transfer did not");
+  assert.equal(jit.register.rcx, 9n, "the body before the transfer really ran");
+  assert.equal(jit.resumeRip, loadBase + 0x0fn, "resumeRip is the indirect jmp's own VA");
   assert.equal(jit.register.rsp, STACK_BASE + 0x10000n - 16n - 8n, "nothing was pushed (rsp is still the seeded sparse-stack rsp0)");
 });
 
@@ -1693,7 +1706,7 @@ test("indirect: a call inside a loop runs every prior iteration on the WASM tier
   const jit = runFunction(image, { image, loadBase, decodeStructured });
   assert.equal(jit.statusName, "fallback");
   assert.equal(jit.register.rcx, 0n, "all three loop iterations ran on the WASM tier before the exit");
-  assert.equal(jit.resumeRip, loadBase + 0x17n);
+  assert.equal(jit.resumeRip, loadBase + 0x10n, "resumeRip is the CALL's own VA");
   assertResumeEquivalent(image, jit, "loop-then-indirect");
 });
 
@@ -1784,7 +1797,7 @@ test("status: every exit classifies itself as resumable or discard", () => {
   const indirect = runFunction(ind, { image: ind, loadBase, decodeStructured });
   assert.equal(indirect.statusName, "fallback");
   assert.equal(indirect.resumable, true, "the indirect hand-back is a clean, commitable exit");
-  assert.equal(indirect.resumeRip, 0x20n, "and it names the computed target — the absolute VA the register held");
+  assert.equal(indirect.resumeRip, loadBase + 0x07n, "and it names the TRANSFER INSTRUCTION, which the interpreter performs");
 
   // FALLBACK — a compile-time fallback module runs nothing at all.
   const bad = Buffer.from([0x0f, 0x0b, 0xc3]); // ud2; ret
