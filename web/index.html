@@ -40,9 +40,16 @@
   <div id="status">loading…</div>
   <!-- Install the Buffer global before the runtime modules load, then boot. -->
   <script type="module">
-    import { Buffer } from "./shim/buffer.mjs";
-    globalThis.Buffer = Buffer;
-    await import("./host.mjs");
+    const status = document.getElementById("status");
+    try {
+      const { Buffer } = await import("./shim/buffer.mjs");
+      globalThis.Buffer = Buffer;
+      await import("./host.mjs");
+    } catch (error) {
+      const text = error && error.stack ? error.stack : String(error);
+      status.textContent = "BOOT ERROR: " + text;
+      console.error(error);
+    }
   </script>
 </body>
 </html>
