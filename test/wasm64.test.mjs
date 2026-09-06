@@ -598,15 +598,24 @@ test("external call: without a host binding it stays an honest, named fallback",
   assert.ok(compiled.coverage.unsupported.some((u) => u.reason === "control_call_external"), "named control_call_external");
 });
 
-test("multi-block: unmodelled call shapes are honest, named fallbacks (indirect, external, indirect jmp)", () => {
-  // An indirect (computed-target) call is not modelled — an honest named fallback.
+test("multi-block: an indirect transfer COMPILES as a return-to-dispatch terminator", () => {
+  // An indirect call/jmp is no longer a compile-time rejection: the function is
+  // complete, the straight-line prefix runs on the WASM tier, and only the
+  // transfer itself exits (see the indirect resume tests at the end of this file).
   const indImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xd0, 0xc3]); // mov eax,1; call rax; ret
   const indCompiled = compileFunction(indImage, { loadBase, decodeStructured, guestLen: indImage.length + 0x10000 });
   assertRealModule(indCompiled.bytes);
-  assert.equal(indCompiled.complete, false, "an indirect call must be an honest fallback, not emitted");
-  assert.ok(indCompiled.coverage.unsupported.some((u) => u.reason === "control_call_indirect"), "the indirect call must be named control_call_indirect");
-  assert.equal(runFunction(indImage, { image: indImage, loadBase, decodeStructured }).statusName, "fallback", "a fallback module reports the fallback status");
+  assert.ok(indCompiled.complete, "a register-target indirect call is compilable");
+  assert.ok(indCompiled.branchKind.includes("call_indirect"), "the branch-kind report names call_indirect");
 
+  const jmpImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xe0, 0xc3]); // mov eax,1; jmp rax; ret
+  const jmpCompiled = compileFunction(jmpImage, { loadBase, decodeStructured, guestLen: jmpImage.length + 0x10000 });
+  assertRealModule(jmpCompiled.bytes);
+  assert.ok(jmpCompiled.complete, "a register-target indirect jmp is compilable");
+  assert.ok(jmpCompiled.branchKind.includes("jmp_indirect"), "the branch-kind report names jmp_indirect");
+});
+
+test("multi-block: unmodelled call shapes are still honest, named fallbacks", () => {
   // A direct call whose target is outside the compiled set (e.g. an HLE import
   // thunk) stays an honest fallback — no HLE binding is attempted here.
   const extImage = Buffer.from([0xe8, 0x00, 0x10, 0x00, 0x00, 0xc3]); // call +0x1000 (out of image); ret
@@ -616,12 +625,13 @@ test("multi-block: unmodelled call shapes are honest, named fallbacks (indirect,
   assert.ok(extCompiled.coverage.unsupported.some((u) => u.reason === "control_call_external"), "the external call must be named control_call_external");
   assert.equal(runFunction(extImage, { image: extImage, loadBase, decodeStructured }).statusName, "fallback", "the external-call fallback module reports fallback");
 
-  // An indirect jmp (computed target) is likewise a named fallback.
-  const jmpImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xe0, 0xc3]); // mov eax,1; jmp rax; ret
-  const jmpCompiled = compileFunction(jmpImage, { loadBase, decodeStructured, guestLen: jmpImage.length + 0x10000 });
-  assertRealModule(jmpCompiled.bytes);
-  assert.equal(jmpCompiled.complete, false, "an indirect jmp must be an honest fallback");
-  assert.ok(jmpCompiled.coverage.unsupported.some((u) => u.reason === "control_jmpIndirect"), "the indirect jmp must be named");
+  // The 0x66 (16-bit operand size) indirect jmp is an addressing form the codegen
+  // does not model, so THAT specific form stays a named compile-time fallback.
+  const narrowImage = Buffer.from([0x66, 0xff, 0xe0, 0xc3]); // jmp ax; ret
+  const narrowCompiled = compileFunction(narrowImage, { loadBase, decodeStructured, guestLen: narrowImage.length + 0x10000 });
+  assertRealModule(narrowCompiled.bytes);
+  assert.equal(narrowCompiled.complete, false, "a 16-bit-operand indirect jmp must stay an honest fallback");
+  assert.ok(narrowCompiled.coverage.unsupported.some((u) => u.reason.startsWith("control_indirect_")), `named control_indirect_*, got ${JSON.stringify(narrowCompiled.coverage.unsupported)}`);
 });
 
 test("multi-block: coverage report — control-flow shapes and branch kinds", () => {
@@ -630,7 +640,8 @@ test("multi-block: coverage report — control-flow shapes and branch kinds", ()
   process.stdout.write(`\n[wasm64] multi-block control-flow shapes bit-exact (${shape.length}): ${shape.join(", ")}\n`);
   process.stdout.write(`[wasm64] branch kinds emitted (${branch.length}): ${branch.join(", ")}\n`);
   process.stdout.write("[wasm64] direct CALL/RET across guest functions is bit-exact incl. the pushed return-address stack bytes\n");
-  process.stdout.write("[wasm64] branch kinds on honest fallback: indirect call (control_call_indirect), external call (control_call_external), indirect jmp, computed/out-of-function targets\n");
+  process.stdout.write("[wasm64] indirect call/jmp compile as return-to-dispatch terminators (target computed exactly, reported as resumeRip)\n");
+  process.stdout.write("[wasm64] branch kinds on honest fallback: external call (control_call_external), 16-bit-operand indirect (control_indirect_*), computed/out-of-function targets\n");
   // conditional (jcc), unconditional (jmp), fall-through, ret, and direct call
   // must all appear as real emitted, bit-exact branch kinds.
   for (const kind of ["jcc", "jmp", "fallthrough", "ret", "call"]) {
@@ -1498,4 +1509,187 @@ test("resume: a compile-time fallback module resumes at the function entry", () 
   const jit = runFunction(image, { image, loadBase, decodeStructured });
   assert.equal(jit.statusName, "fallback");
   assert.equal(jit.resumeRip, loadBase, "nothing ran, so the interpreter resumes at the entry VA");
+});
+
+// -------------------- indirect transfers: return to dispatch --------------------
+//
+// An INDIRECT jmp/call (0xFF /4, 0xFF /2) used to reject the WHOLE function from
+// the WASM tier. It is now a real terminator: the module computes the target with
+// the same operand emission every other access uses (register file for a register
+// target, base+index*scale+disp / rip-relative through the region map for a memory
+// target), reports it as `resumeRip`, and exits. The function is `complete: true`,
+// so the straight-line code before the transfer runs at WASM speed.
+//
+// Each case below asserts THREE things: the target address is exactly the one the
+// interpreter computes, the guest stack bytes a callIndirect pushed are bit-exact,
+// and CONTINUING interpretation from resumeRip over the module's own end-of-run
+// state reaches the same final state as interpreting the whole program.
+
+test("indirect: call through a register reports the computed target and pushes the frame", () => {
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00,             // 0x00 mov ecx,5
+    0x48, 0x8d, 0x05, 0x07, 0x00, 0x00, 0x00, // 0x05 lea rax,[rip+7] -> 0x13
+    0xff, 0xd0,                               // 0x0C call rax
+    0x01, 0xc8,                               // 0x0E add eax,ecx
+    0xc3,                                     // 0x10 ret
+    0x90, 0x90,                               // 0x11 pad
+    0xb8, 0x64, 0x00, 0x00, 0x00,             // 0x13 callee: mov eax,100
+    0xc3,                                     // 0x18 ret
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, `an indirect call must compile now — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.branchKind.includes("call_indirect"), "branch kind call_indirect");
+
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback", "the indirect transfer hands control back to the interpreter");
+  assert.equal(jit.resumeRip, loadBase + 0x13n, "resumeRip is the target the register held");
+  assert.equal(jit.register.rcx, 5n, "the prefix really ran on the WASM tier");
+  assert.equal(jit.register.rax, loadBase + 0x13n, "the lea ran too");
+  assert.equal(jit.register.rsp, initialRsp(code) - 8n, "the call pushed exactly one qword");
+  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x0en, "the pushed return address is bit-exact");
+  assertResumeEquivalent(image, jit, "call-indirect-reg");
+});
+
+test("indirect: jmp through a register reports the computed target and touches no stack", () => {
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00,             // 0x00 mov ecx,5
+    0x48, 0x8d, 0x05, 0x07, 0x00, 0x00, 0x00, // 0x05 lea rax,[rip+7] -> 0x13
+    0xff, 0xe0,                               // 0x0C jmp rax
+    0x0f, 0x0b,                               // 0x0E ud2 (never reached)
+    0xc3,                                     // 0x10 ret
+    0x90, 0x90,                               // 0x11 pad
+    0xb8, 0x64, 0x00, 0x00, 0x00,             // 0x13 tail: mov eax,100
+    0xc3,                                     // 0x18 ret (pops the entry sentinel)
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.ok(compiled.complete, `an indirect jmp must compile now — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.branchKind.includes("jmp_indirect"), "branch kind jmp_indirect");
+
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x13n, "resumeRip is the tail-call target");
+  assert.equal(jit.register.rsp, initialRsp(code), "an indirect jmp must not move rsp");
+  assertResumeEquivalent(image, jit, "jmp-indirect-reg");
+});
+
+test("indirect: call through MEMORY reads the target before pushing (call qword [rsp-8])", () => {
+  // The pointer slot and the pushed return address are the SAME guest qword, so
+  // this fails loudly if the codegen pushed before reading the target.
+  const code = [
+    0x48, 0x8d, 0x05, 0x0c, 0x00, 0x00, 0x00, // 0x00 lea rax,[rip+0x0c] -> 0x13
+    0x48, 0x89, 0x44, 0x24, 0xf8,             // 0x07 mov [rsp-8],rax
+    0xff, 0x54, 0x24, 0xf8,                   // 0x0C call qword [rsp-8]
+    0xc3,                                     // 0x10 ret
+    0x90, 0x90,                               // 0x11 pad
+    0xb9, 0x07, 0x00, 0x00, 0x00,             // 0x13 callee: mov ecx,7
+    0xc3,                                     // 0x18 ret
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.ok(compiled.complete, `a memory-target indirect call must compile — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.branchKind.includes("call_indirect"), "branch kind call_indirect");
+
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x13n, "resumeRip is the pointer the memory slot held");
+  assert.equal(jit.register.rsp, initialRsp(code) - 8n, "one pushed qword");
+  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x10n, "the return address overwrote the pointer slot, exactly as the interpreter leaves it");
+  assertResumeEquivalent(image, jit, "call-indirect-mem");
+});
+
+test("indirect: a rip-relative import-thunk shape (jmp qword [rip+disp]) resolves bit-exact", () => {
+  // The classic IAT tail-jump. The slot lives in the image, so the target comes
+  // out of guest memory through the same rip-relative addressing the codegen uses.
+  const code = [
+    0xb9, 0x03, 0x00, 0x00, 0x00,       // 0x00 mov ecx,3
+    0xff, 0x25, 0x0b, 0x00, 0x00, 0x00, // 0x05 jmp qword [rip+0x0b] -> slot at 0x16
+    0xc3,                               // 0x0B ret (never reached)
+    0xb8, 0x64, 0x00, 0x00, 0x00,       // 0x0C tail: mov eax,100
+    0xc3,                               // 0x11 ret
+    0x90, 0x90, 0x90, 0x90,             // 0x12 pad to 0x16
+    // 0x16 slot: qword = loadBase + 0x0C
+    0x0c, 0x00, 0x00, 0x40, 0x01, 0x00, 0x00, 0x00,
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.ok(compiled.complete, `the IAT tail-jump shape must compile — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x0cn, "resumeRip is the qword the rip-relative slot held");
+  assert.equal(jit.register.rcx, 3n, "the prefix ran on the WASM tier");
+  assertResumeEquivalent(image, jit, "jmp-indirect-rip-slot");
+});
+
+test("indirect: the transfer honours the MULTI-REGION map (target read out of the arena)", () => {
+  // Store a code pointer into the HLE-style arena at 0xF8000000, then jump through
+  // it. Both the store and the target read go through the compact region dispatch.
+  const code = [
+    0x48, 0xba, 0x00, 0x00, 0x00, 0xf8, 0x00, 0x00, 0x00, 0x00, // 0x00 mov rdx,0xf8000000 (ARENA_BASE)
+    0x48, 0x8d, 0x05, 0x0d, 0x00, 0x00, 0x00, // 0x0A lea rax,[rip+0x0d] -> 0x1E
+    0x48, 0x89, 0x02,                         // 0x11 mov [rdx],rax
+    0xff, 0x22,                               // 0x14 jmp qword [rdx]
+    0xc3,                                     // 0x16 ret (never reached)
+    0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, // 0x17 pad
+    0xb8, 0x64, 0x00, 0x00, 0x00,             // 0x1E tail: mov eax,100
+    0xc3,                                     // 0x23 ret
+  ];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region });
+  assert.ok(compiled.complete, `the arena-target indirect jmp must compile — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.plan.multi, "a true multi-region map");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x1en, "the target came out of the ARENA region, region-translated");
+  // The reference machine over the SAME region map agrees on the stored pointer.
+  const arena = jit.region.find((r) => r.kind === "arena");
+  const stored = new DataView(arena.bytes.buffer, arena.bytes.byteOffset, arena.bytes.byteLength).getBigUint64(0, true);
+  assert.equal(stored, loadBase + 0x1en, "the pointer really landed in the arena region's bytes");
+});
+
+test("indirect: a target fetched from an UNMAPPED address stops at the transfer itself", () => {
+  // mov rdx,0x30000000 (mapped by no region); jmp qword [rdx]. The target read
+  // faults, so the module must resume AT the jmp — no state moved, nothing guessed.
+  const code = [
+    0xb9, 0x09, 0x00, 0x00, 0x00,                                     // 0x00 mov ecx,9
+    0x48, 0xba, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00,       // 0x05 mov rdx,0x30000000
+    0xff, 0x22,                                                       // 0x0F jmp qword [rdx]
+    0xc3,                                                             // 0x11 ret
+  ];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region });
+  assert.ok(compiled.complete, "the shape compiles; the unmapped fetch is a RUNTIME fault");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x0fn, "resumeRip is the indirect jmp's own VA, not a trap-page value");
+  assert.equal(jit.register.rsp, STACK_BASE + 0x10000n - 16n - 8n, "nothing was pushed (rsp is still the seeded sparse-stack rsp0)");
+});
+
+test("indirect: a call inside a loop runs every prior iteration on the WASM tier", () => {
+  // mov ecx,3; L: dec ecx; jnz L; lea rax,[rip+..]; call rax; ret
+  // The loop is compiled; only the final indirect transfer exits the module.
+  const code = [
+    0xb9, 0x03, 0x00, 0x00, 0x00,             // 0x00 mov ecx,3
+    0xff, 0xc9,                               // 0x05 L: dec ecx
+    0x75, 0xfc,                               // 0x07 jnz L
+    0x48, 0x8d, 0x05, 0x07, 0x00, 0x00, 0x00, // 0x09 lea rax,[rip+7] -> 0x17
+    0xff, 0xd0,                               // 0x10 call rax
+    0xc3,                                     // 0x12 ret
+    0x90, 0x90, 0x90, 0x90,                   // 0x13 pad
+    0xb8, 0x2a, 0x00, 0x00, 0x00,             // 0x17 callee: mov eax,42
+    0xc3,                                     // 0x1C ret
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.ok(compiled.complete, `loop + indirect call must compile — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.branchKind.includes("jcc") && compiled.branchKind.includes("call_indirect"), "both a real jcc loop and the indirect exit");
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.register.rcx, 0n, "all three loop iterations ran on the WASM tier before the exit");
+  assert.equal(jit.resumeRip, loadBase + 0x17n);
+  assertResumeEquivalent(image, jit, "loop-then-indirect");
 });
