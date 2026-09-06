@@ -216,6 +216,7 @@ ALLOWED_MJS_PATH = {
     Path("lib/thread.mjs"),
     Path("lib/toolchain.mjs"),
     Path("lib/user.mjs"),
+    Path("lib/wasm64.mjs"),
     Path("lib/x64decode.mjs"),
     Path("script/package.mjs"),
     Path("script/status.mjs"),
@@ -260,6 +261,7 @@ ALLOWED_MJS_PATH = {
     Path("test/thread.test.mjs"),
     Path("test/user.test.mjs"),
     Path("test/present.test.mjs"),
+    Path("test/wasm64.test.mjs"),
     Path("test/x64decode.test.mjs"),
     Path("web/host.mjs"),
     Path("web/shim/buffer.mjs"),
@@ -473,6 +475,7 @@ def validate_package(manifest: dict[str, Any], error: list[str]) -> None:
         "lib/thread.mjs",
         "lib/toolchain.mjs",
         "lib/user.mjs",
+        "lib/wasm64.mjs",
         "lib/x64decode.mjs",
         "package.json",
     ]
