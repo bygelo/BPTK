@@ -158,17 +158,29 @@ test("1:1 PuTTY x64 — tiered run is bit-exact to pure interpretation at a boun
   assertSameState(interpAnchor, { register: oracle.register, flag: oracle.flag, rip: oracle.rip, stop_reason: oracle.stop_reason }, "PuTTY interpreter-tier vs runImage64");
   assert.equal(interpAnchor.instruction_count, oracle.instruction_count, "PuTTY interpreter tier consumes the budget identically to runImage64");
 
-  // The whole-program proof: run PuTTY to its first natural frontier (the
-  // CreateDialogParam specialization the tiered runner declines to drive, reached
-  // after tens of thousands of instructions of real CRT startup) through BOTH the
-  // tiered runner (WASM fast path where eligible) and its pure interpreter tier.
-  // The final architectural state — registers, flags, rip, stop, AND every
+  // The whole-program proof: run PuTTY to its first natural frontier through BOTH
+  // the tiered runner (WASM fast path where eligible) and its pure interpreter
+  // tier. The final architectural state — registers, flags, rip, stop, AND every
   // region's memory — must be identical.
+  //
+  // That frontier is a genuinely unserved import, ole32!CoInitialize, reached
+  // after tens of thousands of instructions of real CRT startup AND after the
+  // CreateDialogParam specialization the runner now DRIVES (guest DlgProc
+  // re-entry, message pump and all) rather than refusing. It is the same stop
+  // runImage64 itself reaches — asserted below against the reference interpreter,
+  // so this pins the frontier to pure interpretation instead of to a tier
+  // limitation that could quietly regress.
   const budget = 200000;
   const pure = runTieredImage({ ...puttyOption(mapped, budget), forceInterpreter: true });
   const tiered = runTieredImage(puttyOption(mapped, budget));
 
-  assert.equal(pure.stop_reason, "tier_unsupported_specialization", "pure PuTTY startup reaches the dialog-creation frontier");
+  const frontierOracle = runImage64(puttyOption(mapped, budget));
+  assert.equal(pure.stop_reason, "import_present", "pure PuTTY startup runs through the dialog specialization to a real import frontier");
+  assert.equal(pure.reached_import?.symbol, "CoInitialize", "the PuTTY frontier is the unserved ole32!CoInitialize import");
+  assert.equal(pure.stop_reason, frontierOracle.stop_reason, "the tiered runner's frontier is runImage64's frontier");
+  assert.equal(pure.rip, frontierOracle.rip, "the tiered runner stops at runImage64's rip");
+  assert.equal(pure.instruction_count, frontierOracle.instruction_count, "the tiered runner's interpreter tier consumes runImage64's instruction count");
+  assert.equal(tiered.reached_import?.symbol, "CoInitialize", "the tiered run reaches the same named import");
   assertSameState(tiered, pure, "PuTTY tiered vs interpreter");
   assertSameMemory(tiered, pure, "PuTTY tiered vs interpreter");
 
