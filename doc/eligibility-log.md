@@ -39,10 +39,10 @@ node tool/eligibility.mjs <corpus>/chocolate-doom.exe --solely rotate_rol,rotate
 
 The reason name a `--solely` query takes are the ones the run's own histogram
 prints — they are `lib/wasm64.mjs` `coverage.unsupported[].reason` verbatim, so
-they move as the codegen moves. The indirect-branch ceiling query that predicted
-38.7% was `--solely control_call_indirect,control_jmpIndirect`; at the current
-tip those two reasons no longer occur at all, because an indirect `jmp`/`call`
-now compiles as a return-to-dispatch terminator.
+they move as the codegen moves. The indirect-branch ceiling query was
+`--solely control_call_indirect,control_jmpIndirect`; at the current tip those
+two reason no longer occur at all, because an indirect `jmp`/`call` now compiles
+as a return-to-dispatch terminator.
 
 A missing, unreadable or non-PE32+ input is a named error on stderr and **exit
 2** — never a stack trace. Exit 0 means a measurement was produced.
@@ -83,34 +83,51 @@ is never committed to this repository; see `doc/legal-boundary.md`).
 
 | Measurement | Candidate entry | Eligible | Eligible share |
 | --- | --- | --- | --- |
-| Before indirect-branch support | 1304 | 113 | **8.7%** |
-| After indirect-branch support | 1304 | 505 | **38.7%** |
+| Before indirect-branch support (`1b072e1`) | 1155 | 285 | **24.7%** |
+| After indirect-branch support (`972091e`) | 1155 | 667 | **57.7%** |
 
-The 38.7% was **predicted before it was implemented**: `--solely` over the
-indirect-branch reason set reported that ceiling, and the landed implementation
-hit exactly it. That is the instrument earning its place — a ceiling query that
-turned out to be a forecast, not a retrospective.
+Both row were produced by **this committed instrument**, run against the same
+binary with only `lib/` differing between them, so the pair is reproducible:
+
+```
+git checkout 1b072e1 && node tool/eligibility.mjs <corpus>/chocolate-doom.exe
+git checkout 972091e && node tool/eligibility.mjs <corpus>/chocolate-doom.exe
+```
+
+Indirect-branch support moved eligibility **+33.0 percentage point**, 2.34x the
+function count, and removed `control_call_indirect` and `control_jmpIndirect`
+from the rejection set entirely.
+
+An earlier ad-hoc precursor of this tool reported 8.7% -> 38.7% over a 1304-entry
+denominator. Those number are **superseded** and must not be quoted. The
+precursor swept the whole mapped image for a `0xE8` target rather than only an
+executable section, and it compiled each entry WITHOUT the neighbouring entry
+marked `externalRva`, so a direct call to a neighbour counted as a rejection
+instead of an import boundary the way `lib/tier.mjs` actually tier it. The
+precursor did predict its own post-change number exactly via a sole-blocker
+query, which is why the ceiling query survives below — but its absolute share
+were measured against a denominator this instrument does not reproduce.
 
 ### Remaining rejection reason, in order
 
-Share of the **799 rejected** function entries, counted once per function per
-distinct reason (so the column exceeds 100% — overlapping blockers are the norm,
-not the exception).
+Share of the **488 rejected** function entry at `972091e`, counted once per
+function per distinct reason (so the column exceeds 100% — overlapping blocker
+are the norm, not the exception).
 
-| Reason | Share of rejected entry |
-| --- | --- |
-| `not_served` | 47.5% |
-| `unsupported_op` | 36.7% |
-| `imul64_overflow` | 15.6% |
-| `rotate_rol` | 4.6% |
-| `rotate_ror` | 0.8% |
+| Reason | Rejected entry | Share of rejected |
+| --- | ---: | ---: |
+| `unsupported_op` | 324 | 66.4% |
+| `not_served` | 250 | 51.2% |
+| `imul64_overflow` | 108 | 22.1% |
+| `rotate_rol` | 8 | 1.6% |
+| `rotate_ror` | 2 | 0.4% |
 
-Read that as a work queue: `not_served` and `unsupported_op` are the decode/emit
-frontier and dominate; the arithmetic blockers (`imul64_overflow`, the two
-rotates) are small, bounded and individually cheap. Run `--solely` per candidate
+Read that as a work queue: `unsupported_op` and `not_served` are the decode/emit
+frontier and dominate; the arithmetic blocker (`imul64_overflow`, the two
+rotate) are small, bounded and individually cheap. Run `--solely` per candidate
 group before building any of them — the histogram share is an upper bound on a
 blocker's value, never its actual ceiling, because a function carrying two
-reasons is not unblocked by fixing one.
+reason is not unblocked by fixing one.
 
 ## Scope — what this number is NOT
 
