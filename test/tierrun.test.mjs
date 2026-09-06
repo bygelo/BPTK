@@ -24,6 +24,8 @@ import { mapPe64State } from "../lib/pe64.mjs";
 import { createHleLayout } from "../lib/hle.mjs";
 import { createGuestClock } from "../lib/clock.mjs";
 import { runTieredImage } from "../lib/tierrun.mjs";
+import { compileFunction } from "../lib/wasm64.mjs";
+import { decodeStructured } from "../lib/lift64.mjs";
 
 const MASK64 = (1n << 64n) - 1n;
 const NAME = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];
@@ -173,4 +175,115 @@ test("1:1 PuTTY x64 — tiered run is bit-exact to pure interpretation at a boun
   console.log(`tierrun PuTTY 1:1 @ ${budget} budget → stop ${tiered.stop_reason} at rip 0x${tiered.rip.toString(16)}; ` +
     `WASM-tier ${tiered.tier_report.wasm_tier_function} functions / ${tiered.tier_report.wasm_tier_invocation} invocations, ` +
     `interpreter-tier ${tiered.tier_report.interpreter_tier_function} functions / ${tiered.tier_report.interpreter_tier_instruction} instructions`);
+});
+
+// -------------------- resuming a WASM-tier function mid-flight --------------------
+//
+// An indirect jmp/call compiles as a return-to-dispatch terminator: the module
+// computes the target, reports it as a resume rip and stops. That is only worth
+// anything if the runner COMMITS the module's state and carries on from the resume
+// rip — otherwise the function is compiled, run, exited and then re-interpreted from
+// its entry, which is strictly slower than never tiering it. These two cases pin the
+// commit decision from both sides: a resumable exit must be committed and continued,
+// and a fault exit must be discarded, with pure interpretation as the oracle for both.
+
+// entry calls F; F is a compilable function that reaches an INDIRECT call. The WASM
+// tier runs F's prologue, computes the target, and hands back; the runner commits and
+// resumes interpreting inside the callee, which returns INTO F's live frame, whose RET
+// then returns into entry. Nothing about that sequence may differ from interpreting it.
+function buildResumeImage() {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const at = (o) => { p = o; };
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  // entry @0
+  emit(0x48, 0xC7, 0xC1, 0x05, 0x00, 0x00, 0x00);   // 0x00 mov rcx, 5
+  emit(0x48, 0xC7, 0xC2, 0x03, 0x00, 0x00, 0x00);   // 0x07 mov rdx, 3
+  emit(0xE8, 0x2D, 0x00, 0x00, 0x00);               // 0x0E call F (0x40): next 0x13, rel 0x2D
+  emit(0xC3);                                       // 0x13 ret (pops the entry sentinel)
+  // F @0x40 — compilable, but ends its first block at an indirect call
+  at(0x40);
+  emit(0x51);                                       // 0x40 push rcx
+  emit(0x48, 0x89, 0xC8);                           // 0x41 mov rax, rcx
+  emit(0x48, 0x01, 0xD0);                           // 0x44 add rax, rdx
+  emit(0x48, 0x8D, 0x1D, 0x32, 0x00, 0x00, 0x00);   // 0x47 lea rbx,[rip+0x32] -> G (0x80)
+  emit(0xFF, 0xD3);                                 // 0x4E call rbx           (returns to 0x50)
+  emit(0x48, 0x83, 0xC0, 0x64);                     // 0x50 add rax, 100
+  emit(0x59);                                       // 0x54 pop rcx
+  emit(0xC3);                                       // 0x55 ret
+  // G @0x80 — the indirect target
+  at(0x80);
+  emit(0x48, 0x83, 0xC0, 0x07);                     // 0x80 add rax, 7
+  emit(0xC3);                                       // 0x84 ret
+  return img;
+}
+
+test("1:1 synthetic — a WASM-tier function that exits at an indirect call resumes bit-exactly", () => {
+  const image = buildResumeImage();
+  const loadBase = 0x140000000n;
+  const option = { image, loadBase, entryRva: 0, budget: 10000 };
+
+  // The shape really is the one under test: F compiles COMPLETELY and its terminator
+  // is an indirect call, so the WASM tier is genuinely entered and genuinely exits
+  // mid-function. Without this the case could silently degrade to pure interpretation.
+  const compiled = compileFunction(image, { loadBase, decodeStructured, entryRva: 0x40, guestLen: image.length + 0x100000 });
+  assert.ok(compiled.complete, `F must compile completely — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.branchKind.includes("call_indirect"), "F must terminate a block at an indirect call");
+
+  const oracle = runImage64(option);
+  const pure = runTieredImage({ ...option, forceInterpreter: true });
+  assert.equal(oracle.stop_reason, "entry_return", "the synthetic entry must return");
+  assertSameState(pure, { register: oracle.register, flag: oracle.flag, rip: oracle.rip, stop_reason: oracle.stop_reason }, "interpreter-tier vs runImage64");
+
+  const tiered = runTieredImage({ ...option, wasmAudit: true });
+  assertSameState(tiered, pure, "resume: tiered vs interpreter");
+  assertSameMemory(tiered, pure, "resume: tiered vs interpreter");
+
+  // The resume really happened — the tier did not quietly route F to the interpreter.
+  assert.ok(tiered.tier_report.wasm_tier_resume >= 1, "the indirect exit must be committed and resumed, not discarded");
+  assert.equal(tiered.tier_report.wasm_tier_entry[0], `0x${(loadBase + 0x40n).toString(16)}`, "F is the WASM-tier function");
+  // rax = (5 + 3) + 7 (in the indirect callee) + 100 (back in F, after the resume).
+  assert.equal(tiered.register.rax, 115n, "every leg of the split execution contributed exactly once");
+  assert.equal(tiered.register.rcx, 5n, "F's push/pop pair survived the resume, so its frame was the real one");
+});
+
+// F increments a MAPPED qword and then stores through an address no region maps. The
+// WASM module redirects that store to its trap page, so the run is a FAULT: the host
+// must throw the whole run away, including the increment. Committing it and resuming
+// would re-run the increment when interpretation redid the block — the counter would
+// read 2 instead of 1 — so this case fails loudly if a fault is ever treated as a
+// resumable exit.
+function buildFaultImage() {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const at = (o) => { p = o; };
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  // entry @0
+  emit(0xE8, 0x3B, 0x00, 0x00, 0x00);                                 // 0x00 call F (0x40): next 0x05, rel 0x3B
+  emit(0xC3);                                                         // 0x05 ret
+  // F @0x40
+  at(0x40);
+  emit(0x48, 0xFF, 0x44, 0x24, 0xF0);                                 // 0x40 inc qword [rsp-16]  (a MAPPED stack slot)
+  emit(0x48, 0xBA, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00);   // 0x45 mov rdx, 0x30000000 (mapped by NO region)
+  emit(0x48, 0x89, 0x02);                                             // 0x4F mov [rdx], rax
+  emit(0xC3);                                                         // 0x52 ret
+  return img;
+}
+
+test("1:1 synthetic — an out-of-region FAULT is discarded, never committed", () => {
+  const image = buildFaultImage();
+  const loadBase = 0x140000000n;
+  const option = { image, loadBase, entryRva: 0, budget: 10000 };
+
+  const compiled = compileFunction(image, { loadBase, decodeStructured, entryRva: 0x40, guestLen: image.length + 0x100000 });
+  assert.ok(compiled.complete, `F must compile completely — the unmapped store is a RUNTIME fault: ${JSON.stringify(compiled.coverage.unsupported)}`);
+
+  const pure = runTieredImage({ ...option, forceInterpreter: true });
+  const tiered = runTieredImage(option);
+  assert.equal(pure.stop_reason, "fault", "the unmapped store faults under pure interpretation");
+  assertSameState(tiered, pure, "fault-discard: tiered vs interpreter");
+  // The memory comparison is the real assertion: a committed fault run would have
+  // applied the increment once in WASM and once again on re-interpretation.
+  assertSameMemory(tiered, pure, "fault-discard: tiered vs interpreter");
+  assert.equal(tiered.tier_report.wasm_tier_function, 0, "the faulting function must not be reported as WASM-carried");
 });
