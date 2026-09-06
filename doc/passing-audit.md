@@ -41,8 +41,31 @@ threshold owner. Each is red for a substantive reason:
 | BPTK-060 | DXBC/DXIL frontend | The container is read and the opcode surface enumerated, but **no Direct3D 10-12 program is lowered** into the unified representation. P4 research. |
 | BPTK-072 | Console framebuffer resolve | The tile resolve round-trips a fixture in software; **measuring on the live adapter set does not run in the gate**. P4 research, verdict *defer*. |
 | BPTK-073 | Compute and modern shader | The compute prototype computes a software reference; **bit-identity on the live adapter set is not measured**. P4 research, verdict *defer*. |
-| BPTK-122 | Public issue tracker | Reproducing a tracked compatibility claim **needs the absent browser game runtime**. |
+| BPTK-122 | Public issue tracker | The spec say it needs the absent browser runtime; verified deeper, the sharper reason is that **no public issue template exist** (`.github/ISSUE_TEMPLATE` is absent, and neither MAINTAINERS.md nor CONTRIBUTING.md name a tracker). See the note below. |
 | BPTK-125 | Bus-factor removal | The two-signer release rule is enforceable only with **a second maintainer** and branch protection. Organizational, not code. |
+
+### BPTK-122, examined closely, because it looked promotable
+
+It is the one row that looked like it could go green today, and it is worth
+recording why it cannot, so the next session does not re-open it.
+
+It has **no prerequisite and no threshold owner**, so the BPTK-001 chain does not
+reach it. Its two pass criterion are "bare report is rejected" and "complete
+report is accepted and triaged within the level", and `test/governance.test.mjs`
+genuinely asserts BOTH through the real CLI, not a mock: a bare report exits 1
+with `is_accepted false`, and a complete one exits 0 with `is_triaged_within_level
+true` and `triage_latency_hour <= triage_freshness_hour`. Its promotion trigger
+also reads satisfied on both halves.
+
+**It is still red, and correctly.** The deliverable is *public* issue and
+compatibility tracker **templates**, and there are none: `.github/ISSUE_TEMPLATE`
+does not exist and no repository document names a tracker. The gate proves the
+report-validation LOGIC; it does not run a public tracker. Promoting on the
+strength of a passing shape-validation test would be precisely the false green
+this gate exists to stop — the behaviour a user would get does not exist.
+
+That gap is closable without an owner decision, unlike BPTK-001: publish the
+templates and the freshness level, then re-read the criterion.
 
 Three are P4 research carrying an explicit *defer* verdict in
 [the P4 deferral record](research-p4-deferral.md); the roadmap's own instruction
