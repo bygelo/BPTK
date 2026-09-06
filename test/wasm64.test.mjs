@@ -17,7 +17,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { interpret, liftBlock, decodeStructured, executeSse } from "../lib/lift64.mjs";
+import { interpret, liftBlock, decodeStructured, executeSse, materializeFlag } from "../lib/lift64.mjs";
 import { compileBlock, runBlock, compileFunction, runFunction } from "../lib/wasm64.mjs";
 
 const loadBase = 0x140000000n;
@@ -918,4 +918,348 @@ test("sse: coverage report — v128 op kinds emitted bit-exact vs honest fallbac
     assert.ok(sseCoverage.has(`sse:${kind}`), `expected SSE op ${kind} to be emitted bit-exact`);
   }
   assert.ok(emitted.length >= 20, `expected at least 20 distinct SSE op kinds emitted, got ${emitted.length}`);
+});
+
+// -------------------- compact multi-region address space (64-bit sparse map) --------------------
+//
+// The real runtime maps a SPARSE 64-bit guest space — image at ~0x140000000, a
+// HIGH stack at ~0x7ff000000000, an HLE arena at ~0xF8000000 — not one flat 4 GiB
+// block. lib/wasm64.mjs now packs each region back-to-back into ONE 32-bit WASM
+// memory and translates every guest access through a region map, so a compiled
+// function can address the real space bit-exact. The oracle here is a faithful
+// MULTI-REGION interpreter that reuses lib/lift64.mjs's exact flag engine
+// (materializeFlag) and decoder (decodeStructured); it is first CROSS-CHECKED
+// against lib/lift64.mjs interpret() on a flat program so its fidelity is proven,
+// then used as the reference for the sparse layouts the flat interpreter cannot
+// represent (a stack at 140 TB overflows a flat buffer). Each microprogram is run
+// through BOTH the oracle and the WASM module and asserted bit-exact on all
+// sixteen GPRs, six flags, and every region's post-run bytes.
+
+const RSP = 4;
+const MASK64_MR = (1n << 64n) - 1n;
+const mrSizeMask = (bit) => (1n << BigInt(bit)) - 1n;
+const mrSign = (bit) => 1n << BigInt(bit - 1);
+const mrSigned = (value, fromBit) => {
+  const m = mrSizeMask(fromBit);
+  const v = value & m;
+  return (v & mrSign(fromBit)) ? v - (1n << BigInt(fromBit)) : v;
+};
+
+// A multi-region guest machine mirroring lib/exec64.mjs's Machine surface: a list
+// of { base, size, mem } regions, byte-addressed by guest VA through locate(). It
+// records a flagSource descriptor identical to the interpreter's and materializes
+// the six flags through the SHARED lib/lift64.mjs materializeFlag, so its flag
+// results cannot diverge from the oracle the WASM path targets.
+class MultiRegionMachine {
+  constructor(region) {
+    this.region = region; // [{ base: BigInt, size: Number, mem: Buffer, kind }]
+    this.reg = new Array(16).fill(0n);
+    this.rip = 0n;
+    this.flagSource = null;
+  }
+  flags() { return materializeFlag(this.flagSource); }
+  locate(address, sizeByte) {
+    for (const r of this.region) {
+      const end = r.base + BigInt(r.size);
+      if (address >= r.base && address + BigInt(sizeByte) <= end) return { mem: r.mem, off: Number(address - r.base) };
+    }
+    throw new Error(`guest address 0x${address.toString(16)} is outside the mapped regions`);
+  }
+  readMem(address, sizeByte) {
+    const { mem, off } = this.locate(address, sizeByte);
+    let v = 0n;
+    for (let i = 0; i < sizeByte; i += 1) v |= BigInt(mem[off + i]) << (8n * BigInt(i));
+    return v;
+  }
+  writeMem(address, sizeByte, value) {
+    const { mem, off } = this.locate(address, sizeByte);
+    for (let i = 0; i < sizeByte; i += 1) mem[off + i] = Number((value >> (8n * BigInt(i))) & 0xffn);
+  }
+  readReg(op) {
+    const raw = this.reg[op.index];
+    if (op.size === 64) return raw & MASK64_MR;
+    if (op.size === 32) return raw & 0xffffffffn;
+    if (op.size === 16) return raw & 0xffffn;
+    if (op.high8) return (raw >> 8n) & 0xffn;
+    return raw & 0xffn;
+  }
+  writeReg(op, value) {
+    const i = op.index;
+    if (op.size === 64) this.reg[i] = value & MASK64_MR;
+    else if (op.size === 32) this.reg[i] = value & 0xffffffffn;
+    else if (op.size === 16) this.reg[i] = (this.reg[i] & ~0xffffn & MASK64_MR) | (value & 0xffffn);
+    else if (op.high8) this.reg[i] = (this.reg[i] & ~0xff00n & MASK64_MR) | ((value & 0xffn) << 8n);
+    else this.reg[i] = (this.reg[i] & ~0xffn & MASK64_MR) | (value & 0xffn);
+  }
+  effectiveAddress(mem, nextRip) {
+    let addr = 0n;
+    if (mem.rip_relative) addr = nextRip + BigInt(mem.disp);
+    else {
+      if (mem.base !== null) addr += this.reg[mem.base];
+      if (mem.index !== null) addr += this.reg[mem.index] * BigInt(mem.scale);
+      addr += BigInt(mem.disp);
+    }
+    return addr & MASK64_MR;
+  }
+  readOperand(op, nextRip) {
+    if (op.kind === "imm") return op.value & mrSizeMask(op.size);
+    if (op.kind === "reg") return this.readReg(op);
+    return this.readMem(this.effectiveAddress(op, nextRip), op.size / 8);
+  }
+  writeOperand(op, value, nextRip) {
+    if (op.kind === "reg") this.writeReg(op, value);
+    else this.writeMem(this.effectiveAddress(op, nextRip), op.size / 8, value);
+  }
+}
+
+// One node of the multi-region reference, ported verbatim from lib/exec64.mjs's
+// executeNode/executeAlu (the integer subset the microprograms use). Returns true
+// when the entry frame's RET unwound (the sentinel), else false.
+function mrExecNode(m, node, nextRip, sentinel) {
+  const size = node.size;
+  switch (node.op) {
+    case "nop": m.rip = nextRip; return false;
+    case "mov": m.writeOperand(node.dst, m.readOperand(node.src, nextRip), nextRip); m.rip = nextRip; return false;
+    case "movzx": m.writeReg(node.dst, m.readOperand(node.src, nextRip) & mrSizeMask(node.srcSize)); m.rip = nextRip; return false;
+    case "movsx": m.writeReg(node.dst, mrSigned(m.readOperand(node.src, nextRip), node.srcSize) & mrSizeMask(node.size)); m.rip = nextRip; return false;
+    case "movsxd": m.writeReg(node.dst, mrSigned(m.readOperand(node.src, nextRip), 32) & mrSizeMask(node.size)); m.rip = nextRip; return false;
+    case "lea": m.writeReg(node.dst, m.effectiveAddress(node.src, nextRip) & mrSizeMask(node.size)); m.rip = nextRip; return false;
+    case "alu": {
+      const mask = mrSizeMask(size);
+      const a = m.readOperand(node.dst, nextRip) & mask;
+      const b = m.readOperand(node.src, nextRip) & mask;
+      let result; let flag;
+      switch (node.aluOp) {
+        case "add": result = (a + b) & mask; flag = { kind: "add", size, a, b, cin: 0n, result }; break;
+        case "adc": { const cin = m.flags().cf ? 1n : 0n; result = (a + b + cin) & mask; flag = { kind: "add", size, a, b, cin, result }; break; }
+        case "sub": case "cmp": result = (a - b) & mask; flag = { kind: "sub", size, a, b, cin: 0n, result }; break;
+        case "sbb": { const cin = m.flags().cf ? 1n : 0n; result = (a - b - cin) & mask; flag = { kind: "sub", size, a, b, cin, result }; break; }
+        case "and": case "test": result = a & b & mask; flag = { kind: "logic", size, a, result }; break;
+        case "or": result = (a | b) & mask; flag = { kind: "logic", size, a, result }; break;
+        case "xor": result = (a ^ b) & mask; flag = { kind: "logic", size, a, result }; break;
+        default: throw new Error(`mr: unhandled alu ${node.aluOp}`);
+      }
+      m.flagSource = flag;
+      if (node.writeBack) m.writeOperand(node.dst, result, nextRip);
+      m.rip = nextRip; return false;
+    }
+    case "inc": case "dec": {
+      const mask = mrSizeMask(size);
+      const a = m.readOperand(node.dst, nextRip) & mask;
+      const result = node.op === "inc" ? (a + 1n) & mask : (a - 1n) & mask;
+      const cfKeep = m.flags().cf;
+      m.flagSource = { kind: node.op, size, a, result, cfKeep };
+      m.writeOperand(node.dst, result, nextRip);
+      m.rip = nextRip; return false;
+    }
+    case "push": {
+      const sizeByte = size / 8;
+      const value = m.readOperand(node.src, nextRip) & mrSizeMask(size);
+      m.reg[RSP] = (m.reg[RSP] - BigInt(sizeByte)) & MASK64_MR;
+      m.writeMem(m.reg[RSP], sizeByte, value);
+      m.rip = nextRip; return false;
+    }
+    case "pop": {
+      const sizeByte = size / 8;
+      const value = m.readMem(m.reg[RSP], sizeByte);
+      m.reg[RSP] = (m.reg[RSP] + BigInt(sizeByte)) & MASK64_MR;
+      m.writeOperand(node.dst, value, nextRip);
+      m.rip = nextRip; return false;
+    }
+    case "jmp": m.rip = nextRip + node.rel; return false;
+    case "ret": {
+      const target = m.readMem(m.reg[RSP], 8);
+      m.reg[RSP] = (m.reg[RSP] + 8n + BigInt(node.pop)) & MASK64_MR;
+      m.rip = target;
+      return target === sentinel;
+    }
+    default: throw new Error(`mr: unhandled op ${node.op}`);
+  }
+}
+
+// Runs one microprogram through the multi-region reference. `regionSpec` is the
+// SAME [{ base, size, kind }] list handed to wasm64. Seeds identically to
+// lib/wasm64.mjs seedStatePlan (image into the image region, rsp/sentinel in the
+// stack region). Returns end-of-run GPRs, flags, and each region's bytes.
+function interpretMultiRegion(image, regionSpec, { loadBase, register = {}, entryRva = 0, budget = 4096 }) {
+  const region = regionSpec.map((r) => ({ base: BigInt.asUintN(64, BigInt(r.base)), size: Number(r.size), kind: r.kind ?? "region", mem: Buffer.alloc(Number(r.size)) }));
+  for (const r of region) {
+    if (r.kind === "image" || r.kind === "flat") Buffer.from(image).copy(r.mem, 0, 0, Math.min(image.length, r.size));
+    else if (regionSpec.find((s) => BigInt.asUintN(64, BigInt(s.base)) === r.base)?.init) {
+      const init = regionSpec.find((s) => BigInt.asUintN(64, BigInt(s.base)) === r.base).init;
+      Buffer.from(init).copy(r.mem, 0, 0, Math.min(init.length, r.size));
+    }
+  }
+  const m = new MultiRegionMachine(region);
+  const stk = region.find((r) => r.kind === "stack") ?? region[0];
+  const img = region.find((r) => r.kind === "image" || r.kind === "flat") ?? region[0];
+  const stackTop = BigInt.asUintN(64, stk.base + BigInt(stk.size - 16));
+  const rsp0 = BigInt.asUintN(64, stackTop - 8n);
+  const sentinel = 0xdead000000000000n | (BigInt(loadBase) & 0xffffn);
+  m.writeMem(rsp0, 8, sentinel);
+  m.reg[RSP] = rsp0;
+  for (const [name, value] of Object.entries(register)) m.reg[REG_INDEX[name]] = BigInt(value) & MASK64_MR;
+  m.rip = BigInt.asUintN(64, BigInt(loadBase) + BigInt(entryRva));
+
+  let stopped = false;
+  for (let n = 0; n < budget; n += 1) {
+    const rvaOff = Number(m.rip - img.base);
+    const node = decodeStructured(img.mem, rvaOff);
+    const nextRip = BigInt.asUintN(64, m.rip + BigInt(node.length));
+    if (mrExecNode(m, node, nextRip, sentinel)) { stopped = true; break; }
+  }
+  assert.ok(stopped, "multi-region oracle: the program must reach the entry RET within budget");
+  const registerOut = {};
+  for (let i = 0; i < 16; i += 1) registerOut[REG[i]] = m.reg[i] & MASK64_MR;
+  return { register: registerOut, flag: m.flags(), region };
+}
+
+// Lifts+runs a microprogram through the multi-region oracle AND the WASM module
+// (both with the SAME region map), asserting bit-exact GPRs, flags, and per-region
+// bytes plus an OK run status.
+function assertMultiRegionEquivalent(code, regionSpec, seed, label) {
+  const image = Buffer.from(code);
+  const oracle = interpretMultiRegion(image, regionSpec, { loadBase, ...seed });
+
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region: regionSpec, register: seed.register });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, `${label}: codegen incomplete — fell back on ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.ok(compiled.plan.multi, `${label}: the plan must be a true multi-region map`);
+
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region: regionSpec, register: seed.register });
+  assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}, expected ok`);
+
+  for (const name of REG) {
+    assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} WASM ${jit.flag[name]} != oracle ${oracle.flag[name]}`);
+  }
+  for (let i = 0; i < jit.region.length; i += 1) {
+    assert.deepEqual([...jit.region[i].bytes], [...oracle.region[i].mem], `${label}: region ${i} (${jit.region[i].kind}) bytes diverge`);
+  }
+  return jit;
+}
+
+// The sparse layout the real runtime uses (scaled down): image at loadBase, a HIGH
+// stack at 0x7ff000000000, and an HLE-style arena at 0xF8000000.
+const IMAGE_BASE = loadBase;
+const STACK_BASE = 0x7ff000000000n;
+const ARENA_BASE = 0xf8000000n;
+const sparseLayout = (image) => [
+  { base: IMAGE_BASE, size: Math.max(image.length + 16, 0x1000), kind: "image" },
+  { base: STACK_BASE, size: 0x10000, kind: "stack" },
+  { base: ARENA_BASE, size: 0x1000, kind: "arena" },
+];
+
+test("multi-region cross-check: the oracle agrees with lib/lift64 interpret() on a flat program", () => {
+  // mov eax,5; mov ecx,3; add eax,ecx; dec ecx; ret — arithmetic that sets flags.
+  const code = [0xb8, 0x05, 0x00, 0x00, 0x00, 0xb9, 0x03, 0x00, 0x00, 0x00, 0x01, 0xc8, 0xff, 0xc9, 0xc3];
+  const image = Buffer.from(code);
+  const flatOracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(flatOracle.stop_reason, "entry_return");
+  // The SAME program through the multi-region reference with a single flat region
+  // (image+stack contiguous at loadBase) must land on identical GPRs and flags —
+  // proving the reference's fidelity before it is trusted for the sparse layouts.
+  const region = [{ base: loadBase, size: image.length + 0x10000, kind: "image" }];
+  const mr = interpretMultiRegion(image, region, { loadBase });
+  for (const name of REG) assert.equal(mr.register[name], flatOracle.register[name], `cross-check reg ${name}`);
+  for (const name of FLAG) assert.equal(mr.flag[name], flatOracle.flag[name], `cross-check flag ${name}`);
+});
+
+test("multi-region: stack push/pop at a HIGH base (0x7ff000000000) round-trips — the case that traps a flat memory", () => {
+  // mov rax,0x1234; push rax; pop rcx; ret — rsp lives at ~140 TB, far outside any
+  // flat 4 GiB image+stack; the region map packs it compactly so the access lands.
+  const code = [0x48, 0xc7, 0xc0, 0x34, 0x12, 0x00, 0x00, 0x50, 0x59, 0xc3];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const jit = assertMultiRegionEquivalent(code, region, {}, "high-stack-pushpop");
+  assert.equal(jit.register.rcx, 0x1234n, "pop rcx must recover the pushed rax");
+  assert.equal(jit.register.rax, 0x1234n, "rax is preserved across the balanced push/pop");
+  // The pushed qword must sit in the STACK region's compact bytes at rsp0-8.
+  const stackTopVA = STACK_BASE + BigInt(0x10000 - 16);
+  const pushedOff = Number((stackTopVA - 8n - 8n) - STACK_BASE);
+  const stackRegion = jit.region.find((r) => r.kind === "stack");
+  const dv = new DataView(stackRegion.bytes.buffer, stackRegion.bytes.byteOffset, stackRegion.bytes.byteLength);
+  assert.equal(dv.getBigUint64(pushedOff, true), 0x1234n, "the pushed value lands in the high stack region's compact bytes");
+});
+
+test("multi-region: image (rip-relative) load and stack (rsp-relative) store in one function", () => {
+  // mov rax,[rip+disp] (reads an 8-byte constant embedded in the image tail);
+  // mov [rsp-8],rax (writes it to the high stack); mov rcx,[rsp-8] (reads it back).
+  // The rip-relative access resolves to the IMAGE region, the rsp accesses to the
+  // STACK region — two different regions in the same block.
+  // Layout: at 0x00 lea/mov rip-relative to the constant at 0x1a.
+  const code = [
+    0x48, 0x8b, 0x05, 0x10, 0x00, 0x00, 0x00, // 0x00 mov rax,[rip+0x10] → 0x07+0x10 = 0x17
+    0x48, 0x89, 0x44, 0x24, 0xf8,             // 0x07 mov [rsp-8],rax
+    0x48, 0x8b, 0x4c, 0x24, 0xf8,             // 0x0c mov rcx,[rsp-8]
+    0xc3,                                     // 0x11 ret
+    0x00, 0x00, 0x00, 0x00, 0x00,             // 0x12 padding
+    0xef, 0xbe, 0xad, 0xde, 0x0d, 0xf0, 0xed, 0xfe, // 0x17 constant 0xfeedf00ddeadbeef
+  ];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const jit = assertMultiRegionEquivalent(code, region, {}, "image-load-stack-store");
+  assert.equal(jit.register.rax, 0xfeedf00ddeadbeefn, "rip-relative load pulls the image constant");
+  assert.equal(jit.register.rcx, 0xfeedf00ddeadbeefn, "the stack store/reload round-trips the value");
+});
+
+test("multi-region: a computed pointer lands in the ARENA region", () => {
+  // mov rdx, arenaBase (imm64); mov rax,0xcafe; mov [rdx+8],rax; mov rcx,[rdx+8]; ret
+  // rdx is a fully computed pointer whose value only the runtime dispatch can place;
+  // it resolves to the arena region, not the image or stack.
+  const arenaAddr = ARENA_BASE;
+  const code = [
+    0x48, 0xba, ...[...Array(8)].map((_, i) => Number((arenaAddr >> BigInt(8 * i)) & 0xffn)), // mov rdx,arenaBase
+    0x48, 0xc7, 0xc0, 0xfe, 0xca, 0x00, 0x00, // mov rax,0xcafe
+    0x48, 0x89, 0x42, 0x08,                   // mov [rdx+8],rax
+    0x48, 0x8b, 0x4a, 0x08,                   // mov rcx,[rdx+8]
+    0xc3,                                     // ret
+  ];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const jit = assertMultiRegionEquivalent(code, region, {}, "arena-computed-pointer");
+  assert.equal(jit.register.rcx, 0xcafen, "the value written through the arena pointer reads back");
+  const arenaRegion = jit.region.find((r) => r.kind === "arena");
+  const dv = new DataView(arenaRegion.bytes.buffer, arenaRegion.bytes.byteOffset, arenaRegion.bytes.byteLength);
+  assert.equal(dv.getBigUint64(8, true), 0xcafen, "the store landed in the arena region's compact bytes at offset 8");
+});
+
+test("multi-region: an out-of-region access is an honest fallback, never a wrapped access", () => {
+  // mov rdx,0x30000000 (a VA in NO mapped region); mov rax,[rdx]; ret. The dispatch
+  // finds no region → sets the fault flag → the module returns 'fallback' rather
+  // than reading a wrong/wrapped byte. The interpreter oracle would fault too.
+  const badAddr = 0x30000000n; // between arena (0xF8000000) and image, mapped by none
+  const code = [
+    0x48, 0xba, ...[...Array(8)].map((_, i) => Number((badAddr >> BigInt(8 * i)) & 0xffn)), // mov rdx,badAddr
+    0x48, 0x8b, 0x02, // mov rax,[rdx]
+    0xc3,             // ret
+  ];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, "the shape is compilable; the unmapped access is a RUNTIME fault, not a compile-time one");
+  assert.ok(compiled.plan.multi, "the layout is a true multi-region map");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region });
+  assert.equal(jit.statusName, "fallback", "an out-of-region access must report an honest fallback");
+  // The oracle confirms the access is genuinely unmapped (it throws on locate).
+  assert.throws(() => interpretMultiRegion(image, region, { loadBase }), /outside the mapped regions/, "the reference machine also rejects the unmapped VA");
+});
+
+test("multi-region: the single flat region is the degenerate case (function path unchanged)", () => {
+  // A one-region map at loadBase must behave exactly like the historical flat path:
+  // mov eax,5; mov ecx,3; add eax,ecx; ret through both the flat interpreter and the
+  // WASM module with an explicit single region.
+  const code = [0xb8, 0x05, 0x00, 0x00, 0x00, 0xb9, 0x03, 0x00, 0x00, 0x00, 0x01, 0xc8, 0xc3];
+  const image = Buffer.from(code);
+  const flatOracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  const region = [{ base: loadBase, size: image.length + 0x10000, kind: "image" }];
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region });
+  assert.equal(compiled.plan.multi, false, "a single region at loadBase collapses to the flat fast path");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region });
+  assert.equal(jit.statusName, "ok");
+  for (const name of REG) assert.equal(jit.register[name], flatOracle.register[name], `degenerate reg ${name}`);
+  for (const name of FLAG) assert.equal(jit.flag[name], flatOracle.flag[name], `degenerate flag ${name}`);
 });
