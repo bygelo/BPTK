@@ -104,8 +104,18 @@ test("1:1 synthetic — tiered run is bit-exact to pure interpretation, with a g
   // At least one function actually ran WASM-tier; the fallback leaf ran
   // interpreter-tier — a real two-engine run over one state.
   assert.ok(tiered.tier_report.wasm_tier_function >= 1, "at least one WASM-tier function must be chosen");
-  assert.equal(tiered.tier_report.wasm_tier_entry[0], `0x${(loadBase + 0x40n).toString(16)}`, "the pure leaf is the WASM-tier function");
-  assert.ok(tiered.tier_report.interpreter_tier_function >= 1, "the rotate leaf must run interpreter-tier");
+  // The tier is entered where the guest already stands as well as at a direct call, so
+  // the pure leaf is compiled into the entry's own region rather than appearing as its
+  // own entry. What is asserted is that the tier really begins at the guest entry and
+  // carries the leaf: the guest entry is a WASM-tier entry.
+  assert.ok(tiered.tier_report.wasm_tier_entry.includes(`0x${loadBase.toString(16)}`), `the tier must run the entry region — ${JSON.stringify(tiered.tier_report.wasm_tier_entry)}`);
+  // The rotate really ran interpreter-tier. A region containing a shape the codegen
+  // will not emit is no longer refused whole — it compiles up to that instruction and
+  // hands back AT it — so the engine split is now per INSTRUCTION, not per function,
+  // and this asserts it in those terms: the interpreter executed the `ror` (and the
+  // guest's own `ret` onto the entry sentinel), the WASM tier executed the rest.
+  assert.ok(tiered.tier_report.interpreter_tier_instruction >= 1, "the rotate must run interpreter-tier");
+  assert.ok(tiered.tier_report.wasm_tier_instruction > tiered.tier_report.interpreter_tier_instruction, "most of the run must be carried by the WASM tier");
   // The computed result carries through both tiers: rax = ((5 + 3 + 7) ror 4).
   assert.equal(tiered.register.rax, 0xF000000000000000n, "the tiered result equals the interpreted result");
 });
@@ -186,7 +196,27 @@ test("1:1 PuTTY x64 — tiered run is bit-exact to pure interpretation at a boun
 
   // The WASM tier genuinely carried PuTTY state: real functions ran WASM-tier.
   assert.ok(tiered.tier_report.wasm_tier_function >= 1, "at least one PuTTY function must run WASM-tier");
+
+  // RESIDENCY, on a real binary, in the SAME unit for both engines. This is the
+  // number the whole tier exists to move: if the interpreter still executes most of
+  // the guest instruction then no amount of compiled speed can matter (Amdahl), and
+  // the tier is an elaborate way to run an interpreter. It was 98.3% interpreter on
+  // this corpus before resident entry and partial regions; the threshold below is a
+  // floor on the mechanism, not on the exact figure, so a real improvement never
+  // fails it and a regression of the mechanism always does.
+  const residentInstruction = tiered.tier_report.wasm_tier_instruction;
+  const interpretedInstruction = tiered.tier_report.interpreter_tier_instruction;
+  assert.ok(residentInstruction > interpretedInstruction * 3,
+    `the WASM tier must carry the large majority of PuTTY's executed instruction (WASM ${residentInstruction} vs interpreter ${interpretedInstruction})`);
+  // Both engines are charged to the SAME budget, so their counts are comparable and
+  // together they account for the run. (The remainder is the handful of harness steps
+  // — an import stop, a specialization resume — that are guest instruction in neither
+  // engine.)
+  assert.ok(residentInstruction + interpretedInstruction <= tiered.instruction_count,
+    "neither engine may be charged instruction the run's own budget was not charged");
   console.log(`tierrun PuTTY 1:1 @ ${budget} budget → stop ${tiered.stop_reason} at rip 0x${tiered.rip.toString(16)}; ` +
+    `WASM-tier instruction ${residentInstruction} vs interpreter ${interpretedInstruction} ` +
+    `(${(100 * interpretedInstruction / (residentInstruction + interpretedInstruction)).toFixed(2)}% interpreter residency); ` +
     `WASM-tier ${tiered.tier_report.wasm_tier_function} functions / ${tiered.tier_report.wasm_tier_invocation} invocations, ` +
     `interpreter-tier ${tiered.tier_report.interpreter_tier_function} functions / ${tiered.tier_report.interpreter_tier_instruction} instructions`);
 });
@@ -255,7 +285,13 @@ test("1:1 synthetic — a WASM-tier function that exits at an indirect call resu
 
   // The resume really happened — the tier did not quietly route F to the interpreter.
   assert.ok(tiered.tier_report.wasm_tier_resume >= 1, "the indirect exit must be committed and resumed, not discarded");
-  assert.equal(tiered.tier_report.wasm_tier_entry[0], `0x${(loadBase + 0x40n).toString(16)}`, "F is the WASM-tier function");
+  // F ran WASM-tier, pinned by RESIDENCY rather than by an entry address: the tier is
+  // now entered where the guest already stands as well as at a direct call, so F's
+  // body is compiled into the caller's own region and never appears as its own entry.
+  // The statement that matters is the same one and it is stronger — the interpreter
+  // executed EXACTLY the one instruction the module hands back for, the indirect
+  // `call rbx`, so every other instruction in entry, F and G ran as WebAssembly.
+  assert.equal(tiered.tier_report.interpreter_tier_instruction, 1, "the interpreter must perform only the one indirect transfer; F ran on the WASM tier");
   // rax = (5 + 3) + 7 (in the indirect callee) + 100 (back in F, after the resume).
   assert.equal(tiered.register.rax, 115n, "every leg of the split execution contributed exactly once");
   assert.equal(tiered.register.rcx, 5n, "F's push/pop pair survived the resume, so its frame was the real one");
@@ -306,7 +342,8 @@ test("1:1 synthetic — an out-of-region FAULT commits AT the fault and stays bi
   // The memory comparison is the real assertion: the increment must appear exactly
   // once, whichever engine applied it.
   assertSameMemory(tiered, pure, "fault-commit: tiered vs interpreter");
-  assert.equal(tiered.tier_report.wasm_tier_function, 1, "F really ran on the WASM tier up to the faulting store");
+  assert.ok(tiered.tier_report.wasm_tier_function >= 1, "the WASM tier really ran");
+  assert.equal(tiered.tier_report.interpreter_tier_instruction, 0, "F really ran on the WASM tier up to the faulting store — the interpreter executed nothing before the fault");
 });
 
 // The single-call case above proves one resume is exact. The pathological shape is
@@ -362,7 +399,14 @@ test("1:1 synthetic — a hot caller re-entering an indirect-exiting function re
   assertSameState(tiered, pure, "hot-indirect: tiered vs interpreter");
   assertSameMemory(tiered, pure, "hot-indirect: tiered vs interpreter");
   assert.equal(tiered.register.rax, BigInt(count * (inner + 1)), "every iteration of every invocation counted exactly once");
-  assert.equal(tiered.tier_report.wasm_tier_resume, count, "the tier carried, and resumed from, all forty invocations");
+  // The tier carried, and resumed from, every invocation: EVERY invocation ended in a
+  // committed resume (none was discarded), and there is at least one per iteration.
+  assert.equal(tiered.tier_report.wasm_tier_resume, tiered.tier_report.wasm_tier_invocation, "every WASM-tier invocation must end in a committed resume, never a discard");
+  assert.ok(tiered.tier_report.wasm_tier_invocation >= count, `the tier must run at least once per iteration (${tiered.tier_report.wasm_tier_invocation} invocations for ${count} iterations)`);
+  // RESIDENCY, pinned exactly: the ONLY thing the interpreter is left to do is the one
+  // indirect `call rbx` per iteration — the single transfer the module hands back for.
+  // Everything else, including the caller's own loop, stays in the tier.
+  assert.equal(tiered.tier_report.interpreter_tier_instruction, count, "the interpreter must execute exactly the one indirect transfer per iteration and nothing more");
   // The tier must be a real speed-up in WORK, not just in wall clock: the caller's
   // loop is interpreted, but the callee's inner loop ran entirely on the WASM tier,
   // so the tiered run executes far fewer interpreter instructions than pure does.
