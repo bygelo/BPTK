@@ -105,3 +105,59 @@ That is a real option owned by whoever decides it, not a change to smuggle in.
 
 `passing` stays 0. A faster tier would not be proven playability either; a
 throughput ratio is not a compatibility claim.
+
+## What "real-time playability" actually costs — the acceptance number
+
+"Real-time playability" had no number attached to it, so it could not be passed
+or failed. Measured on the real Chocolate Doom + Freedoom WAD through the
+interpreter (`runImage64`, this Windows host):
+
+| Budget | Instruction | Frame presented |
+| ---: | ---: | ---: |
+| 20,000,000 | 20,000,000 | 11 |
+| 40,000,000 | 40,000,000 | 61 |
+
+The **marginal** cost is the honest one — the 20M row is dominated by startup and
+WAD load, which inflate a naive instruction-per-frame average to 1.82M:
+
+```text
+(40,000,000 - 20,000,000) / (61 - 11) = 400,000 instruction per frame
+```
+
+| Quantity | Value |
+| --- | ---: |
+| Steady-state cost | **~400,000 instruction / frame** |
+| Interpreter throughput | **0.22 M ips** |
+| Delivered frame rate | **~0.55 fps** |
+| Needed for 35 fps | **~14 M ips** |
+| **Speedup required** | **~64x** |
+
+The 0.22 M ips corroborates the ~0.17 M ips figure carried into this work from a
+prior session, measured independently here.
+
+### Why that number matter
+
+64x is the target the tier has to hit, and it frames every remaining decision:
+
+- The WASM fast path has been described as ~80x against the interpreter **on
+  compiled code in isolation**. If that held end to end it would clear 14 M ips.
+  It does not hold end to end: measured through `runTieredImage`, the tier is
+  currently **2.3x SLOWER** than interpretation on PuTTY (above). The distance
+  between "80x on compiled code" and "2.3x slower end to end" IS the remaining
+  engineering problem — transition cost, compile cost, and the fraction of hot
+  code that is eligible.
+- So real-time Doom is **not** obviously out of reach, but it is **not** reachable
+  by widening eligibility alone either. Eligibility is at 57.7%; even 100% would
+  not help while the end-to-end path is a net slowdown.
+
+### The prior blocker on measuring any of this
+
+The tier cannot run Doom at all today: `runTieredImage` on chocolate-doom.exe
+stops after **164 instruction** with `tier_unsupported_specialization`, at the
+`_initterm` CRT-initializer specialization the tiered runner declines to drive.
+Doom never reaches its game loop on the tier, so no tier throughput number for
+Doom exists yet — every tier measurement in this log is PuTTY. Driving the
+specialization is the prerequisite for measuring, let alone achieving, the 64x.
+
+`passing` stays 0. A frame rate is not a compatibility claim, and this section
+is a target, not a result.
