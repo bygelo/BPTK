@@ -63,6 +63,7 @@
     "lib/storage.mjs",
     "lib/thread.mjs",
     "lib/tier.mjs",
+    "lib/tierrun.mjs",
     "lib/toolchain.mjs",
     "lib/user.mjs",
     "lib/wasm64.mjs",
