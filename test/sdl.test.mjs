@@ -11,8 +11,11 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { existsSync, readFileSync } from "node:fs";
 import { createSdlSubsystem, sdlExportTable } from "../lib/sdl.mjs";
-import { executeProbe64 } from "../lib/exec64.mjs";
+import { executeProbe64, runImage64 } from "../lib/exec64.mjs";
+import { mapPe64State } from "../lib/pe64.mjs";
+import { createHleLayout } from "../lib/hle.mjs";
 import { createGuestClock } from "../lib/clock.mjs";
 
 // A flat little-endian guest memory over one Buffer, with the same four
@@ -220,6 +223,101 @@ test("executeProbe64 runs an SDL SetVideoMode + FillRect to a non-blank framebuf
   assert.equal(frame.height, 4);
   assert.equal(frame.is_blank, false, "the guest drew a real first frame");
   assert.equal(frame.rgba[0], 0xff, "the first pixel is red");
+});
+
+// The SDL2 render pipeline end to end at the subsystem level: an 8-bit paletted
+// surface, a palette, a real palette-converting blit into a 32-bit surface, a
+// streaming texture uploaded from those pixels, a RenderCopy into the renderer
+// framebuffer, and a RenderPresent — the exact path Chocolate Doom's
+// I_FinishUpdate drives. The presented pixels must be the palette color, proving
+// the 8-bit index -> RGBA conversion is real, never synthesized.
+test("SDL2 8-bit paletted surface converts through its palette to a presented RGBA frame", () => {
+  const { sdl, memory } = createSubsystem();
+  // An 8-bit indexed 4x2 surface (variant 2 = SDL2 struct layout).
+  const indexed = sdl.createRGBSurface(0, 4, 2, 8, 0, 0, 0, 0, 2);
+  assert.notEqual(indexed, 0, "the 8-bit surface is created");
+  // The surface's format->palette pointer (format @ surface+8, palette @ format+8).
+  const formatAddr = memory.readMemory(indexed + 8, 4);
+  const paletteAddr = memory.readMemory(formatAddr + 8, 4);
+  assert.notEqual(paletteAddr, 0, "an 8-bit surface carries an SDL_Palette");
+  // Set palette index 7 to a distinct teal (r=0x11, g=0x99, b=0xcc). SDL_Color
+  // is r,g,b,a; write one color at a scratch address and install it at index 7.
+  const colorAddr = 0x00101c00;
+  memory.writeMemory(colorAddr + 0, 1, 0x11);
+  memory.writeMemory(colorAddr + 1, 1, 0x99);
+  memory.writeMemory(colorAddr + 2, 1, 0xcc);
+  memory.writeMemory(colorAddr + 3, 1, 0xff);
+  assert.equal(sdl.setPaletteColors(paletteAddr, colorAddr, 7, 1), 0);
+  // Fill the whole indexed surface with index 7.
+  sdl.fillRect(indexed, 0, 7);
+  // A 32-bit ARGB destination surface, and the palette-converting blit.
+  const argb = sdl.createRGBSurface(0, 4, 2, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000, 2);
+  assert.equal(sdl.lowerBlit(indexed, 0, argb, 0), 0);
+  // The 32-bit surface now holds the palette color as ARGB (0xAARRGGBB).
+  const argbPixelPtr = memory.readMemory(argb + 32, 4);
+  const converted = memory.readMemory(argbPixelPtr, 4) >>> 0;
+  assert.equal((converted >>> 16) & 0xff, 0x11, "R came from the palette");
+  assert.equal((converted >>> 8) & 0xff, 0x99, "G came from the palette");
+  assert.equal(converted & 0xff, 0xcc, "B came from the palette");
+  // Renderer + streaming texture: upload the argb pixels, copy, present.
+  const win = sdl.createWindow(0, 0, 0, 4, 2, 0);
+  const renderer = sdl.createRenderer(win, -1, 0);
+  sdl.renderSetLogicalSize(renderer, 4, 2);
+  const texture = sdl.createTexture(renderer, 0x16362004, 1, 4, 2);
+  assert.notEqual(texture, 0, "a streaming texture is created");
+  assert.equal(sdl.updateTexture(texture, 0, argbPixelPtr, 4 * 4), 0);
+  assert.equal(sdl.renderClear(renderer), 0);
+  assert.equal(sdl.renderCopy(renderer, texture, 0, 0), 0);
+  assert.equal(sdl.renderPresent(renderer), 0);
+  const frame = sdl.presentFramebuffer();
+  assert.equal(frame.width, 4);
+  assert.equal(frame.height, 2);
+  assert.equal(frame.is_blank, false, "the presented frame carries the palette color");
+  assert.equal(frame.rgba[0], 0x11, "presented R is the palette R");
+  assert.equal(frame.rgba[1], 0x99, "presented G is the palette G");
+  assert.equal(frame.rgba[2], 0xcc, "presented B is the palette B");
+});
+
+// The payoff, corpus-gated: the real Chocolate Doom (corpus-007, x86-64) loading
+// the real Freedoom WAD, driven through the bounded x86-64 interpreter with the
+// SDL video/render pipeline this file serves, presents its first non-blank
+// frame — the actual title screen Doom drew from its own 8-bit screen buffer
+// through the WAD's PLAYPAL. Verified above the corpus 10M bound (the corpus
+// safety cap) because the game reaches its first present at ~16M instructions;
+// runImage64 (the uncapped interpreter entry) honors the larger verify budget.
+// Skips cleanly when the corpus is not staged.
+const corpusDoomExe = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-007/package/chocolate-doom.exe";
+const corpusDoomWad = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-007/wad/freedoom1.wad";
+test("Chocolate Doom presents a non-blank first frame through the served SDL pipeline", { skip: existsSync(corpusDoomExe) && existsSync(corpusDoomWad) ? false : "corpus-007 not staged" }, () => {
+  const bytes = new Uint8Array(readFileSync(corpusDoomExe));
+  const wad = readFileSync(corpusDoomWad);
+  const mapped = mapPe64State(bytes, null);
+  const mask64 = (1n << 64n) - 1n;
+  const importSet = new Map();
+  for (const entry of mapped.import ?? []) importSet.set((mapped.load_base + BigInt(entry.iat_slot_rva)) & mask64, entry);
+  const stackBase = 0x00007ff000000000;
+  const layout = createHleLayout({ load_base: Number(mapped.load_base & mask64), image_size_byte: mapped.image_size_byte, stack_base: stackBase, stack_end: stackBase + 0x00100000 });
+  assert.notEqual(layout, null, "the HLE layout is available");
+  const hle = {
+    layout,
+    clock: createGuestClock({ mode: "virtual_monotonic" }),
+    executableName: "chocolate-doom.exe",
+    hostFile: new Map([["C:\\game\\freedoom1.wad", wad]]),
+    environment: { DOOMWADDIR: "C:\\game" },
+    commandLine: ["-iwad", "C:\\game\\freedoom1.wad"],
+  };
+  const run = runImage64({
+    image: mapped.image, loadBase: mapped.load_base, entryRva: mapped.entry_rva,
+    budget: 20000000, importSet, hle, resourceRva: mapped.directory?.[2]?.rva ?? 0,
+  });
+  assert.equal(run.guest.sdl.has_video, true, "Doom opened an SDL window + renderer");
+  assert.ok(run.guest.sdl.present_count > 0, "Doom presented at least one frame");
+  const frame = run.guest.sdl.presentFramebuffer();
+  assert.notEqual(frame, null, "the present path returns a framebuffer");
+  assert.equal(frame.is_blank, false, "Doom's presented frame is the real, non-blank title screen");
+  let painted = 0;
+  for (let i = 0; i < frame.rgba.length; i += 4) if (frame.rgba[i] | frame.rgba[i + 1] | frame.rgba[i + 2]) painted += 1;
+  assert.ok(painted > frame.width * frame.height / 2, `most of the frame is painted (${painted} of ${frame.width * frame.height} pixels)`);
 });
 
 test("the SDL export table registers both SDL1 (sdl.dll) and SDL2 (sdl2.dll)", () => {
