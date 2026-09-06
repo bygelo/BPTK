@@ -215,6 +215,22 @@ test("coverage: report emitted IR op kinds and the interpret fallbacks", () => {
 const cflowShape = new Set();
 const cflowBranch = new Set();
 
+// Reads a little-endian guest qword out of the WASM module's memory copy at a
+// full guest virtual address (loadBase-relative). Used to inspect the exact
+// stack bytes a call/ret touched.
+function stackQword(jit, guestAddr) {
+  const offset = Number(guestAddr - loadBase);
+  const dv = new DataView(jit.memory.buffer, jit.memory.byteOffset, jit.memory.byteLength);
+  return dv.getBigUint64(offset, true);
+}
+
+// The initial guest rsp the seedState / interpreter set up: the sentinel sits at
+// rsp0, and the first pushed return address lands one slot below (rsp0 - 8).
+function initialRsp(code) {
+  const stackTop = loadBase + BigInt(code.length + 0x10000 - 16);
+  return stackTop - 8n;
+}
+
 // Lifts-and-interprets the whole function (oracle) and runs the multi-block WASM
 // module, asserting bit-exact register + flag agreement and an OK run status.
 function assertFunctionEquivalent(code, label) {
@@ -318,14 +334,134 @@ test("multi-block: iteration cap stops a runaway loop (budget_exhausted, no hang
   assert.equal(jit2.statusName, "budget_exhausted", "a smaller cap also stops the runaway");
 });
 
-test("multi-block: unmodelled shapes are honest, named fallbacks (call, indirect jmp)", () => {
-  // A direct call is not modelled — the whole function is an honest fallback.
-  const callImage = Buffer.from([0xe8, 0x00, 0x00, 0x00, 0x00, 0xc3]); // call +0; ret
-  const callCompiled = compileFunction(callImage, { loadBase, decodeStructured, guestLen: callImage.length + 0x10000 });
-  assertRealModule(callCompiled.bytes);
-  assert.equal(callCompiled.complete, false, "a direct call must be an honest fallback, not emitted");
-  assert.ok(callCompiled.coverage.unsupported.some((u) => u.reason === "control_call"), "the call must be named as a control-flow fallback");
-  assert.equal(runFunction(callImage, { image: callImage, loadBase, decodeStructured }).statusName, "fallback", "a fallback module reports the fallback status");
+// -------------------- direct calls across guest functions (CALL/RET) --------------------
+//
+// A `call rel32/rel8` (E8/near) to another lifted guest function in the compiled
+// set now compiles to real cross-function control flow: the call pushes the
+// return address on the SAME guest stack (rsp-=8, store next-rip) and transfers
+// to the callee entry block; the callee's RET pops that address and dispatches
+// back. Every microprogram below runs through BOTH the interpreter oracle and the
+// multi-block WASM module, asserting bit-exact GPRs + flags AND the exact stack
+// bytes the call/ret touched (interpret() writes loadBase+returnRva at [rsp] on a
+// call — the identical value the codegen stores at the identical guest address).
+
+test("call: leaf returns a value in eax, caller uses it (bit-exact stack push/pop)", () => {
+  // call leaf; add eax,8; ret   leaf: mov eax,42; ret   → eax = 42 + 8 = 50
+  const code = [
+    0xe8, 0x04, 0x00, 0x00, 0x00, // 0x00 call leaf (target 0x09)
+    0x83, 0xc0, 0x08,             // 0x05 add eax,8
+    0xc3,                         // 0x08 ret (entry frame)
+    0xb8, 0x2a, 0x00, 0x00, 0x00, // 0x09 leaf: mov eax,42
+    0xc3,                         // 0x0e ret
+  ];
+  const { jit, compiled } = assertFunctionEquivalent(code, "call-leaf");
+  assert.equal(jit.register.rax, 50n, "eax = leaf result (42) + 8 = 50");
+  assert.ok(compiled.branchKind.includes("call"), "the E8 direct call is emitted as a real call");
+  // The call pushed the return address (loadBase + 0x05) at rsp0-8; after the
+  // balanced call/ret it remains as a stale qword — the exact byte the oracle wrote.
+  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x05n, "return address pushed on the guest stack is bit-exact");
+});
+
+test("call: nested A→B→C, each frame's return address on the stack (bit-exact)", () => {
+  // A: call B; ret   B: call C; add eax,1; ret   C: mov eax,10; ret  → eax = 10 + 1 = 11
+  const code = [
+    0xe8, 0x01, 0x00, 0x00, 0x00, // 0x00 A: call B (target 0x06)
+    0xc3,                         // 0x05 A: ret
+    0xe8, 0x04, 0x00, 0x00, 0x00, // 0x06 B: call C (target 0x0f)
+    0x83, 0xc0, 0x01,             // 0x0b B: add eax,1
+    0xc3,                         // 0x0e B: ret
+    0xb8, 0x0a, 0x00, 0x00, 0x00, // 0x0f C: mov eax,10
+    0xc3,                         // 0x14 C: ret
+  ];
+  const { jit, compiled } = assertFunctionEquivalent(code, "call-nested");
+  assert.equal(jit.register.rax, 11n, "C returns 10, B adds 1, A returns → eax = 11");
+  assert.equal(compiled.blockCount, 5, "A, B, C entries + two return-resume blocks");
+  const rsp0 = initialRsp(code);
+  assert.equal(stackQword(jit, rsp0 - 8n), loadBase + 0x05n, "A→B return address (loadBase+0x05) on the stack");
+  assert.equal(stackQword(jit, rsp0 - 16n), loadBase + 0x0bn, "B→C return address (loadBase+0x0b) one frame deeper");
+});
+
+test("call: leaf invoked inside a counted loop (call in a back-edge, bit-exact)", () => {
+  // mov ecx,3; mov eax,0; loop: call add5; dec ecx; jnz loop; ret   add5: add eax,5; ret
+  const code = [
+    0xb9, 0x03, 0x00, 0x00, 0x00, // 0x00 mov ecx,3
+    0xb8, 0x00, 0x00, 0x00, 0x00, // 0x05 mov eax,0
+    0xe8, 0x05, 0x00, 0x00, 0x00, // 0x0a loop: call add5 (target 0x14)
+    0xff, 0xc9,                   // 0x0f dec ecx
+    0x75, 0xf7,                   // 0x11 jnz loop (rel -9 → 0x0a)
+    0xc3,                         // 0x13 ret
+    0x83, 0xc0, 0x05,             // 0x14 add5: add eax,5
+    0xc3,                         // 0x17 ret
+  ];
+  const { jit, compiled } = assertFunctionEquivalent(code, "call-in-loop");
+  assert.equal(jit.register.rax, 15n, "the leaf adds 5 on each of 3 iterations → eax = 15");
+  assert.equal(jit.register.rcx, 0n, "the loop counter reaches 0");
+  assert.ok(compiled.branchKind.includes("call") && compiled.branchKind.includes("jcc"), "a call inside a jcc loop");
+  // The last iteration pushed the return address (loadBase+0x0f) at rsp0-8.
+  assert.equal(stackQword(jit, initialRsp(code) - 8n), loadBase + 0x0fn, "the last call's return address is on the stack");
+});
+
+test("call: recursive factorial with self-recursion, deep frames on the stack (bit-exact)", () => {
+  // entry: mov ecx,5; call fact; ret
+  // fact: cmp ecx,1; jg rec; mov eax,1; ret   rec: push rcx; dec ecx; call fact; pop rcx; imul eax,ecx; ret
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00, // 0x00 mov ecx,5
+    0xe8, 0x01, 0x00, 0x00, 0x00, // 0x05 call fact (target 0x0b)
+    0xc3,                         // 0x0a ret
+    0x83, 0xf9, 0x01,             // 0x0b fact: cmp ecx,1
+    0x7f, 0x06,                   // 0x0e jg rec (target 0x16)
+    0xb8, 0x01, 0x00, 0x00, 0x00, // 0x10 mov eax,1
+    0xc3,                         // 0x15 ret (base case)
+    0x51,                         // 0x16 rec: push rcx
+    0xff, 0xc9,                   // 0x17 dec ecx
+    0xe8, 0xed, 0xff, 0xff, 0xff, // 0x19 call fact (target 0x0b, rel -19)
+    0x59,                         // 0x1e pop rcx
+    0x0f, 0xaf, 0xc1,             // 0x1f imul eax,ecx
+    0xc3,                         // 0x22 ret
+  ];
+  const { jit, compiled } = assertFunctionEquivalent(code, "call-recursive");
+  assert.equal(jit.register.rax, 120n, "5! = 120, bit-exact through five recursive frames");
+  assert.equal(jit.register.rcx, 5n, "the restored counter equals the input");
+  assert.ok(compiled.branchKind.includes("call"), "the self-recursive call is a real direct call");
+  // The four recursive re-invocations each pushed the same return address
+  // (loadBase+0x1e) below the entry frame's saved return (loadBase+0x0a).
+  const rsp0 = initialRsp(code);
+  assert.equal(stackQword(jit, rsp0 - 8n), loadBase + 0x0an, "the entry→fact return address is at the top frame");
+  assert.equal(stackQword(jit, rsp0 - 24n), loadBase + 0x1en, "a recursive fact→fact return address sits deeper on the stack");
+});
+
+test("call: runaway recursion is bounded by the iteration cap (budget_exhausted, no hang)", () => {
+  // call self; ret  — an infinite direct recursion. The bounded dispatch must stop
+  // with budget_exhausted rather than hanging or faulting on stack growth.
+  const image = Buffer.from([0xe8, 0xfb, 0xff, 0xff, 0xff, 0xc3]); // call 0 (self); ret
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000, iterationCap: 1000 });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, "an infinite self-recursion is a compilable (non-terminating) call shape");
+  assert.ok(compiled.branchKind.includes("call"), "the recursive edge is a real call");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, iterationCap: 1000 });
+  assert.equal(jit.statusName, "budget_exhausted", "the iteration cap stops the runaway recursion");
+  // A tighter cap also stops it (the cap is honored, not luck).
+  const jit2 = runFunction(image, { image, loadBase, decodeStructured, iterationCap: 5 });
+  assert.equal(jit2.statusName, "budget_exhausted", "a smaller cap also stops the runaway recursion");
+});
+
+test("multi-block: unmodelled call shapes are honest, named fallbacks (indirect, external, indirect jmp)", () => {
+  // An indirect (computed-target) call is not modelled — an honest named fallback.
+  const indImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xd0, 0xc3]); // mov eax,1; call rax; ret
+  const indCompiled = compileFunction(indImage, { loadBase, decodeStructured, guestLen: indImage.length + 0x10000 });
+  assertRealModule(indCompiled.bytes);
+  assert.equal(indCompiled.complete, false, "an indirect call must be an honest fallback, not emitted");
+  assert.ok(indCompiled.coverage.unsupported.some((u) => u.reason === "control_call_indirect"), "the indirect call must be named control_call_indirect");
+  assert.equal(runFunction(indImage, { image: indImage, loadBase, decodeStructured }).statusName, "fallback", "a fallback module reports the fallback status");
+
+  // A direct call whose target is outside the compiled set (e.g. an HLE import
+  // thunk) stays an honest fallback — no HLE binding is attempted here.
+  const extImage = Buffer.from([0xe8, 0x00, 0x10, 0x00, 0x00, 0xc3]); // call +0x1000 (out of image); ret
+  const extCompiled = compileFunction(extImage, { loadBase, decodeStructured, guestLen: extImage.length + 0x10000 });
+  assertRealModule(extCompiled.bytes);
+  assert.equal(extCompiled.complete, false, "a call outside the compiled set must be an honest fallback");
+  assert.ok(extCompiled.coverage.unsupported.some((u) => u.reason === "control_call_external"), "the external call must be named control_call_external");
+  assert.equal(runFunction(extImage, { image: extImage, loadBase, decodeStructured }).statusName, "fallback", "the external-call fallback module reports fallback");
 
   // An indirect jmp (computed target) is likewise a named fallback.
   const jmpImage = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xe0, 0xc3]); // mov eax,1; jmp rax; ret
@@ -340,9 +476,11 @@ test("multi-block: coverage report — control-flow shapes and branch kinds", ()
   const branch = [...cflowBranch].sort();
   process.stdout.write(`\n[wasm64] multi-block control-flow shapes bit-exact (${shape.length}): ${shape.join(", ")}\n`);
   process.stdout.write(`[wasm64] branch kinds emitted (${branch.length}): ${branch.join(", ")}\n`);
-  process.stdout.write("[wasm64] branch kinds on honest fallback: call/callIndirect, jmpIndirect, computed/out-of-function targets\n");
-  // conditional (jcc), unconditional (jmp), fall-through, and ret must all appear.
-  for (const kind of ["jcc", "jmp", "fallthrough", "ret"]) {
+  process.stdout.write("[wasm64] direct CALL/RET across guest functions is bit-exact incl. the pushed return-address stack bytes\n");
+  process.stdout.write("[wasm64] branch kinds on honest fallback: indirect call (control_call_indirect), external call (control_call_external), indirect jmp, computed/out-of-function targets\n");
+  // conditional (jcc), unconditional (jmp), fall-through, ret, and direct call
+  // must all appear as real emitted, bit-exact branch kinds.
+  for (const kind of ["jcc", "jmp", "fallthrough", "ret", "call"]) {
     assert.ok(branch.includes(kind), `expected branch kind ${kind} to be exercised bit-exact`);
   }
   assert.ok(shape.length >= 4, `expected at least 4 distinct control-flow shapes, got ${shape.length}`);
