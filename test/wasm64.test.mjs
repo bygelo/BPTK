@@ -108,6 +108,58 @@ test("shl/shr/sar: shift results and CF/OF", () => {
   cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0xb1, 0x05, 0xd3, 0xe0, 0xc3], "shl-cl"));
 });
 
+test("rol/ror: rotate results, CF/OF, and the flags a rotate must NOT touch", () => {
+  // A rotate writes ONLY cf and of — pf/af/zf/sf keep whatever the previous op left.
+  // Every case below runs through the interpreter oracle first, so the preserved
+  // flags are compared as strictly as the computed ones.
+  // mov eax,0x80000001; rol eax,1; ret   — cf from the wrapped bit, of = sign^cf
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x80, 0xd1, 0xc0, 0xc3], "rol-1"));
+  // mov eax,0x12345678; ror eax,4; ret
+  cover(assertEquivalent([0xb8, 0x78, 0x56, 0x34, 0x12, 0xc1, 0xc8, 0x04, 0xc3], "ror-4"));
+  // mov eax,0x12345678; rol rax,40; ret — 64-bit width
+  cover(assertEquivalent([0xb8, 0x78, 0x56, 0x34, 0x12, 0x48, 0xc1, 0xc0, 0x28, 0xc3], "rol-64"));
+  // mov eax,0x12345678; ror rax,33; ret — a distance past the 32-bit half
+  cover(assertEquivalent([0xb8, 0x78, 0x56, 0x34, 0x12, 0x48, 0xc1, 0xc8, 0x21, 0xc3], "ror-64"));
+  // mov ax,0x8001; ror ax,4; ret — 16-bit width
+  cover(assertEquivalent([0x66, 0xb8, 0x01, 0x80, 0x66, 0xc1, 0xc8, 0x04, 0xc3], "ror-16"));
+  // mov al,0x81; rol al,8; ret — count NOT zero but distance zero (8 % 8), the case a
+  // WASM shift would get wrong: its count is taken modulo 64, so it would rotate by a
+  // full width instead of leaving the value alone.
+  cover(assertEquivalent([0xb0, 0x81, 0xc0, 0xc0, 0x08, 0xc3], "rol-8-by-8"));
+  // mov al,0x81; ror al,8; ret — the same case the other way
+  cover(assertEquivalent([0xb0, 0x81, 0xc0, 0xc8, 0x08, 0xc3], "ror-8-by-8"));
+  // mov eax,0x12345678; mov cl,3; rol eax,cl; ret — rotate by CL
+  cover(assertEquivalent([0xb8, 0x78, 0x56, 0x34, 0x12, 0xb1, 0x03, 0xd3, 0xc0, 0xc3], "rol-cl"));
+  // mov eax,1; dec eax (zf=1, sf=0, pf=1); rol eax,0; ret — a ZERO count changes
+  // NOTHING, not even cf/of, and the value is written back unchanged.
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xc8, 0xc1, 0xc0, 0x00, 0xc3], "rol-0"));
+  // mov eax,0xffffffff; add eax,1 (cf=1, zf=1, pf=1, af=1); ror eax,4; ret — the
+  // rotate must leave zf/pf/af/sf exactly as the add left them.
+  cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0xff, 0x83, 0xc0, 0x01, 0xc1, 0xc8, 0x04, 0xc3], "ror-preserves"));
+});
+
+test("setcc/cmovcc/bswap: condition bytes, conditional moves, byte reversal", () => {
+  // mov eax,5; cmp eax,3; setg cl; ret — a taken condition writes 1
+  cover(assertEquivalent([0xb8, 0x05, 0x00, 0x00, 0x00, 0x83, 0xf8, 0x03, 0x0f, 0x9f, 0xc1, 0xc3], "setg"));
+  // mov eax,3; cmp eax,5; setg cl; ret — an untaken condition writes 0
+  cover(assertEquivalent([0xb8, 0x03, 0x00, 0x00, 0x00, 0x83, 0xf8, 0x05, 0x0f, 0x9f, 0xc1, 0xc3], "setg-not"));
+  // mov eax,5; cmp eax,5; sete [rsp-8]; mov rcx,[rsp-8]; ret — setcc to MEMORY, read back
+  cover(assertEquivalent([0xb8, 0x05, 0x00, 0x00, 0x00, 0x83, 0xf8, 0x05, 0x0f, 0x94, 0x44, 0x24, 0xf8,
+    0x48, 0x8b, 0x4c, 0x24, 0xf8, 0xc3], "sete-mem"));
+  // mov eax,5; mov ecx,9; cmp eax,ecx; cmovl eax,ecx; ret — the taken move
+  cover(assertEquivalent([0xb8, 0x05, 0x00, 0x00, 0x00, 0xb9, 0x09, 0x00, 0x00, 0x00, 0x39, 0xc8,
+    0x0f, 0x4c, 0xc1, 0xc3], "cmovl-taken"));
+  // mov rax,-1; mov ecx,7; xor edx,edx (zf=1); cmovne eax,ecx; ret — the UNTAKEN
+  // 32-bit case, which is not a no-op: x86 zero-extends every 32-bit register write,
+  // so rax must come out 0x00000000ffffffff, not 0xffffffffffffffff.
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xb9, 0x07, 0x00, 0x00, 0x00,
+    0x31, 0xd2, 0x0f, 0x45, 0xc1, 0xc3], "cmovne-untaken-32"));
+  // mov eax,0x12345678; bswap eax; ret
+  cover(assertEquivalent([0xb8, 0x78, 0x56, 0x34, 0x12, 0x0f, 0xc8, 0xc3], "bswap-32"));
+  // mov rax,0x12345678; bswap rax; ret — all eight bytes reversed
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0x78, 0x56, 0x34, 0x12, 0x48, 0x0f, 0xc8, 0xc3], "bswap-64"));
+});
+
 test("inc/dec: CF preserved, other flags recomputed", () => {
   // mov eax,0x7fffffff; add eax,1 (CF=0,OF=1); inc eax; ret  — inc keeps CF, sets OF=0
   cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0x7f, 0x83, 0xc0, 0x01, 0xff, 0xc0, 0xc3], "inc"));
@@ -129,6 +181,26 @@ test("movzx/movsx/movsxd: width extension", () => {
   cover(assertEquivalent([0xb8, 0x80, 0x00, 0x00, 0x00, 0x0f, 0xbe, 0xc8, 0xc3], "movsx"));
   // mov eax,0xffffffff; movsxd rcx,eax; ret  — sign extend dword to qword
   cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0xff, 0x48, 0x63, 0xc8, 0xc3], "movsxd"));
+
+  // The extension cases whose SOURCE IS MEMORY. These are not a duplicate of the
+  // register forms above: a byte load is a different WASM opcode from a byte register
+  // read, and `i64.load8_s` and `i64.load8_u` differ by ONE in the hand-assembled
+  // opcode table. The difference is invisible for every 8-bit operand — the value is
+  // masked back to 8 bits and the sign bits are discarded — and visible only here,
+  // where the whole point is to zero-extend a byte into a wider register. A 0xff byte
+  // read through the signed opcode comes out 0xffffffff, and on Chocolate Doom that
+  // turned a colormap index into a pointer 4 GiB out of range.
+  // mov byte [rsp-8],0xff; movzx edx,byte [rsp-8]; ret
+  cover(assertEquivalent([0xc6, 0x44, 0x24, 0xf8, 0xff, 0x0f, 0xb6, 0x54, 0x24, 0xf8, 0xc3], "movzx-mem8-ff"));
+  // mov byte [rsp-8],0x80; movzx rdx,byte [rsp-8]; ret — into a 64-bit destination
+  cover(assertEquivalent([0xc6, 0x44, 0x24, 0xf8, 0x80, 0x48, 0x0f, 0xb6, 0x54, 0x24, 0xf8, 0xc3], "movzx-mem8-80-64"));
+  // mov word [rsp-8],0xffff; movzx edx,word [rsp-8]; ret
+  cover(assertEquivalent([0x66, 0xc7, 0x44, 0x24, 0xf8, 0xff, 0xff, 0x0f, 0xb7, 0x54, 0x24, 0xf8, 0xc3], "movzx-mem16"));
+  // mov byte [rsp-8],0xff; movsx edx,byte [rsp-8]; ret — the SIGNED form still signs
+  cover(assertEquivalent([0xc6, 0x44, 0x24, 0xf8, 0xff, 0x0f, 0xbe, 0x54, 0x24, 0xf8, 0xc3], "movsx-mem8"));
+  // mov byte [rsp-8],0xff; mov dl,byte [rsp-8]; ret — an 8-bit destination is
+  // unaffected either way, which is exactly why the bug hid for so long.
+  cover(assertEquivalent([0xc6, 0x44, 0x24, 0xf8, 0xff, 0x8a, 0x54, 0x24, 0xf8, 0xc3], "mov-mem8"));
 });
 
 test("lea: register+index+disp and rip-relative", () => {
@@ -1408,12 +1480,12 @@ test("resume: the reference shim's jcc/call/indirect agree with lib/lift64 inter
 });
 
 test("resume: a single block reports the address after its emitted prefix", () => {
-  // mov eax,1; rol eax,1; ret — `rol` is an honest codegen fallback, so the prefix
-  // stops at 0x05 and that is exactly where the interpreter must pick up.
-  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0xd1, 0xc0, 0xc3];
+  // mov eax,1; btc eax,ecx; ret — the bit family is an honest codegen fallback, so
+  // the prefix stops at 0x05 and that is exactly where the interpreter must pick up.
+  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xbb, 0xc8, 0xc3];
   const image = Buffer.from(code);
   const jit = runBlock(liftBlock(image, 0), { image, loadBase });
-  assert.equal(jit.complete, false, "rol is not emittable — the prefix must stop honestly");
+  assert.equal(jit.complete, false, "btc is not emittable — the prefix must stop honestly");
   assert.equal(jit.resumeRip, loadBase + 0x05n, "resumeRip is the VA of the first instruction the codegen could not emit");
   assert.equal(jit.register.rax, 1n, "everything before the stop did run");
 });
