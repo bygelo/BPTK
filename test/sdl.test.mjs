@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { existsSync, readFileSync } from "node:fs";
-import { createSdlSubsystem, sdlExportTable } from "../lib/sdl.mjs";
+import { createSdlSubsystem, sdlExportTable, sdlEventType, sdlScancode, sdlKeycode } from "../lib/sdl.mjs";
 import { executeProbe64, runImage64 } from "../lib/exec64.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
 import { createHleLayout } from "../lib/hle.mjs";
@@ -134,6 +134,58 @@ test("SDL_PollEvent is an honest empty input trace", () => {
   memory.writeMemory(eventAddr, 4, 0x1234);
   assert.equal(sdl.pollEvent(eventAddr), 0, "no event is pending");
   assert.equal(memory.readMemory(eventAddr, 4), 0, "the event type is cleared, never a fabricated event");
+});
+
+// The scripted input trace marshals a real SDL2 SDL_Event into the guest buffer:
+// the common header (type@0) plus the SDL_KeyboardEvent body (state@12,
+// keysym.scancode@16, keysym.sym@20, keysym.mod@24), delivered in order.
+test("SDL_PollEvent delivers a scripted trace as real SDL2 event structs", () => {
+  const { sdl, memory } = createSubsystem();
+  const eventAddr = 0x00101800;
+  const loaded = sdl.loadInputTrace([
+    { type: "keydown", scancode: sdlScancode.ESCAPE, sym: sdlKeycode.ESCAPE, mod: 0 },
+    { type: "keyup", scancode: sdlScancode.ESCAPE, sym: sdlKeycode.ESCAPE, mod: 0 },
+  ]);
+  assert.equal(loaded, 2, "both scripted events loaded");
+
+  assert.equal(sdl.pollEvent(eventAddr), 1, "the first scripted event is delivered");
+  assert.equal(memory.readMemory(eventAddr + 0, 4), sdlEventType.SDL_KEYDOWN, "type is SDL_KEYDOWN");
+  assert.equal(memory.readMemory(eventAddr + 12, 1), 1, "state is SDL_PRESSED");
+  assert.equal(memory.readMemory(eventAddr + 16, 4), sdlScancode.ESCAPE, "keysym.scancode is Escape");
+  assert.equal(memory.readMemory(eventAddr + 20, 4), sdlKeycode.ESCAPE, "keysym.sym is SDLK_ESCAPE");
+
+  assert.equal(sdl.pollEvent(eventAddr), 1, "the second scripted event is delivered");
+  assert.equal(memory.readMemory(eventAddr + 0, 4), sdlEventType.SDL_KEYUP, "type is SDL_KEYUP");
+  assert.equal(memory.readMemory(eventAddr + 12, 1), 0, "state is SDL_RELEASED");
+
+  assert.equal(sdl.pollEvent(eventAddr), 0, "the queue drains to empty");
+  assert.equal(memory.readMemory(eventAddr, 4), 0, "the drained poll clears the type");
+  assert.equal(sdl.input_delivered, 2, "both events were consumed by the guest");
+});
+
+// The frame schedule gates delivery by present-count: an event scheduled for a
+// later frame stays queued until the game has presented that many frames.
+test("a scripted event is gated by its present-count frame schedule", () => {
+  const { sdl, memory } = createSubsystem();
+  const eventAddr = 0x00101800;
+  sdl.loadInputTrace([{ type: "keydown", scancode: sdlScancode.RETURN, sym: sdlKeycode.RETURN, frame: 2 }]);
+  // No present yet: the event is scheduled for frame 2 and is not yet due.
+  assert.equal(sdl.pollEvent(eventAddr), 0, "the future-scheduled event is withheld");
+  sdl.flip(0); sdl.flip(0); // two presents -> present_count reaches 2
+  assert.equal(sdl.present_count >= 2, true, "the game has presented two frames");
+  assert.equal(sdl.pollEvent(eventAddr), 1, "the event is now due and delivered");
+  assert.equal(memory.readMemory(eventAddr + 16, 4), sdlScancode.RETURN, "the due event carries the Return scancode");
+});
+
+// SDL_WaitEvent cannot block a single-threaded probe, so it delivers the next
+// scripted event when one remains (a SDL_QUIT ends the loop) and reports 0 empty.
+test("SDL_WaitEvent delivers the next scripted event, then reports empty", () => {
+  const { sdl, memory } = createSubsystem();
+  const eventAddr = 0x00101800;
+  sdl.loadInputTrace([{ type: "quit" }]);
+  assert.equal(sdl.waitEvent(eventAddr), 1, "the scripted quit is delivered");
+  assert.equal(memory.readMemory(eventAddr, 4), sdlEventType.SDL_QUIT, "type is SDL_QUIT");
+  assert.equal(sdl.waitEvent(eventAddr), 0, "an empty queue reports 0 so the loop ends");
 });
 
 // The full dispatch: a synthetic PE32+ image whose entry calls SDL through its
@@ -318,6 +370,78 @@ test("Chocolate Doom presents a non-blank first frame through the served SDL pip
   let painted = 0;
   for (let i = 0; i < frame.rgba.length; i += 4) if (frame.rgba[i] | frame.rgba[i + 1] | frame.rgba[i + 2]) painted += 1;
   assert.ok(painted > frame.width * frame.height / 2, `most of the frame is painted (${painted} of ${frame.width * frame.height} pixels)`);
+});
+
+// Interactivity, corpus-gated: the real Chocolate Doom, driven through the same
+// bounded x86-64 interpreter + SDL pipeline, RESPONDS to a scripted input trace.
+// A no-input run sits on the attract-mode title (a static frame, hash stable);
+// the same run fed an Escape keypress (SDL_KEYDOWN/SDL_KEYUP marshalled into the
+// guest event queue) opens Doom's main menu — a non-blank frame whose pixel hash
+// differs from the title. The difference is Doom reacting to the injected key
+// (proven separately: an unmapped scancode reproduces the title hash exactly, so
+// merely consuming events does not perturb the frame — only the Escape SEMANTICS
+// do). A full in-level gameplay frame is NOT reached here: driving New Game ->
+// skill -> start reaches an x86-64 opcode outside the bounded lift subset
+// (lib/lift64.mjs, read-only), an honest frontier, so this proves the menu, not
+// playability. Budget 20M (uncapped runImage64 verify, above the 10M corpus cap).
+const doomInputBudget = 20000000;
+function runDoom(inputTrace) {
+  const bytes = new Uint8Array(readFileSync(corpusDoomExe));
+  const wad = readFileSync(corpusDoomWad);
+  const mapped = mapPe64State(bytes, null);
+  const mask64 = (1n << 64n) - 1n;
+  const importSet = new Map();
+  for (const entry of mapped.import ?? []) importSet.set((mapped.load_base + BigInt(entry.iat_slot_rva)) & mask64, entry);
+  const stackBase = 0x00007ff000000000;
+  const layout = createHleLayout({ load_base: Number(mapped.load_base & mask64), image_size_byte: mapped.image_size_byte, stack_base: stackBase, stack_end: stackBase + 0x00100000 });
+  const hle = {
+    layout,
+    clock: createGuestClock({ mode: "virtual_monotonic" }),
+    executableName: "chocolate-doom.exe",
+    hostFile: new Map([["C:\\game\\freedoom1.wad", wad]]),
+    environment: { DOOMWADDIR: "C:\\game" },
+    commandLine: ["-iwad", "C:\\game\\freedoom1.wad"],
+    inputTrace,
+  };
+  return runImage64({
+    image: mapped.image, loadBase: mapped.load_base, entryRva: mapped.entry_rva,
+    budget: doomInputBudget, importSet, hle, resourceRva: mapped.directory?.[2]?.rva ?? 0,
+  });
+}
+function frameHash(frame) {
+  let hash = 0x811c9dc5n;
+  for (let i = 0; i < frame.rgba.length; i += 1) hash = ((hash * 0x01000193n) + BigInt(frame.rgba[i])) & ((1n << 64n) - 1n);
+  return hash;
+}
+test("Chocolate Doom responds to scripted input: Escape opens its menu, a frame distinct from the title", { skip: existsSync(corpusDoomExe) && existsSync(corpusDoomWad) ? false : "corpus-007 not staged" }, () => {
+  // The no-input title frame (the attract screen), and its stable hash.
+  const title = runDoom(undefined);
+  const titleFrame = title.guest.sdl.presentFramebuffer();
+  assert.notEqual(titleFrame, null, "the title frame is present");
+  assert.equal(titleFrame.is_blank, false, "the title frame is non-blank");
+  const titleHash = frameHash(titleFrame);
+
+  // The same run fed an Escape keypress after the title has drawn (frame 2).
+  const menu = runDoom([
+    { type: "keydown", scancode: sdlScancode.ESCAPE, sym: sdlKeycode.ESCAPE, frame: 2 },
+    { type: "keyup", scancode: sdlScancode.ESCAPE, sym: sdlKeycode.ESCAPE, frame: 2 },
+  ]);
+  assert.equal(menu.guest.sdl.input_delivered, 2, "Doom's own poll loop consumed both scripted events");
+  const menuFrame = menu.guest.sdl.presentFramebuffer();
+  assert.notEqual(menuFrame, null, "the post-input frame is present");
+  assert.equal(menuFrame.is_blank, false, "the menu frame is non-blank");
+  const menuHash = frameHash(menuFrame);
+  assert.notEqual(menuHash.toString(16), titleHash.toString(16), "the input changed what is on screen (menu differs from title)");
+
+  // The isolation control: an unmapped scancode delivers the same TWO events but
+  // carries no menu semantics, so the frame stays the title — confirming the
+  // change above is Doom reacting to the Escape KEY, not to event traffic/timing.
+  const control = runDoom([
+    { type: "keydown", scancode: 120, sym: 300, frame: 2 },
+    { type: "keyup", scancode: 120, sym: 300, frame: 2 },
+  ]);
+  assert.equal(control.guest.sdl.input_delivered, 2, "the control run also consumed two events");
+  assert.equal(frameHash(control.guest.sdl.presentFramebuffer()).toString(16), titleHash.toString(16), "an unmapped key leaves the title frame unchanged");
 });
 
 test("the SDL export table registers both SDL1 (sdl.dll) and SDL2 (sdl2.dll)", () => {
