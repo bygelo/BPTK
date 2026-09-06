@@ -219,6 +219,27 @@ test("imul2/imul3: two- and three-operand signed multiply", () => {
   cover(assertEquivalent([0xb8, 0x00, 0x00, 0x01, 0x00, 0x0f, 0xaf, 0xc0, 0xc3], "imul-overflow"));
 });
 
+test("imul 64-bit: the overflow flags need the HIGH half of a 128-bit product", () => {
+  // At 64 bits the product does not fit in an i64, so CF/OF cannot be decided by
+  // re-widening the truncated result the way every narrower width does — the codegen
+  // has to build the high half from four 32x32 partial products and correct it to a
+  // signed high. These cases cover both signs, the carry out of the low half, and the
+  // boundary where the low half alone looks correct.
+  const q = (v) => { const b = []; for (let i = 0; i < 8; i += 1) b.push(Number((v >> BigInt(8 * i)) & 0xffn)); return b; };
+  // movabs rax,A; movabs rcx,B; imul rax,rcx; ret
+  const imul64 = (a, b) => [0x48, 0xb8, ...q(a), 0x48, 0xb9, ...q(b), 0x48, 0x0f, 0xaf, 0xc1, 0xc3];
+  cover(assertEquivalent(imul64(3n, 5n), "imul64-small"));
+  cover(assertEquivalent(imul64(0xffffffffffffffffn, 2n), "imul64-neg1x2"));
+  cover(assertEquivalent(imul64(0x7fffffffffffffffn, 2n), "imul64-overflow-pos"));
+  cover(assertEquivalent(imul64(0x8000000000000000n, 0xffffffffffffffffn), "imul64-min-x-neg1"));
+  cover(assertEquivalent(imul64(0x123456789n, 0x987654321n), "imul64-wide"));
+  cover(assertEquivalent(imul64(0xfffffffffffffffbn, 0xfffffffffffffff6n), "imul64-neg-x-neg"));
+  cover(assertEquivalent(imul64(0x100000000n, 0x100000000n), "imul64-carry-into-high"));
+  cover(assertEquivalent(imul64(0xffffffff00000000n, 2n), "imul64-high-only"));
+  cover(assertEquivalent(imul64(5n, 0xfffffffffffffffbn), "imul64-pos-x-neg"));
+  cover(assertEquivalent(imul64(0n, 0xdeadbeefn), "imul64-zero"));
+});
+
 test("push/pop: stack traffic balances rsp", () => {
   // mov rax,0x1234; push rax; pop rcx; ret  — rcx=rax, rsp balanced
   cover(assertEquivalent([0x48, 0xc7, 0xc0, 0x34, 0x12, 0x00, 0x00, 0x50, 0x59, 0xc3], "push/pop"));
