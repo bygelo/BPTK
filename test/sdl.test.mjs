@@ -23,10 +23,17 @@ import { createGuestClock } from "../lib/clock.mjs";
 
 // A flat little-endian guest memory over one Buffer, with the same four
 // primitives the HLE memory adapter exposes, sized to hold a small arena.
-function createMemory(sizeByte) {
+// `resolvable` decides whether this adapter exposes the OPTIONAL zero-copy
+// `spanView` (lib/exec64.mjs createGuestMemoryAdapter does; lib/runtime.mjs, whose
+// per-instruction undo log a raw view would escape, does not). The frame path takes
+// a resolved-plane fast path when it is present and its original element-at-a-time
+// path when it is not, and the pair must be indistinguishable — which is what the
+// equivalence case at the end of this file asserts, pixel for pixel.
+function createMemory(sizeByte, resolvable = true) {
   const backing = Buffer.alloc(sizeByte);
   return {
     backing,
+    ...(resolvable ? { spanView(address, byteCount) { return address >= 0 && address + byteCount <= backing.length ? { buf: backing, off: address } : null; } } : {}),
     readMemory(address, byteCount) {
       let value = 0;
       for (let i = 0; i < byteCount; i += 1) value += backing[address + i] * 2 ** (8 * i);
@@ -43,10 +50,10 @@ function createMemory(sizeByte) {
 
 // A subsystem over a 4 MiB arena at base 0x00100000, with a bump allocator, so
 // the fixed struct region (top of the arena) and framebuffers both resolve.
-function createSubsystem() {
+function createSubsystem(resolvable = true) {
   const arenaBase = 0x00100000;
   const arenaSize = 0x00400000;
-  const memory = createMemory(arenaBase + arenaSize);
+  const memory = createMemory(arenaBase + arenaSize, resolvable);
   const layout = { arena_base: arenaBase, arena_size_byte: arenaSize };
   let cursor = arenaBase;
   const allocate = (byteCount) => { const a = cursor; cursor += (byteCount + 15) & ~15; return a; };
@@ -331,6 +338,90 @@ test("SDL2 8-bit paletted surface converts through its palette to a presented RG
   assert.equal(frame.rgba[0], 0x11, "presented R is the palette R");
   assert.equal(frame.rgba[1], 0x99, "presented G is the palette G");
   assert.equal(frame.rgba[2], 0xcc, "presented B is the palette B");
+});
+
+// The frame path moves a whole rectangle per call — a palette-converting blit, a
+// render clear, a scaled RenderCopy — and it does that over a RESOLVED plane (one
+// address resolution for the plane, then a typed-array loop) whenever the memory
+// adapter exposes the optional `spanView`, falling back to its original
+// element-at-a-time path when it does not. Those two paths must be
+// indistinguishable, and "indistinguishable" here means every byte of guest memory,
+// because a blit optimisation that changes one pixel is a bug, not a speed-up.
+//
+// The scenario below is chosen to hit what the fast path has to get right and a
+// simple full-rect copy would not exercise: an odd-sized 8-bit source with a
+// DIFFERENT index per pixel and a color key that must leave the destination pixel
+// alone, a blit whose destination origin pushes part of the source off the right
+// and bottom edges (so the column clip matters), a non-integer UPSCALE and a
+// non-integer DOWNSCALE (so the nearest-neighbor column/row mapping matters), a
+// negative destination origin, and a render target that is a texture rather than
+// the framebuffer.
+function driveFramePath(sdl, memory) {
+  const rectAddr = 0x00101d00;
+  const writeRect32 = (base, x, y, w, h) => {
+    memory.writeMemory(base + 0, 4, x >>> 0); memory.writeMemory(base + 4, 4, y >>> 0);
+    memory.writeMemory(base + 8, 4, w >>> 0); memory.writeMemory(base + 12, 4, h >>> 0);
+  };
+  // An 8-bit indexed 7x5 source, every pixel a different index, over a palette
+  // whose entries are all distinct.
+  const indexed = sdl.createRGBSurface(0, 7, 5, 8, 0, 0, 0, 0, 2);
+  const formatAddr = memory.readMemory(indexed + 8, 4);
+  const paletteAddr = memory.readMemory(formatAddr + 8, 4);
+  const colorAddr = 0x00101c00;
+  for (let i = 0; i < 40; i += 1) {
+    memory.writeMemory(colorAddr + 0, 1, (i * 7) & 0xff);
+    memory.writeMemory(colorAddr + 1, 1, (i * 13 + 5) & 0xff);
+    memory.writeMemory(colorAddr + 2, 1, (i * 29 + 11) & 0xff);
+    memory.writeMemory(colorAddr + 3, 1, 0xff);
+    sdl.setPaletteColors(paletteAddr, colorAddr, i, 1);
+  }
+  const indexedPixels = memory.readMemory(indexed + 32, 4);
+  const indexedPitch = memory.readMemory(indexed + 24, 4);
+  for (let y = 0; y < 5; y += 1) for (let x = 0; x < 7; x += 1) memory.writeMemory(indexedPixels + y * indexedPitch + x, 1, y * 7 + x);
+  // Index 9 is transparent, so wherever it lands the destination keeps its own pixel.
+  sdl.setColorKey(indexed, 1, 9);
+  // A 32-bit destination pre-painted with a value the blit must not disturb where
+  // the key hits or where the source is clipped away.
+  const argb = sdl.createRGBSurface(0, 9, 6, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000, 2);
+  sdl.fillRect(argb, 0, 0x00123456);
+  writeRect32(rectAddr, 4, 3, 0, 0);
+  sdl.upperBlit(indexed, 0, argb, rectAddr);   // pushes 2 columns and 2 rows off the edge
+  writeRect32(rectAddr, -2, -1, 0, 0);
+  sdl.upperBlit(indexed, 0, argb, rectAddr);   // a negative destination origin
+  // The render half: a 9x6 texture uploaded from those pixels, copied up onto a
+  // 20x13 render target (a non-integer scale), then that target copied back down
+  // onto the 9x6 framebuffer through a source rect.
+  const win = sdl.createWindow(0, 0, 0, 9, 6, 0);
+  const renderer = sdl.createRenderer(win, -1, 0);
+  const source = sdl.createTexture(renderer, 0x16362004, 1, 9, 6);
+  const argbPixels = memory.readMemory(argb + 32, 4);
+  sdl.updateTexture(source, 0, argbPixels, memory.readMemory(argb + 24, 4));
+  const upscaled = sdl.createTexture(renderer, 0x16362004, 2, 20, 13);
+  sdl.setRenderTarget(renderer, upscaled);
+  sdl.setRenderDrawColor(renderer, 0x20, 0x40, 0x60, 0xff);
+  sdl.renderClear(renderer);
+  sdl.renderCopy(renderer, source, 0, 0);
+  sdl.setRenderTarget(renderer, 0);
+  sdl.renderClear(renderer);
+  writeRect32(rectAddr, 1, 2, 17, 9);
+  sdl.renderCopy(renderer, upscaled, rectAddr, 0);
+  sdl.renderPresent(renderer);
+  return sdl.presentFramebuffer();
+}
+
+test("the resolved-plane frame path is byte-identical to the element-at-a-time one", () => {
+  const resolved = createSubsystem(true);
+  const scalar = createSubsystem(false);
+  assert.equal(typeof resolved.memory.spanView, "function", "the resolved adapter offers the optional span view");
+  assert.equal(scalar.memory.spanView, undefined, "the scalar adapter does not, so the fall-back path runs");
+  const resolvedFrame = driveFramePath(resolved.sdl, resolved.memory);
+  const scalarFrame = driveFramePath(scalar.sdl, scalar.memory);
+  assert.equal(resolvedFrame.is_blank, false, "the scenario really drew something");
+  assert.deepEqual([...resolvedFrame.rgba], [...scalarFrame.rgba], "the presented pixels are identical");
+  // Not just the presented frame: every intermediate surface, texture and render
+  // target lives in the same arena, so comparing the whole backing store proves no
+  // byte anywhere was written differently (or left unwritten).
+  assert.equal(Buffer.compare(resolved.memory.backing, scalar.memory.backing), 0, "the whole guest arena is identical");
 });
 
 // The payoff, corpus-gated: the real Chocolate Doom (corpus-007, x86-64) loading
