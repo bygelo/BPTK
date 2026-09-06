@@ -18,12 +18,16 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { test } from "node:test";
-import { runImage64, executeProbe64 } from "../lib/exec64.mjs";
+import { runImage64, executeProbe64, buildGuestContext64, serveImportAt64 } from "../lib/exec64.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
+import { createHleLayout } from "../lib/hle.mjs";
+import { createGuestClock } from "../lib/clock.mjs";
 
 const loadBase = 0x140000000n;
+const stackBase = 0x00007ff000000000n;
 const tebBase = 0x00007ff800000000n;
 const pebBase = tebBase + 0x1000n;
+const MASK64 = (1n << 64n) - 1n;
 const puttyPath = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-001/package/putty.exe";
 
 function run(code, option = {}) {
@@ -645,4 +649,116 @@ test("PuTTY x64 executes past its first import through the served Win64 HLE", { 
   if (probe.stop_reason === "import_present") {
     assert.notEqual(probe.import_reached.symbol, "GetSystemTimeAsFileTime", "the probe must run past the first CRT import, not stop at it");
   }
+});
+
+// --- BPTK tiered-runner boundary: additive exports (Lane BB) ---------------
+// buildGuestContext64 and serveImportAt64 are export-only extractions from the
+// interpreter. These assert the exposed region layout and prove the exported
+// import dispatcher mutates the guest identically to the end-to-end run loop.
+
+// The Win64 HLE option a synthetic served-import image runs under, mirroring
+// exactly what executeProbe64 assembles internally (createHleLayout over the
+// 32-bit arena/virtual/thunk range, a virtual-monotonic clock, the IAT slot
+// bound so a call through it reaches the served export).
+function servedImportOption(image, importList) {
+  const stackSizeByte = 0x00100000;
+  const stackLowNum = Number(stackBase);
+  const layout = createHleLayout({
+    load_base: Number(loadBase & MASK64),
+    image_size_byte: image.length,
+    stack_base: stackLowNum,
+    stack_end: stackLowNum + stackSizeByte,
+  });
+  const importSet = new Map();
+  for (const entry of importList) importSet.set((loadBase + BigInt(entry.iat_slot_rva)) & MASK64, entry);
+  return {
+    image,
+    loadBase,
+    entryRva: 0,
+    budget: 4096,
+    stackSizeByte,
+    importSet,
+    hle: { layout, clock: createGuestClock({ mode: "virtual_monotonic" }), executableName: "game.exe" },
+  };
+}
+
+test("buildGuestContext64 exposes the multi-region layout with the expected bases", () => {
+  const context = buildGuestContext64({ image: Buffer.from([0xc3]), loadBase, entryRva: 0 });
+  // rip parked at the entry, gs at the TEB region.
+  assert.equal(context.machine.rip, loadBase, "entry rip is the load base");
+  assert.equal(context.machine.gsBase, tebBase, "gs base is the TEB region");
+  // The always-present regions: image / stack / TEB, with the documented bases.
+  assert.equal(context.layout.image.base, loadBase);
+  assert.equal(context.layout.stack.base, stackBase);
+  assert.equal(context.layout.teb.base, tebBase);
+  assert.equal(context.layout.teb.teb_base, tebBase);
+  assert.equal(context.layout.teb.peb_base, pebBase);
+  // The region array the Machine actually maps agrees with the layout bases.
+  assert.equal(context.region[0].base, loadBase);
+  assert.equal(context.region[1].base, stackBase);
+  assert.equal(context.region[2].base, tebBase);
+  // No HLE layout declared, so no arena/virtual/thunk regions.
+  assert.equal(context.layout.arena, undefined);
+  assert.equal(context.hleContext, null);
+});
+
+test("buildGuestContext64 appends the HLE arena/virtual/thunk regions when a layout is declared", () => {
+  const image = Buffer.from([0xc3]);
+  const option = servedImportOption(image, []);
+  const context = buildGuestContext64(option);
+  assert.notEqual(context.hleContext, null, "an HLE layout wires the guest");
+  assert.equal(context.layout.arena.base, BigInt(option.hle.layout.arena_base));
+  assert.equal(context.layout.arena.size_byte, option.hle.layout.arena_size_byte);
+  assert.equal(context.layout.virtual.base, BigInt(option.hle.layout.virtual_base));
+  assert.equal(context.layout.thunk.base, BigInt(option.hle.layout.thunk_base));
+  // The PE32+ image maps above 4 GiB, so a low-address alias joins the space.
+  assert.equal(context.layout.image_alias.base, loadBase & 0xffffffffn);
+});
+
+test("serveImportAt64 mutates the guest identically to the end-to-end run loop", () => {
+  // The synthetic image from the served-import probe test: entry does
+  // `call [slot]; nop; ret` to the zero-arg GetCurrentThreadId (thread id 1).
+  const image = Buffer.from([0xff, 0x15, 0x02, 0x00, 0x00, 0x00, 0x90, 0xc3, 0, 0, 0, 0, 0, 0, 0, 0]);
+  const importList = [{ library: "kernel32.dll", symbol: "GetCurrentThreadId", ordinal: null, iat_slot_rva: 8 }];
+  const option = servedImportOption(image, importList);
+
+  // Reference: the interpreter drives the whole image and serves the import
+  // end-to-end. RAX carries the thread id; control returns to the entry ret.
+  const endToEnd = runImage64(option);
+  assert.equal(endToEnd.register.rax, 1n, "the run loop's served GetCurrentThreadId lands 1 in RAX");
+  assert.equal(endToEnd.stop_reason, "entry_return");
+
+  // Under test: a fresh context, positioned exactly as the loop is the instant
+  // it lands on the import thunk (the call's return address pushed, rip == the
+  // thunk), then dispatched through the exported wrapper. This is the mutation
+  // a WASM fast-tier hostCall(targetVA) performs.
+  const context = buildGuestContext64(option);
+  const slotVA = (loadBase + 8n) & MASK64;
+  const thunkVA = context.machine.readMem(slotVA, 8); // the IAT slot the binder wrote
+  assert.equal(context.hleContext.guest.isThunk(Number(thunkVA)), true, "the bound slot points at an HLE thunk");
+
+  const returnTarget = (loadBase + 6n) & MASK64; // the nop after the 6-byte call
+  const rspBefore = context.machine.reg[4]; // RSP index
+  context.machine.reg[4] = (rspBefore - 8n) & MASK64; // the call's push
+  context.machine.writeMem(context.machine.reg[4], 8, returnTarget);
+  context.machine.rip = thunkVA;
+
+  const result = serveImportAt64(context, thunkVA);
+  assert.equal(result.served, true, "the thunk is served");
+  assert.equal(result.kind, "call", "a general Win64 import, not a specialization");
+  assert.equal(result.import.symbol, "GetCurrentThreadId");
+  // Same register mutation the end-to-end run produced.
+  assert.equal(context.machine.reg[0] & MASK64, endToEnd.register.rax, "RAX matches the run loop's served result");
+  assert.equal(context.machine.reg[0] & MASK64, 1n);
+  // A jmp-thunk dispatch pops the return address and resumes the caller, so RSP
+  // rebalances and rip is back at the instruction after the call.
+  assert.equal(context.machine.reg[4] & MASK64, rspBefore & MASK64, "RSP rebalanced after the served thunk");
+  assert.equal(context.machine.rip & MASK64, returnTarget, "control returned to the caller");
+});
+
+test("serveImportAt64 reports not_a_thunk for an address that is not a bound import", () => {
+  const context = buildGuestContext64(servedImportOption(Buffer.from([0xc3]), []));
+  const result = serveImportAt64(context, loadBase); // the image base, not a thunk
+  assert.equal(result.served, false);
+  assert.equal(result.reason, "not_a_thunk");
 });
