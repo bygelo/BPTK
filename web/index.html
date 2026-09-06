@@ -34,8 +34,9 @@
   <p class="note">Runs a Windows PE through the bounded runtime in your browser and draws the runtime's own GDI surface. Nothing is a screenshot of real Windows; the canvas is the bytes the runtime paints. Not a compatibility or playability claim.</p>
   <div class="row">
     <label class="file">Choose .exe<input type="file" id="file" accept=".exe"></label>
-    <button id="sample">Run sample (putty.exe)</button>
-    <label>budget <input type="number" id="budget" value="2000000" min="1" max="10000000"></label>
+    <button id="sample">Run PuTTY</button>
+    <button id="doom">Run Doom (live)</button>
+    <label>chunk <input type="number" id="budget" value="400000" min="20000" max="2000000"></label>
   </div>
   <canvas id="screen" width="640" height="480"></canvas>
   <div id="status">loading…</div>
