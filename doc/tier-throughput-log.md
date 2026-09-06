@@ -198,3 +198,53 @@ tiered runner's.
 
 `passing` stays 0. A frame rate is not a compatibility claim, and this section
 is a target, not a result.
+
+## Residency — why 1.10x, and the real ceiling
+
+Driving every specialization let Doom run on the tier, but the tier still only
+reached 1.10x. The `tier_report` say exactly why. Chocolate Doom, budget
+2,000,000, through `runTieredImage`:
+
+| Counter | Value |
+| --- | ---: |
+| `wasm_tier_function` | 71 |
+| `interpreter_tier_function` | 92 |
+| `wasm_tier_invocation` | 1,208 |
+| `wasm_tier_resume` | **639** |
+| `interpreter_tier_instruction` | **1,966,362** |
+
+Of 2,000,000 executed instruction, **1,966,362 (98.3%) ran in the INTERPRETER**.
+The WASM tier carried ~33,600 instruction across 1,208 invocation — about **28
+instruction per invocation** before bailing back. And **53% of invocation end in
+a resume** rather than running to completion.
+
+### What that means
+
+By Amdahl's law the tier cannot deliver more than about **1.7%** here no matter
+how fast the compiled code is. So:
+
+- Compile cost is no longer the bottleneck (the shared-memory work fixed the
+  copy; the handoff measures 1.01x).
+- Eligibility is no longer the bottleneck either. 57.7% of function COMPILE;
+  they simply do not RUN for long.
+- **Residency is the bottleneck** — the fraction of executed instruction that
+  actually runs in the tier. Every other lever is capped by it.
+
+### The direct cause
+
+The design that made indirect transfer correct: an indirect `jmp`/`call`
+compiles as a **pre-transfer stop**, because only the interpreter can tell an
+import slot from an ordinary pointer, and dispatching an import inside the tier
+as a plain call is exactly what produced an 8-byte `rsp` divergence earlier in
+this project. That correctness argument still stands. But Doom's hot code is
+dense with indirect call, so the tier exits after a couple of dozen instruction
+every time.
+
+Raising residency therefore means resolving an indirect target **inside** the
+tier whenever it can be PROVEN not to be an import (the import slot set is known
+up front), keeping the exit only for the import and unknown case — plus
+compiling a call-graph region rather than a single function, so a direct call to
+an eligible callee stays inside WASM.
+
+`passing` stays 0. Residency is an engineering measurement, not a compatibility
+claim.
