@@ -31,16 +31,25 @@ function draw(frame) {
   context2d.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.byteLength), frame.width, frame.height), 0, 0);
 }
 
-function chunkSize() {
-  return Math.max(20000, Math.min(2000000, Number(budgetInput.value) || 400000));
+// Instructions per inner sub-step. Kept small so a single sub-step never
+// blocks the main thread for long; the tick loops sub-steps until its time
+// budget (below) is spent, so input latency stays ~one budget.
+function subChunk() {
+  return Math.max(2000, Math.min(200000, Number(budgetInput.value) || 8000));
 }
+const TICK_BUDGET_MS = 24; // ~40 ticks/sec: responsive UI + input, no long freeze.
 
-// The live loop: step the guest a chunk, draw the frame, yield to the event
-// loop (so queued input + paint land), repeat until the guest ends. setTimeout
-// (not a tight loop) keeps the tab alive between chunks.
+// The live loop: within each tick, run sub-steps until the time budget is
+// spent (so the guest advances as fast as the interpreter allows), then draw
+// the frame and yield to the event loop so queued input + paint land. This
+// keeps the tab responsive (no multi-hundred-ms freeze) at the same throughput.
 function loop() {
   if (!running || session === null) return;
-  const result = session.step(chunkSize());
+  const tickStart = performance.now();
+  let result;
+  do {
+    result = session.step(subChunk());
+  } while (!session.done && !(session.stopReason === "import_present" && !session.hasVideo) && performance.now() - tickStart < TICK_BUDGET_MS);
   draw(session.frame());
   const seconds = (performance.now() - startedAt) / 1000;
   const ips = Math.round(session.instructionCount / Math.max(seconds, 0.001));
@@ -50,7 +59,7 @@ function loop() {
     `${(ips / 1e6).toFixed(2)}M ips · stop ${session.stopReason ?? "-"}` +
     (session.done ? " · DONE" : " · running… (click the canvas, then use the keyboard)"),
   );
-  if (session.done || session.stopReason === "import_present" && !session.hasVideo) {
+  if (session.done || (session.stopReason === "import_present" && !session.hasVideo)) {
     // A non-video program (e.g. PuTTY) stops at its first import wall — one
     // frame, then done. A video program keeps looping.
     if (!session.hasVideo) { running = false; return; }

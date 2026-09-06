@@ -36,7 +36,7 @@
     <label class="file">Choose .exe<input type="file" id="file" accept=".exe"></label>
     <button id="sample">Run PuTTY</button>
     <button id="doom">Run Doom (live)</button>
-    <label>chunk <input type="number" id="budget" value="400000" min="20000" max="2000000"></label>
+    <label title="instructions per sub-step; each tick runs sub-steps for ~24ms then yields, so smaller = lower input latency">sub-step <input type="number" id="budget" value="8000" min="2000" max="200000"></label>
   </div>
   <canvas id="screen" width="640" height="480"></canvas>
   <div id="status">loading…</div>
