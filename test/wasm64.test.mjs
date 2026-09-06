@@ -1012,6 +1012,31 @@ class MultiRegionMachine {
   }
 }
 
+// The guest condition-code table, ported verbatim from lib/lift64.mjs
+// conditionHolds (which the library does not export). Its fidelity is not taken
+// on trust: the cross-check test below runs a jcc/call/indirect program through
+// BOTH this shim and lib/lift64.mjs interpret() and asserts they agree.
+function mrConditionHolds(cc, f) {
+  switch (cc) {
+    case 0: return f.of;
+    case 1: return !f.of;
+    case 2: return f.cf;
+    case 3: return !f.cf;
+    case 4: return f.zf;
+    case 5: return !f.zf;
+    case 6: return f.cf || f.zf;
+    case 7: return !(f.cf || f.zf);
+    case 8: return f.sf;
+    case 9: return !f.sf;
+    case 10: return f.pf;
+    case 11: return !f.pf;
+    case 12: return f.sf !== f.of;
+    case 13: return f.sf === f.of;
+    case 14: return f.zf || f.sf !== f.of;
+    default: return !(f.zf || f.sf !== f.of);
+  }
+}
+
 // One node of the multi-region reference, ported verbatim from lib/exec64.mjs's
 // executeNode/executeAlu (the integer subset the microprograms use). Returns true
 // when the entry frame's RET unwound (the sentinel), else false.
@@ -1067,6 +1092,20 @@ function mrExecNode(m, node, nextRip, sentinel) {
       m.rip = nextRip; return false;
     }
     case "jmp": m.rip = nextRip + node.rel; return false;
+    case "jcc": m.rip = mrConditionHolds(node.cc, m.flags()) ? nextRip + node.rel : nextRip; return false;
+    case "call": {
+      m.reg[RSP] = (m.reg[RSP] - 8n) & MASK64_MR;
+      m.writeMem(m.reg[RSP], 8, nextRip);
+      m.rip = nextRip + node.rel; return false;
+    }
+    case "callIndirect": {
+      // Target FIRST (it may read through rsp), then the return-address push.
+      const target = m.readOperand(node.src, nextRip) & MASK64_MR;
+      m.reg[RSP] = (m.reg[RSP] - 8n) & MASK64_MR;
+      m.writeMem(m.reg[RSP], 8, nextRip);
+      m.rip = target; return false;
+    }
+    case "jmpIndirect": m.rip = m.readOperand(node.src, nextRip) & MASK64_MR; return false;
     case "ret": {
       const target = m.readMem(m.reg[RSP], 8);
       m.reg[RSP] = (m.reg[RSP] + 8n + BigInt(node.pop)) & MASK64_MR;
@@ -1262,4 +1301,201 @@ test("multi-region: the single flat region is the degenerate case (function path
   assert.equal(jit.statusName, "ok");
   for (const name of REG) assert.equal(jit.register[name], flatOracle.register[name], `degenerate reg ${name}`);
   for (const name of FLAG) assert.equal(jit.flag[name], flatOracle.flag[name], `degenerate flag ${name}`);
+});
+
+// -------------------- resume rip: where the interpreter continues --------------------
+//
+// A WASM tier is only useful if it can STOP mid-run and hand control back. Every
+// exit the module can take now reports a RESUME RIP: the exact guest virtual
+// address lib/lift64.mjs's interpreter would execute next, written to an 8-byte
+// `ripBase` scratch slot and surfaced as `resumeRip`. The tests below prove the
+// address is right by CONTINUING interpretation from it over the module's own
+// end-of-run state and asserting the final state is bit-identical to interpreting
+// the whole program with no WASM tier at all.
+//
+// HONESTY NOTE. Two of the exits carry a state the host can resume FROM:
+// budget-exhausted (the cap fires at a block boundary, before any of that block
+// ran) and an unhandled import (the module undoes its own return-address push and
+// resumes at the call). The out-of-region FAULT exit does NOT: the faulting access
+// itself was redirected to a trap page, so a store was lost and the state is
+// already wrong. Its resumeRip names the block whose body faulted, which is
+// resume-correct only against the PRE-run state — so the fault exit is asserted on
+// the address alone, and the host must keep discarding the run (as lib/tierrun.mjs
+// does) rather than resuming from it.
+
+const RESUME_SENTINEL = 0xdead000000000000n | (loadBase & 0xffffn);
+const flatRegion = (image) => [{ base: loadBase, size: image.length + 0x10000, kind: "flat" }];
+
+// Continues the multi-region reference machine from an arbitrary rip over a
+// SEEDED state: the module's post-run guest memory, GPRs and flags. This is
+// exactly what a host would do at a tier exit.
+function resumeFrom(image, jit, rip, budget = 8192) {
+  const size = image.length + 0x10000;
+  const region = [{ base: loadBase, size, kind: "flat", mem: Buffer.from(jit.memory.subarray(0, size)) }];
+  const m = new MultiRegionMachine(region);
+  for (let i = 0; i < 16; i += 1) m.reg[i] = jit.register[REG[i]] & MASK64_MR;
+  m.flagSource = { kind: "explicit", value: { ...jit.flag } };
+  m.rip = BigInt.asUintN(64, rip);
+
+  let stopped = false;
+  for (let n = 0; n < budget; n += 1) {
+    const node = decodeStructured(region[0].mem, Number(m.rip - loadBase));
+    const nextRip = BigInt.asUintN(64, m.rip + BigInt(node.length));
+    if (mrExecNode(m, node, nextRip, RESUME_SENTINEL)) { stopped = true; break; }
+  }
+  assert.ok(stopped, "resume: the continued interpretation must reach the entry RET within budget");
+  const register = {};
+  for (let i = 0; i < 16; i += 1) register[REG[i]] = m.reg[i] & MASK64_MR;
+  return { register, flag: m.flags(), memory: region[0].mem };
+}
+
+// Asserts a tier-exit resume reaches the SAME final state as interpreting the
+// whole program: all sixteen GPRs, all six flags, and every guest memory byte.
+function assertResumeEquivalent(image, jit, label) {
+  const oracle = interpretMultiRegion(image, flatRegion(image), { loadBase });
+  const resumed = resumeFrom(image, jit, jit.resumeRip);
+  for (const name of REG) {
+    assert.equal(resumed.register[name], oracle.register[name], `${label}: resumed reg ${name} 0x${resumed.register[name].toString(16)} != pure-interpretation 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(resumed.flag[name], oracle.flag[name], `${label}: resumed flag ${name} ${resumed.flag[name]} != pure-interpretation ${oracle.flag[name]}`);
+  }
+  assert.deepEqual([...resumed.memory], [...oracle.region[0].mem], `${label}: resumed guest memory diverges from pure interpretation`);
+}
+
+test("resume: the reference shim's jcc/call/indirect agree with lib/lift64 interpret()", () => {
+  // mov ecx,2; mov eax,0; L: add eax,3; dec ecx; jnz L; lea rdx,[rip+7]; call rdx;
+  // jmp +0; ret   ext: add eax,7; ret — exercises jcc (taken + not-taken),
+  // callIndirect through a register, and the matching ret, all in one flat program.
+  const code = [
+    0xb9, 0x02, 0x00, 0x00, 0x00,             // 0x00 mov ecx,2
+    0xb8, 0x00, 0x00, 0x00, 0x00,             // 0x05 mov eax,0
+    0x83, 0xc0, 0x03,                         // 0x0A L: add eax,3
+    0xff, 0xc9,                               // 0x0D dec ecx
+    0x75, 0xf9,                               // 0x0F jnz L
+    0x48, 0x8d, 0x15, 0x05, 0x00, 0x00, 0x00, // 0x11 lea rdx,[rip+5] -> 0x1D
+    0xff, 0xd2,                               // 0x18 call rdx
+    0xc3,                                     // 0x1A ret (entry frame)
+    0x90, 0x90,                               // 0x1B pad
+    0x83, 0xc0, 0x07,                         // 0x1D ext: add eax,7
+    0xc3,                                     // 0x20 ret
+  ];
+  const image = Buffer.from(code);
+  const flat = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(flat.stop_reason, "entry_return", `flat oracle stop_reason ${flat.stop_reason}`);
+  const shim = interpretMultiRegion(image, flatRegion(image), { loadBase });
+  for (const name of REG) assert.equal(shim.register[name], flat.register[name], `shim reg ${name} diverges from lib/lift64 interpret()`);
+  for (const name of FLAG) assert.equal(shim.flag[name], flat.flag[name], `shim flag ${name} diverges from lib/lift64 interpret()`);
+  assert.equal(flat.register.rax, 13n, "3+3 from the loop then +7 from the indirectly-called leaf");
+});
+
+test("resume: a single block reports the address after its emitted prefix", () => {
+  // mov eax,1; rol eax,1; ret — `rol` is an honest codegen fallback, so the prefix
+  // stops at 0x05 and that is exactly where the interpreter must pick up.
+  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0xd1, 0xc0, 0xc3];
+  const image = Buffer.from(code);
+  const jit = runBlock(liftBlock(image, 0), { image, loadBase });
+  assert.equal(jit.complete, false, "rol is not emittable — the prefix must stop honestly");
+  assert.equal(jit.resumeRip, loadBase + 0x05n, "resumeRip is the VA of the first instruction the codegen could not emit");
+  assert.equal(jit.register.rax, 1n, "everything before the stop did run");
+});
+
+test("resume: a single block that runs to RET reports the address that RET popped", () => {
+  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]; // mov eax,1; ret
+  const image = Buffer.from(code);
+  const jit = runBlock(liftBlock(image, 0), { image, loadBase });
+  assert.ok(jit.complete, "the whole block is emittable");
+  assert.equal(jit.resumeRip, RESUME_SENTINEL, "a RET resumes at the popped return address (here the entry sentinel)");
+});
+
+test("resume: a function that runs to the entry RET reports the popped sentinel", () => {
+  const code = [
+    0xb8, 0x01, 0x00, 0x00, 0x00, // mov eax,1
+    0x85, 0xc0,                   // test eax,eax
+    0x74, 0x02,                   // jz +2
+    0xff, 0xc0,                   // inc eax
+    0xc3,                         // ret
+  ];
+  const image = Buffer.from(code);
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "ok");
+  assert.equal(jit.resumeRip, RESUME_SENTINEL, "the OK exit reports the address the entry RET popped");
+});
+
+test("resume: a budget-exhausted loop resumes at a block boundary and finishes bit-exact", () => {
+  // mov ecx,4; mov eax,0; L: dec ecx; mov [rsp-8],rcx; add rax,[rsp-8]; test ecx,ecx;
+  // jnz L; ret — a terminating loop that the iteration cap cuts short.
+  const code = [
+    0xb9, 0x04, 0x00, 0x00, 0x00,       // 0x00 mov ecx,4
+    0xb8, 0x00, 0x00, 0x00, 0x00,       // 0x05 mov eax,0
+    0xff, 0xc9,                         // 0x0A L: dec ecx
+    0x48, 0x89, 0x4c, 0x24, 0xf8,       // 0x0C mov [rsp-8],rcx
+    0x48, 0x03, 0x44, 0x24, 0xf8,       // 0x11 add rax,[rsp-8]
+    0x85, 0xc9,                         // 0x16 test ecx,ecx
+    0x75, 0xf0,                         // 0x18 jnz L
+    0xc3,                               // 0x1A ret
+  ];
+  const image = Buffer.from(code);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000, iterationCap: 3 });
+  assert.ok(compiled.complete, "the loop is a fully compilable shape");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, iterationCap: 3 });
+  assert.equal(jit.statusName, "budget_exhausted", "the cap must fire before the loop finishes");
+  // The cap fires at a block boundary: resumeRip is one of the CFG's block starts.
+  const startVa = new Set([loadBase, loadBase + 0x0an, loadBase + 0x1an]);
+  assert.ok(startVa.has(jit.resumeRip), `resumeRip 0x${jit.resumeRip.toString(16)} must be a block start VA`);
+  assert.notEqual(jit.register.rax, 6n, "the run really did stop early (the finished sum is 3+2+1+0 = 6)");
+  assertResumeEquivalent(image, jit, "budget-resume");
+  assert.equal(resumeFrom(image, jit, jit.resumeRip).register.rax, 6n, "continuing from resumeRip completes the sum");
+});
+
+test("resume: an unhandled import resumes AT the call, with the pushed frame undone", () => {
+  // mov ecx,5; call ext; add eax,ecx; ret   ext: mov eax,100; ret
+  // The WASM path treats 0x0D as an import boundary; the host declines to handle
+  // it, so the module must undo its return-address push and resume at the call.
+  const code = [
+    0xb9, 0x05, 0x00, 0x00, 0x00, // 0x00 mov ecx,5
+    0xe8, 0x03, 0x00, 0x00, 0x00, // 0x05 call ext (target 0x0D)
+    0x01, 0xc8,                   // 0x0A add eax,ecx
+    0xc3,                         // 0x0C ret
+    0xb8, 0x64, 0x00, 0x00, 0x00, // 0x0D ext: mov eax,100
+    0xc3,                         // 0x12 ret
+  ];
+  const image = Buffer.from(code);
+  const hostCall = () => 1; // always "unhandled"
+  const jit = runFunction(image, { image, loadBase, decodeStructured, hostCall, externalRva: [0x0d] });
+  assert.equal(jit.statusName, "fallback", "an unhandled host call is an honest fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x05n, "resumeRip is the CALL's own VA, so the interpreter re-executes it");
+  assert.equal(jit.register.rsp, initialRsp(code), "the speculative return-address push is undone (rsp back to pre-call)");
+  assert.equal(jit.register.rcx, 5n, "everything before the boundary really did run on the WASM tier");
+  assertResumeEquivalent(image, jit, "import-resume");
+});
+
+test("resume: an out-of-region fault reports the faulting block's start VA", () => {
+  // mov eax,1; jmp L; L: mov rdx,badAddr; mov rax,[rdx]; ret — the fault happens in
+  // the SECOND block, so resumeRip must name that block, not the function entry.
+  const badAddr = 0x30000000n;
+  const code = [
+    0xb8, 0x01, 0x00, 0x00, 0x00, // 0x00 mov eax,1
+    0xeb, 0x00,                   // 0x05 jmp +0 -> 0x07
+    0x48, 0xba, 0x00, 0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, // 0x07 mov rdx,badAddr
+    0x48, 0x8b, 0x02,             // 0x11 mov rax,[rdx]
+    0xc3,                         // 0x14 ret
+  ];
+  const image = Buffer.from(code);
+  const region = sparseLayout(image);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region });
+  assert.ok(compiled.complete, "the shape compiles; the unmapped access is a RUNTIME fault");
+  assert.equal(compiled.blockCount, 2, "the jmp splits the function into two blocks");
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region });
+  assert.equal(jit.statusName, "fallback", "an out-of-region access must report an honest fallback");
+  assert.equal(jit.resumeRip, loadBase + 0x07n, "resumeRip names the block whose body faulted");
+});
+
+test("resume: a compile-time fallback module resumes at the function entry", () => {
+  const image = Buffer.from([0x0f, 0x0b, 0xc3]); // ud2; ret — an unserved opcode
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.complete, false, "an unserved opcode is a compile-time fallback");
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback");
+  assert.equal(jit.resumeRip, loadBase, "nothing ran, so the interpreter resumes at the entry VA");
 });
