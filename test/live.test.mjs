@@ -21,6 +21,9 @@
 
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { test } from "node:test";
 
 import { runImage64, buildGuestContext64, stepContext } from "../lib/exec64.mjs";
@@ -33,9 +36,9 @@ const loadBase = 0x140000000n;
 const stackBase = 0x00007ff000000000n;
 const MASK64 = (1n << 64n) - 1n;
 
-const puttyPath = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-001/package/putty.exe";
-const corpusDoomExe = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-007/package/chocolate-doom.exe";
-const corpusDoomWad = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-007/wad/freedoom1.wad";
+const puttyPath = join(resolveStageDir(), "corpus-001", "package", "putty.exe");
+const corpusDoomExe = join(resolveStageDir(), "corpus-007", "package", "chocolate-doom.exe");
+const corpusDoomWad = join(resolveStageDir(), "corpus-007", "wad", "freedoom1.wad");
 
 // Read the full architectural state a step must preserve: the 16 GPRs, the 16
 // XMM registers, rip, the direction flag, and every mapped memory byte.

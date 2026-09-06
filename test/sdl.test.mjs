@@ -12,6 +12,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { createSdlSubsystem, sdlExportTable, sdlEventType, sdlScancode, sdlKeycode } from "../lib/sdl.mjs";
 import { executeProbe64, runImage64 } from "../lib/exec64.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
@@ -338,8 +341,8 @@ test("SDL2 8-bit paletted surface converts through its palette to a presented RG
 // safety cap) because the game reaches its first present at ~16M instructions;
 // runImage64 (the uncapped interpreter entry) honors the larger verify budget.
 // Skips cleanly when the corpus is not staged.
-const corpusDoomExe = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-007/package/chocolate-doom.exe";
-const corpusDoomWad = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-007/wad/freedoom1.wad";
+const corpusDoomExe = join(resolveStageDir(), "corpus-007", "package", "chocolate-doom.exe");
+const corpusDoomWad = join(resolveStageDir(), "corpus-007", "wad", "freedoom1.wad");
 test("Chocolate Doom presents a non-blank first frame through the served SDL pipeline", { skip: existsSync(corpusDoomExe) && existsSync(corpusDoomWad) ? false : "corpus-007 not staged" }, () => {
   const bytes = new Uint8Array(readFileSync(corpusDoomExe));
   const wad = readFileSync(corpusDoomWad);

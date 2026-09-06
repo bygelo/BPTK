@@ -7,6 +7,8 @@ import { test } from "node:test";
 import { createHash as nodeCreateHash } from "node:crypto";
 import nodePath from "node:path";
 
+import { resolveStageDir } from "../lib/corpus.mjs";
+
 import { Buffer as BufferShim } from "../web/shim/buffer.mjs";
 import { createHash as shimCreateHash } from "../web/shim/crypto.mjs";
 import * as pathShim from "../web/shim/path.mjs";
@@ -17,7 +19,10 @@ import { executeProbe64 } from "../lib/exec64.mjs";
 import { loadDialogTemplate } from "../lib/rsrc.mjs";
 import { dialogBaseUnit, dialogRectToPixel } from "../lib/user.mjs";
 
-const puttyPath = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-001/package/putty.exe";
+const puttyPath = nodePath.join(resolveStageDir(), "corpus-001", "package", "putty.exe");
+// Corpus payload live outside git, so a corpus-gated test skip when it is absent
+// rather than failing the gate on a machine that has not staged it.
+const puttySkip = existsSync(puttyPath) ? false : "corpus-001 not staged";
 
 // --- crypto shim: digest-exact against node:crypto --------------------------
 
@@ -173,8 +178,7 @@ test("fs shim stubs throw the browser-unavailable error", () => {
 
 // --- runImageBytes: a real staged payload's bytes -> a surface --------------
 
-test("runImageBytes maps and runs PuTTY x64 bytes into a surface", () => {
-  assert.equal(existsSync(puttyPath), true, "the staged PuTTY payload must exist");
+test("runImageBytes maps and runs PuTTY x64 bytes into a surface", { skip: puttySkip }, () => {
   const bytes = new Uint8Array(readFileSync(puttyPath));
   const result = runImageBytes(bytes);
 
@@ -191,7 +195,7 @@ test("runImageBytes maps and runs PuTTY x64 bytes into a surface", () => {
   assert.equal(result.surface.height, defaultWindowSize.height);
 });
 
-test("runImageBytes composites PuTTY's About dialog into real painted pixels", () => {
+test("runImageBytes composites PuTTY's About dialog into real painted pixels", { skip: puttySkip }, () => {
   const bytes = new Uint8Array(readFileSync(puttyPath));
   const result = runImageBytes(bytes);
   const { rgba, width, height } = result.surface;
@@ -229,7 +233,7 @@ test("runImageBytes composites PuTTY's About dialog into real painted pixels", (
   assert.deepEqual(pixelAt(dialog.x - 4, dialog.y - 4), [58, 110, 165, 255], "desktop background outside the dialog");
 });
 
-test("PuTTY's dialog controls convert from DLU to non-overlapping pixel rects", () => {
+test("PuTTY's dialog controls convert from DLU to non-overlapping pixel rects", { skip: puttySkip }, () => {
   const bytes = new Uint8Array(readFileSync(puttyPath));
   const mapped = mapPe64State(bytes, null);
   const probe = executeProbe64(mapped, 1000000, { executable_name: "image.exe", capture_guest: true });
@@ -304,7 +308,7 @@ test("PuTTY's dialog controls convert from DLU to non-overlapping pixel rects", 
   }
 });
 
-test("runImageBytes is deterministic across two calls", () => {
+test("runImageBytes is deterministic across two calls", { skip: puttySkip }, () => {
   const bytes = new Uint8Array(readFileSync(puttyPath));
   const first = runImageBytes(bytes);
   const second = runImageBytes(bytes);

@@ -16,6 +16,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { runImage64 } from "../lib/exec64.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
 import { createHleLayout } from "../lib/hle.mjs";
@@ -107,7 +110,7 @@ test("1:1 synthetic — tiered run is bit-exact to pure interpretation, with a g
 
 // -------------------- corpus-gated real binary: PuTTY x64 --------------------
 
-const PUTTY_PATH = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-001/package/putty.exe";
+const PUTTY_PATH = join(resolveStageDir(), "corpus-001", "package", "putty.exe");
 
 // Builds the runImage64 / runTieredImage option for a mapped PE32+ image with the
 // Win32 core HLE wired exactly as lib/exec64.mjs executeProbe64 wires it.

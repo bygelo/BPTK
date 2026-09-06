@@ -16,13 +16,16 @@
 
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { test } from "node:test";
 import { decodeStructured, interpret, liftBlock } from "../lib/lift64.mjs";
 import { decodeX64Instruction } from "../lib/x64decode.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
 
 const loadBase = 0x140000000n;
-const plinkPath = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-002/package/plink.exe";
+const plinkPath = join(resolveStageDir(), "corpus-002", "package", "plink.exe");
 
 function run(code, option = {}) {
   const image = Buffer.from(code);

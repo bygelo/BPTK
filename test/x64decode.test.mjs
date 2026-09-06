@@ -3,12 +3,15 @@
 
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { test } from "node:test";
 import { decodeX64Instruction } from "../lib/x64decode.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
 
 // A staged, lawful (MIT) freeware x86-64 binary for the linear-sweep corpus.
-const PLINK_PATH = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-002/package/plink.exe";
+const PLINK_PATH = join(resolveStageDir(), "corpus-002", "package", "plink.exe");
 const MAX_INSTRUCTION_BYTE_GUARD = 15; // stop the sweep a full instruction short of the section end
 
 function decode(...byte) {

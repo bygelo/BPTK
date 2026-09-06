@@ -17,6 +17,9 @@
 
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
+
+import { resolveStageDir } from "../lib/corpus.mjs";
 import { test } from "node:test";
 import { runImage64, executeProbe64, buildGuestContext64, serveImportAt64 } from "../lib/exec64.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
@@ -28,7 +31,7 @@ const stackBase = 0x00007ff000000000n;
 const tebBase = 0x00007ff800000000n;
 const pebBase = tebBase + 0x1000n;
 const MASK64 = (1n << 64n) - 1n;
-const puttyPath = "/Users/angelonrevelo/Code/bptk-corpus/stage/corpus-001/package/putty.exe";
+const puttyPath = join(resolveStageDir(), "corpus-001", "package", "putty.exe");
 
 function run(code, option = {}) {
   return runImage64({ image: Buffer.from(code), loadBase, entryRva: 0, budget: 4096, ...option });
