@@ -313,3 +313,64 @@ not show up as a better tier RATIO. The ratio is the wrong scoreboard for this
 phase; wall time in the render window is the right one.
 
 `passing` stays 0.
+
+## Current state (supersedes every number above)
+
+Numbers earlier in this file are kept as a record of how the bottleneck MOVED,
+not as current fact. Each was true when measured and each is now superseded. The
+table below is the live one. Chocolate Doom x64, this Windows host, every figure
+verified by interleaving the two tree in one window (this machine drifts ~40%
+across minutes, so a baseline taken an hour earlier is not a baseline).
+
+| Figure | Session start | Now (`a9d37c0`) |
+| --- | ---: | ---: |
+| Whole-run throughput @120M | ~0.22 M ips | **~10.7 M ips** |
+| Render-phase marginal (80M→120M) | — | **7.82 M ips** |
+| Tier vs pure interpretation @80M | 0.97x (SLOWER) | **~9x** |
+| Interpreter residency @120M | ~99% | **0.27%** |
+| Invocation @120M | — | 800,359 |
+
+**~48x cumulative.** Real-time playability needs **~14 M ips** sustained
+(~400,000 guest instruction per presented frame at 35 fps), so **~1.8x remains**
+on the marginal, which is the honest predictor of sustained frame rate.
+
+### How the bottleneck moved, in order
+
+Each of these was, in its turn, "the" bottleneck, and each was retired by
+measurement rather than by assumption:
+
+1. **Eligibility** (24.7% of function compiled) — widened to 57.7%, bought
+   nothing on the clock. Not the bottleneck.
+2. **Per-invocation memory copy** — every region's byte copied in and out per
+   call. Fixed by sharing one `WebAssembly.Memory`; PuTTY 23x slower → 2.3x.
+3. **Specialization refusal** — the tier could not run Doom at all, stopping
+   after 164 instruction. Fixed by driving the CRT-initializer, dialog and
+   message-pump walk.
+4. **Residency** — 98.3% of instruction still interpreted. Fixed by resident
+   entry, partial region, and a probe backstop.
+5. **The frame path** — `renderCopy` was 33% of the run, moving every pixel
+   through the scalar guest accessor. Fixed with a resolved-plane blit.
+6. **The import round trip** — 185,189 import served in-module instead of
+   handing back.
+7. **The call round trip** — `control_call_external` 417,121 → **0** via a
+   cross-module `call_indirect`.
+8. **Now: the RET round trip.** `ret_out_of_region` is 58.7% of what is left,
+   and it ROSE in absolute terms as item 7 landed — a caller that used to exit
+   at its call now runs through it and exits later at its own RET.
+
+### The shape of what remains
+
+In-module execution measures **~320 M ips**; the whole run manages ~10.7. So
+**the compiled code has not been the bottleneck for several lanes** — essentially
+all remaining wall time is the host round trip, and every hand-back removed is
+close to pure win. The cost model, regressed at 120M:
+
+```text
+t = 2,570 ns fixed + 3.1 ns per guest instruction carried
+```
+
+A hand-back costs ~2.6 us and carries ~33 instruction of work. That is the whole
+story of the remaining 1.8x.
+
+`passing` stays 0. None of this is a playability claim: a throughput ratio is not
+a played frame, and the frame rate a user would see has not been measured.
