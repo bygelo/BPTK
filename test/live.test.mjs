@@ -261,3 +261,77 @@ test("createLiveSession returns a usable surface before and independent of a win
   // unconsumed — no throw, no fabricated effect.
   assert.equal(session.sendInput({ type: "keydown", scancode: 41, sym: 0x1b }), 1, "one live event accepted into the queue");
 });
+
+// --- Rail 3: the live session runs on the TIER, and the tier is the same run --
+//
+// The product this session drives is the browser page, and the page has to run
+// the FAST engine or the demo is not worth looking at (Chocolate Doom presents a
+// frame every ~400,638 guest instruction, so real time is ~14 M ips and pure
+// interpretation delivers well under one). These two tests are the contract that
+// made it safe to switch the default: the tiered session reaches the SAME
+// architectural state, byte for byte, as the interpreted one over the same real
+// image — so the page got faster and nothing about what the guest computes
+// changed — and the interpreter is still selectable for the callers that anchor
+// the bit-exact comparison.
+
+// Step a live session in fixed chunks until it stops or the cap is reached, then
+// read the full architectural state the two engines must agree on.
+function stepToStop(session, chunk, cap) {
+  let status = null;
+  for (let i = 0; i < cap; i += 1) {
+    status = session.step(chunk);
+    if (status.done) break;
+  }
+  return {
+    status,
+    state: {
+      reg: session.context.machine.reg.map((v) => v & MASK64),
+      xmm: session.context.machine.xmm.map((v) => v),
+      rip: session.context.machine.rip & MASK64,
+      df: session.context.machine.df,
+      region: session.context.region.map((r) => ({ base: r.base & MASK64, bytes: Buffer.from(r.buf) })),
+    },
+  };
+}
+
+test("a live session runs on the WASM tier by default and the interpreter is selectable", { skip: existsSync(puttyPath) ? false : "corpus-001 not staged" }, (t) => {
+  const bytes = new Uint8Array(readFileSync(puttyPath));
+  const tiered = createLiveSession(bytes, { executableName: "putty.exe" });
+  assert.equal(tiered.engine, "tier", "the default engine is the tier — this is what the browser page runs on");
+  const interpreted = createLiveSession(bytes, { executableName: "putty.exe", engine: "interpreter" });
+  assert.equal(interpreted.engine, "interpreter", "the interpreter stays selectable");
+  // An unknown engine name is the default, never a throw and never a third thing.
+  assert.equal(createLiveSession(bytes, { executableName: "putty.exe", engine: "nonsense" }).engine, "tier");
+  t.diagnostic(`default engine ${tiered.engine}; shared guest memory ${tiered.context.sharedPlan === null ? "absent" : "present"}`);
+});
+
+test("the tiered live session is bit-exact to the interpreted live session (PuTTY x64)", { skip: existsSync(puttyPath) ? false : "corpus-001 not staged" }, (t) => {
+  const bytes = new Uint8Array(readFileSync(puttyPath));
+  // Chunks that do not divide anything about the guest, so the boundaries fall
+  // wherever they fall — including inside a function the tier compiled.
+  const chunk = 1000;
+  const cap = 500;
+
+  const tiered = stepToStop(createLiveSession(bytes, { executableName: "putty.exe" }), chunk, cap);
+  const interpreted = stepToStop(createLiveSession(bytes, { executableName: "putty.exe", engine: "interpreter" }), chunk, cap);
+
+  assert.equal(tiered.status.stopReason, interpreted.status.stopReason, "both engines reach the same stop");
+  assert.equal(tiered.status.done, interpreted.status.done, "both engines agree the run is (or is not) over");
+  assert.equal(tiered.state.rip, interpreted.state.rip, "both engines stop at the same rip");
+  for (let i = 0; i < 16; i += 1) assert.equal(tiered.state.reg[i], interpreted.state.reg[i], `reg[${i}] tier vs interpreter`);
+  for (let i = 0; i < 16; i += 1) assert.equal(tiered.state.xmm[i], interpreted.state.xmm[i], `xmm[${i}] tier vs interpreter`);
+  assert.equal(tiered.state.df, interpreted.state.df, "direction flag");
+
+  // Every mapped byte, matched by region base (the tier's regions live inside a
+  // WebAssembly.Memory and the interpreter's do not, so they are matched by the
+  // guest address they cover rather than by list position).
+  const byBase = new Map(interpreted.state.region.map((r) => [r.base, r.bytes]));
+  assert.equal(tiered.state.region.length, interpreted.state.region.length, "region count");
+  for (const region of tiered.state.region) {
+    const other = byBase.get(region.base);
+    assert.notEqual(other, undefined, `region 0x${region.base.toString(16)} exists in both`);
+    assert.equal(region.bytes.length, other.length, `region 0x${region.base.toString(16)} length`);
+    assert.ok(region.bytes.equals(other), `region 0x${region.base.toString(16)} bytes differ between the tier and the interpreter`);
+  }
+  t.diagnostic(`tier ${tiered.status.instructionCount} instruction vs interpreter ${interpreted.status.instructionCount}, both at rip 0x${tiered.state.rip.toString(16)} (${tiered.status.stopReason})`);
+});

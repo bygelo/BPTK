@@ -53,8 +53,16 @@ function loop() {
   draw(session.frame());
   const seconds = (performance.now() - startedAt) / 1000;
   const ips = Math.round(session.instructionCount / Math.max(seconds, 0.001));
+  // What the tier is carrying, live: how many regions it has compiled into real
+  // WebAssembly modules so far, and the share of executed guest instruction the
+  // compiled engine performed. Absent on the interpreter, which has no tier.
+  const tier = session.tierReport ?? null;
+  const wasmShare = tier === null ? null
+    : Math.round(100 * tier.wasm_tier_instruction / Math.max(1, tier.wasm_tier_instruction + tier.interpreter_tier_instruction));
   report(
-    `machine ${result.machine ?? "x86_64"} · ${session.instructionCount.toLocaleString()} instruction · ` +
+    `machine ${result.machine ?? "x86_64"} · ${session.engine ?? "interpreter"} · ` +
+    (tier === null ? "" : `${tier.tier_compile} region · ${wasmShare}% wasm · `) +
+    `${session.instructionCount.toLocaleString()} instruction · ` +
     `${session.presentCount} frame · ${session.hasVideo ? "video" : "no video"} · ` +
     `${(ips / 1e6).toFixed(2)}M ips · stop ${session.stopReason ?? "-"}` +
     (session.done ? " · DONE" : " · running… (click the canvas, then use the keyboard)"),
@@ -142,7 +150,7 @@ if (doomButton) doomButton.addEventListener("click", async () => {
       hostFile: new Map([["C:\\game\\freedoom1.wad", new Uint8Array(wad)]]),
       environment: { DOOMWADDIR: "C:\\game" },
       commandLine: ["-iwad", "C:\\game\\freedoom1.wad"],
-    }, "Chocolate Doom (live — slow: ~a minute to first frame at interpreter speed)");
+    }, "Chocolate Doom (live — the tier compiles ~2,000 WASM regions as it goes; the first frame lands a few seconds in)");
   } catch (error) { report(`error: ${error.message}`); }
 });
 
