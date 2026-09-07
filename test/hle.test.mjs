@@ -1378,3 +1378,127 @@ test("BPTK-010 shlwapi: PathIsRelativeA classifies real paths", () => {
   assert.equal(invoke(guest, "shlwapi.dll", "PathIsRelativeA", [rel]), 1);
   assert.equal(invoke(guest, "shlwapi.dll", "PathIsRelativeA", [abs]), 0);
 });
+
+// ---------------------------------------------------------------------------
+// The synchronization breadth slice (extends BPTK-010/101): the state changes
+// and wake semantics the conformance oracle does not inspect — the interlocked
+// prior-and-store contract, the timer wake on the one virtual clock, the
+// multi-object wait-any/wait-all consume, the named-object open family, and
+// the futex-style address wait timeout.
+// ---------------------------------------------------------------------------
+
+test("BPTK-010 sync breadth: the interlocked bitwise family returns the prior value and stores the new one", () => {
+  const { guest, memory } = createConformanceMachine();
+  const target = guest.layout.arena_base + 0x40;
+  memory.writeMemory(target, 4, 0xff00ff00);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedAnd", [target, 0x0f0f0f0f]), 0xff00ff00 >>> 0, "And returns the prior value");
+  assert.equal(memory.readMemory(target, 4), 0x0f000f00 >>> 0, "And stores the masked value");
+  memory.writeMemory(target, 4, 0x80000000);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedOr", [target, 1]), 0x80000000 >>> 0);
+  assert.equal(memory.readMemory(target, 4), 0x80000001 >>> 0);
+  memory.writeMemory(target, 4, 0x000000ff);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedXor", [target, 0x0000000f]), 0xff);
+  assert.equal(memory.readMemory(target, 4), 0xf0);
+  memory.writeMemory(target, 4, 0x00400000);
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedCompareExchangePointer", [target, 0x00401000, 0x00400000]), 0x00400000);
+  assert.equal(memory.readMemory(target, 4), 0x00401000, "a matching comparand stores the exchange value");
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedCompareExchangePointer", [target, 0x00500000, 0x00400000]), 0x00401000, "a mismatched comparand returns the current value");
+  assert.equal(memory.readMemory(target, 4), 0x00401000, "a mismatched comparand stores nothing");
+  assert.equal(invoke(guest, "kernel32.dll", "InterlockedExchangePointer", [target, 0x00600000]), 0x00401000);
+  assert.equal(memory.readMemory(target, 4), 0x00600000);
+});
+
+test("BPTK-010 sync breadth: a waitable timer wakes the finite wait on the one virtual clock", () => {
+  const { guest } = createConformanceMachine();
+  const due = guest.layout.arena_base + 0x40;
+  const handle = invoke(guest, "kernel32.dll", "CreateWaitableTimerA", [0, 0, 0]);
+  assert.ok(handle !== 0);
+  guest.memory.writeBlock(due, Buffer.alloc(8).fill(0).map((byte) => byte));
+  const buffer = Buffer.alloc(8);
+  buffer.writeBigInt64LE(-10000n, 0); // 1ms relative
+  guest.memory.writeBlock(due, buffer);
+  assert.equal(invoke(guest, "kernel32.dll", "SetWaitableTimer", [handle, due, 0, 0, 0, 0]), 1);
+  // A finite wait past the due time succeeds and consumes the auto-reset signal.
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForSingleObject", [handle, 100]), 0);
+  assert.ok(Math.abs(guest.clock.elapsedGuestMs() - 1) < 0.001, "the clock advanced to the due time, not the full timeout");
+  // The one-shot auto-reset timer is spent: the next finite wait burns its budget.
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForSingleObject", [handle, 5]), 0x102);
+  // An APC routine can never fire in the bounded world, so the set refuses.
+  assert.equal(invoke(guest, "kernel32.dll", "SetWaitableTimer", [handle, due, 0, 0x00401000, 0, 0]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "CancelWaitableTimer", [handle]), 1);
+});
+
+test("BPTK-010 sync breadth: the multi-object wait reports the signaled index and consumes a wait-all", () => {
+  const { guest, memory } = createConformanceMachine();
+  const handles = guest.layout.arena_base + 0x40;
+  const first = invoke(guest, "kernel32.dll", "CreateEventW", [0, 0, 0, 0]); // auto-reset, unsignaled
+  const second = invoke(guest, "kernel32.dll", "CreateEventW", [0, 1, 1, 0]); // manual-reset, signaled
+  memory.writeMemory(handles, 4, first);
+  memory.writeMemory(handles + 4, 4, second);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjects", [2, handles, 0, 0]), 1, "wait-any reports WAIT_OBJECT_0 + 1");
+  invoke(guest, "kernel32.dll", "SetEvent", [first]);
+  // The manual-reset event stays signaled, so the wait-all consumes both sides.
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjectsEx", [2, handles, 1, 0, 0]), 0);
+  const semaphore = invoke(guest, "kernel32.dll", "CreateSemaphoreA", [0, 1, 4, 0]);
+  memory.writeMemory(handles, 4, semaphore);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjects", [2, handles, 1, 0]), 0, "semaphore count 1 plus the still-signaled event satisfies the wait-all");
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjects", [2, handles, 1, 0]), 0x102, "the wait-all consumed the semaphore count");
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjects", [0, handles, 0, 0]), 0xffffffff, "a zero-count wait is a parameter error");
+  const badHandles = guest.layout.arena_base + 0x80;
+  memory.writeMemory(badHandles, 4, 0xdeadbeef);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjects", [1, badHandles, 0, 0]), 0xffffffff, "a non-waitable handle is an invalid-handle error");
+});
+
+test("BPTK-010 sync breadth: the named-object open family finds its own creates and misses honestly", () => {
+  const { guest } = createConformanceMachine();
+  const nameA = guest.layout.arena_base + 0x40;
+  const nameW = guest.layout.arena_base + 0x80;
+  guest.writeWideString(nameW, "BPTK_MUTEX", 16);
+  const mutex = invoke(guest, "kernel32.dll", "CreateMutexW", [0, 0, nameW]);
+  assert.ok(mutex !== 0);
+  guest.writeAnsiString(nameA, "BPTK_MUTEX", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "OpenMutexW", [0, 0, nameW]), mutex, "the open returns the create's handle");
+  guest.writeAnsiString(nameA, "BPTK_ABSENT", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "OpenMutexA", [0, 0, nameA]), 0);
+  assert.equal(guest.getLastError(), 2, "an absent named object is ERROR_FILE_NOT_FOUND");
+  const semaphore = invoke(guest, "kernel32.dll", "CreateSemaphoreA", [0, 1, 4, nameA]);
+  assert.ok(semaphore !== 0, "a named semaphore create succeeds");
+  assert.equal(invoke(guest, "kernel32.dll", "OpenSemaphoreA", [0, 0, nameA]), semaphore);
+  const timer = invoke(guest, "kernel32.dll", "CreateWaitableTimerW", [0, 0, nameW]);
+  assert.ok(timer !== 0);
+  assert.equal(invoke(guest, "kernel32.dll", "OpenWaitableTimerW", [0, 0, nameW]), timer);
+  const event = invoke(guest, "kernel32.dll", "CreateEventA", [0, 0, 0, nameA]);
+  assert.ok(event !== 0);
+  assert.equal(invoke(guest, "kernel32.dll", "OpenEventA", [0, 0, nameA]), event, "an ANSI named event opens by its ANSI name");
+});
+
+test("BPTK-010 sync breadth: the address wait times out on an unchanged value and skips a changed one", () => {
+  const { guest } = createConformanceMachine();
+  const target = guest.layout.arena_base + 0x40;
+  const comparand = guest.layout.arena_base + 0x80;
+  guest.memory.writeMemory(target, 4, 5);
+  guest.memory.writeMemory(comparand, 4, 6);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitOnAddress", [target, comparand, 4, 0]), 1, "a changed value never parks");
+  guest.memory.writeMemory(comparand, 4, 5);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitOnAddress", [target, comparand, 4, 50]), 0);
+  assert.equal(guest.getLastError(), 258, "an unchanged value burns the timeout and reports WAIT_TIMEOUT");
+  assert.ok(Math.abs(guest.clock.elapsedGuestMs() - 50) < 0.001);
+  assert.equal(invoke(guest, "kernel32.dll", "WakeByAddressAll", [target]), 1);
+  assert.equal(invoke(guest, "kernel32.dll", "WakeByAddressSingle", [target]), 1);
+});
+
+test("BPTK-010 sync breadth: SignalObjectAndWait releases then waits, and the thread exit rows answer", () => {
+  const { guest, memory } = createConformanceMachine();
+  const scratch = guest.layout.arena_base + 0x40;
+  const semaphore = invoke(guest, "kernel32.dll", "CreateSemaphoreA", [0, 0, 4, 0]);
+  const event = invoke(guest, "kernel32.dll", "CreateEventW", [0, 0, 0, 0]);
+  assert.equal(invoke(guest, "kernel32.dll", "SignalObjectAndWait", [semaphore, event, 0, 0]), 0x102, "the released semaphore cannot satisfy the unsignaled event wait");
+  memory.writeMemory(scratch, 4, 0);
+  assert.equal(invoke(guest, "kernel32.dll", "ReleaseSemaphore", [semaphore, 0, scratch]), 0, "the signal half released the count, so an over-release check sees count 1");
+  assert.equal(invoke(guest, "kernel32.dll", "GetExitCodeThread", [0xfffffffe, scratch]), 1);
+  assert.equal(memory.readMemory(scratch, 4), 259, "the one live thread reports STILL_ACTIVE");
+  assert.equal(invoke(guest, "kernel32.dll", "GetExitCodeThread", [0x00012345, scratch]), 0, "no other thread handle exists");
+  assert.throws(() => invoke(guest, "kernel32.dll", "ExitThread", [0]), /ended its own process/);
+  assert.equal(invoke(guest, "kernel32.dll", "SleepEx", [10, 0]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "SwitchToThread", []), 0);
+});
