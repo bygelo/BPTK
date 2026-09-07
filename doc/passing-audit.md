@@ -41,7 +41,7 @@ threshold owner. Each is red for a substantive reason:
 | BPTK-060 | DXBC/DXIL frontend | The container is read and the opcode surface enumerated, but **no Direct3D 10-12 program is lowered** into the unified representation. P4 research. |
 | BPTK-072 | Console framebuffer resolve | The tile resolve round-trips a fixture in software; **measuring on the live adapter set does not run in the gate**. P4 research, verdict *defer*. |
 | BPTK-073 | Compute and modern shader | The compute prototype computes a software reference; **bit-identity on the live adapter set is not measured**. P4 research, verdict *defer*. |
-| BPTK-122 | Public issue tracker | The spec say it needs the absent browser runtime; verified deeper, the sharper reason is that **no public issue template exist** (`.github/ISSUE_TEMPLATE` is absent, and neither MAINTAINERS.md nor CONTRIBUTING.md name a tracker). See the note below. |
+| BPTK-122 | Public issue tracker | **Two independent blocker**: no public issue template exist (`.github/ISSUE_TEMPLATE` is absent), and — the deeper one — `lib/doctor.mjs` returns the blocker *"no runtime reproduces the compatibility claim"* on every accepted report. See the note below. |
 | BPTK-125 | Bus-factor removal | The two-signer release rule is enforceable only with **a second maintainer** and branch protection. Organizational, not code. |
 
 ### BPTK-122, examined closely, because it looked promotable
@@ -64,8 +64,21 @@ report-validation LOGIC; it does not run a public tracker. Promoting on the
 strength of a passing shape-validation test would be precisely the false green
 this gate exists to stop — the behaviour a user would get does not exist.
 
-That gap is closable without an owner decision, unlike BPTK-001: publish the
-templates and the freshness level, then re-read the criterion.
+**Correction, on a closer read.** An earlier revision of this file said the
+missing template were "the real reason" and that the gap was closable without an
+owner decision. That was wrong on the second half. `lib/doctor.mjs` already
+declares `triageFreshnessHour = 72` and calls it the *published* level, so
+publishing is not the gap — and every accepted report carries the blocker
+*"The report maps to a tracker entry within the published freshness level, but no
+runtime reproduces the compatibility claim."* The implementation states its own
+obstacle: a tracker entry is only compatibility EVIDENCE if some runtime can
+reproduce the claim, and no supported title runtime exists (which is what
+`passing 0` means elsewhere in this ledger).
+
+So the two blocker are independent, and adding issue template would close only
+the shallower one. The item stays red until a supported runtime can reproduce a
+tracked claim — which is not a template, a policy statement, or an owner
+decision, but the product itself.
 
 Three are P4 research carrying an explicit *defer* verdict in
 [the P4 deferral record](research-p4-deferral.md); the roadmap's own instruction
