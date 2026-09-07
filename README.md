@@ -122,8 +122,8 @@ The hard part is compatibility breadth. A Windows game can depend on a unique mi
 - Gold-standard item promoted as planned work: **100**
 - Rejected candidate: **8**
 - Deferred candidate: **6**
-- Implemented item: **101**
-- Passing roadmap benchmark: **0 / 145 (0%)**
+- Implemented item: **102**
+- Passing roadmap benchmark: **1 / 145 (1%)**
 - Published-package source surface: **`@bygelo/bptk@0.1.0-alpha.0`**, roadmap diagnostics, bounded local analysis and research, live self-check, toolchain comparison, PE32 mapping and declared import resolution, an opt-in deterministic i386 entry probe, bounded installer extraction, declared resource bound, middleware and engine census routing, ephemeral Chrome capability probing, asset packaging, host emission, local policy diagnosis, safe import diagnosis, and local reporting; a new registry release has not been made from this branch
 - Research runtime (source tree, not published): a bounded x86-64 and i386 interpreter with a Win64 HLE executes real freeware from CRT entry through the game loop — Plink runs entry to exit bit-identical on macOS and Windows, PuTTY paints its dialog, and Chocolate Doom renders the Freedoom title, menu, and in-level 3D with the HUD and takes live input on a browser canvas (`web/host.mjs`, served locally; corpus payloads stay out of git). A WASM recompilation fast path is proven bit-exact against the interpreter at roughly 80x throughput but is not yet wired to the game hot path, so live play is interpreter-speed only. This is research evidence, not a supported runtime; `passing` stays 0.
 

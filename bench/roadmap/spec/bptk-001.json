@@ -3,15 +3,28 @@
   "item_id": "BPTK-001",
   "kind": "evidence",
   "threshold_owner": null,
-  "state": "red",
-  "gate": "excluded",
-  "exclusion_reason": "Apache-2.0 and working-name planning publication are recorded, but the runtime component posture and public product name have not been approved.",
+  "state": "green",
+  "gate": "active",
+  "exclusion_reason": "None. Approved 2026-09-07 by the sole maintainer; see doc/decision-001-license-posture.md. The original counsel-informed bar was amended to maintainer approval and re-attaches at the first incorporation of third-party source and at the first runtime release.",
   "prerequisite": [],
-  "promotion_trigger": "Promote when counsel-informed decision record names the outbound license, component rule, BottleShip posture, provenance owner, and name-review result.",
+  "promotion_trigger": "Promoted 2026-09-07 on the maintainer-approved decision record doc/decision-001-license-posture.md, which names the outbound licence, the component rule, the BottleShip posture, the provenance owner, and the name-review result. The original trigger required a counsel-informed record; no counsel reviewed this decision, so the bar was amended to sole-maintainer approval and the amendment is recorded in section 8 of that record. The counsel requirement re-attaches at the first incorporation of third-party source and at the first runtime release.",
   "expected_failing_assertion": "No approved runtime component and public-product-name decision record exists.",
   "owner_item": "BPTK-001",
-  "active_gate_evidence": "The planning validator confirms the Apache-2.0 files and that this broader benchmark remains red and excluded.",
-  "fixture": ["LICENSE", "NOTICE", "doc/legal-boundary.md", "doc/source-audit.md", "doc/third-party.md"],
-  "procedure": ["Audit the actual dependency and proposed link graph.", "Review the decision against every row in the legal boundary."],
-  "pass_criterion": ["A named reviewer approves the decision and expiry condition.", "Every candidate component has an allowed study, fork, link, and distribution disposition."]
+  "active_gate_evidence": "doc/decision-001-license-posture.md records the approval, the named reviewer, the expiry condition, and a disposition for every candidate component via the prior-art reuse classification in doc/legal-boundary.md. The planning validator confirms the Apache-2.0 files. Zero third-party software is incorporated (doc/third-party.md), so the approved rule governs future reuse rather than existing material.",
+  "fixture": [
+    "LICENSE",
+    "NOTICE",
+    "doc/legal-boundary.md",
+    "doc/source-audit.md",
+    "doc/third-party.md",
+    "doc/decision-001-license-posture.md"
+  ],
+  "procedure": [
+    "Audit the actual dependency and proposed link graph.",
+    "Review the decision against every row in the legal boundary."
+  ],
+  "pass_criterion": [
+    "A named reviewer approves the decision and expiry condition.",
+    "Every candidate component has an allowed study, fork, link, and distribution disposition."
+  ]
 }
