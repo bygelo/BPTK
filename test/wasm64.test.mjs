@@ -160,6 +160,41 @@ test("setcc/cmovcc/bswap: condition bytes, conditional moves, byte reversal", ()
   cover(assertEquivalent([0x48, 0xc7, 0xc0, 0x78, 0x56, 0x34, 0x12, 0x48, 0x0f, 0xc8, 0xc3], "bswap-64"));
 });
 
+// The accumulator sign-extensions. `cdq`/`cqo` is the divide sequence's set-up and
+// `cdqe`/`cwde` is how a 32-bit index is widened before it addresses an array, so
+// both sit in inner loops — and both used to hand the tier back at their own address.
+// Every case runs through the interpreter oracle first, so the flags NEITHER of them
+// writes are compared exactly as strictly as the value.
+test("cbw/cwde/cdqe and cwd/cdq/cqo: accumulator sign-extension at all three widths", () => {
+  // mov eax,0xffffff80; cdqe; ret — the 64-bit form sign-extends eax over all of rax.
+  cover(assertEquivalent([0xb8, 0x80, 0xff, 0xff, 0xff, 0x48, 0x98, 0xc3], "cdqe-negative"));
+  // mov eax,0x7fffffff; cdqe; ret — the positive case must NOT set the high half.
+  cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0x7f, 0x48, 0x98, 0xc3], "cdqe-positive"));
+  // mov rax,-1; mov ax,0x0080; cwde; ret — the 32-bit form widens AX into EAX and,
+  // being a 32-bit register write, must zero the whole high half of rax.
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, 0x66, 0xb8, 0x80, 0x00, 0x98, 0xc3], "cwde-zero-extends"));
+  // mov rax,-1; mov al,0x7f; cbw; ret — the 16-bit form widens AL into AX and
+  // PRESERVES everything above bit 15, which is the opposite rule to cwde's.
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xb0, 0x7f, 0x66, 0x98, 0xc3], "cbw-preserves-upper"));
+  // mov rax,-1; cqo; ret — rdx becomes all ones.
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, 0x48, 0x99, 0xc3], "cqo-negative"));
+  // mov eax,1; cqo; ret — rdx becomes zero.
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0x48, 0x99, 0xc3], "cqo-positive"));
+  // mov rax,-1; mov eax,0x80000000; cdq; ret — cdq reads rax's bit 31, not bit 63,
+  // and its 32-bit write of edx must zero the high half of rdx.
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xb8, 0x00, 0x00, 0x00, 0x80, 0x99, 0xc3], "cdq-width-31"));
+  // mov rax,-1; mov eax,0x7fffffff; cdq; ret — the same width, the other sign.
+  cover(assertEquivalent([0x48, 0xc7, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xb8, 0xff, 0xff, 0xff, 0x7f, 0x99, 0xc3], "cdq-width-31-positive"));
+  // mov rdx,-1; mov ax,0x8000; cwd; ret — the 16-bit form reads bit 15 and writes DX
+  // while PRESERVING the rest of rdx.
+  cover(assertEquivalent([0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff, 0x66, 0xb8, 0x00, 0x80, 0x66, 0x99, 0xc3], "cwd-preserves-upper"));
+  // mov eax,0xffffffff; add eax,1 (cf=1, zf=1, pf=1, af=1); cdqe; ret — a sign
+  // extension writes NO flag, so every one of those must survive it untouched.
+  cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0xff, 0x83, 0xc0, 0x01, 0x48, 0x98, 0xc3], "cdqe-preserves-flag"));
+  // The same, for the rdx-filling form.
+  cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0xff, 0x83, 0xc0, 0x01, 0x48, 0x99, 0xc3], "cqo-preserves-flag"));
+});
+
 test("inc/dec: CF preserved, other flags recomputed", () => {
   // mov eax,0x7fffffff; add eax,1 (CF=0,OF=1); inc eax; ret  — inc keeps CF, sets OF=0
   cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0x7f, 0x83, 0xc0, 0x01, 0xff, 0xc0, 0xc3], "inc"));
