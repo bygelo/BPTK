@@ -2235,8 +2235,11 @@ test("cross-module call: a direct call to a target outside the region calls that
   // is an ordinary in-region call whose RET dispatches through the region's own
   // return-address table, and it never reaches the host stack at all. Direct
   // self-recursion is therefore cheaper than a cross call, not a special case of it.
+  // The region does import the shared table, but for its RET (see the return map),
+  // never for this call: `call_cross` is the shape that must be absent.
   const selfRegion = compileFunction(image, { ...option, entryRva: 0xC0 });
-  assert.equal(selfRegion.usesTable, false, "a self-recursive region needs no table: it calls its own block 0");
+  assert.ok(!selfRegion.branchKind.includes("call_cross"),
+    `a self-recursive call needs no table slot: it calls its own block 0 — ${JSON.stringify(selfRegion.branchKind)}`);
   assert.ok(selfRegion.branchKind.includes("call"), `S: branchKind ${JSON.stringify(selfRegion.branchKind)} must contain an in-region call`);
   // A slot was reserved for each cross-region callee, and only for one.
   assert.deepEqual([...plan.callSlot.keys()].sort((a, b) => a - b), [0x40, 0x80, 0xC0], "one table slot per out-of-region direct-call target");
@@ -2377,4 +2380,90 @@ test("cross-module call: rewriting a CALLEE's code invalidates its caller's tabl
   image[0x43] = 0x0B;
   mem.set(image, 0);
   assert.equal(driveFromEntry(), 11n, "every later rewrite is caught too");
+});
+
+// The guest's own stack bytes are the TRUTH about where a RET goes; the return map
+// the RET terminator probes is an optimisation hint and nothing else. It is keyed by
+// the address the guest returned to, and it is consulted only AFTER that address has
+// been read out of the guest's stack — so a guest that overwrites its own return
+// address must land where the rewritten bytes say, whether or not either address has
+// a compiled region behind it.
+function buildReturnRewriteImage() {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const at = (o) => { p = o; };
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  const imm32 = (v) => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff];
+  // entry @0x00 — calls V, whose RET must NOT come back here.
+  emit(0x48, 0xC7, 0xC0, ...imm32(0));            // 0x00 mov rax, 0
+  emit(0xE8, 0x34, 0x00, 0x00, 0x00);             // 0x07 call V (0x40)
+  // 0x0C — THE DECOY. This is the address the `call` pushed, and it is a region of
+  // its own (a call-return site is a block leader, and the host publishes every
+  // region it binds). Reaching it means the dispatch trusted the map over the bytes.
+  emit(0x48, 0xC7, 0xC0, ...imm32(0x1111));       // 0x0C mov rax, 0x1111
+  emit(0xC3);                                     // 0x13 ret
+  // V @0x40 — overwrites the return address the call pushed, then returns.
+  at(0x40);
+  emit(0x48, 0xBA, 0x80, 0x00, 0x00, 0x40, 0x01, 0x00, 0x00, 0x00); // 0x40 mov rdx, 0x140000080
+  emit(0x48, 0x89, 0x14, 0x24);                   // 0x4A mov [rsp], rdx
+  emit(0x48, 0xC7, 0xC0, ...imm32(0x2222));       // 0x4E mov rax, 0x2222
+  emit(0xC3);                                     // 0x55 ret  -> 0x140000080, not 0x0C
+  // W @0x80 — where the rewritten bytes say to go. Its own RET unwinds the entry.
+  at(0x80);
+  emit(0x48, 0x05, ...imm32(0x3333));             // 0x80 add rax, 0x3333
+  emit(0xC3);                                     // 0x86 ret
+  return img;
+}
+
+test("return map: a guest that rewrites its own return address goes where the BYTES say", () => {
+  const image = buildReturnRewriteImage();
+  const { option, plan, mem, spec, stackRegion } = crossHarness(image);
+  const oracle = interpretMultiRegion(image, spec, { loadBase, entryRva: 0, budget: 10000 });
+  assert.equal(oracle.register.rax, 0x2222n + 0x3333n, "the oracle runs V then W, never the decoy at 0x0C");
+
+  const cleanStack = () => mem.fill(0, stackRegion.wasmOffset, stackRegion.wasmOffset + stackRegion.size);
+
+  // ---- with NOTHING published: the RET misses the map and hands back at the address
+  // the guest wrote, which is the behaviour the map exists to replace.
+  cleanStack();
+  const cold = runFunction(image, { ...option, entryRva: 0x40, entrySentinel: false, rspOverride: plan.stackTop - 8n });
+  assert.equal(cold.statusName, "fallback", `with no region published the RET hands back rather than dispatching (got ${cold.statusName})`);
+  assert.equal(cold.resumeRip, loadBase + 0x80n, `the hand-back names the address the guest WROTE, not the one the call pushed (got 0x${cold.resumeRip.toString(16)})`);
+
+  // ---- publish BOTH the decoy and the real target, so the map holds an entry for
+  // each and picking the wrong one is a reachable wrong answer.
+  for (const entryRva of [0x80, 0x0C, 0x40, 0x00]) runFunction(image, { ...option, entryRva });
+  assert.ok(plan.callSlot.has(0x0C), "the decoy at 0x0C has a table slot, so the map can name it");
+  assert.ok(plan.callSlot.has(0x80), "the rewritten target at 0x80 has a table slot");
+
+  cleanStack();
+  const jit = runFunction(image, { ...option, entryRva: 0 });
+  assert.equal(jit.statusName, "ok", `the run must return through the entry sentinel (got ${jit.statusName} at 0x${jit.resumeRip.toString(16)})`);
+  assert.equal(jit.register.rax, 0x2222n + 0x3333n, `rax must be V's value plus W's — 0x1111 anywhere in it means the decoy ran (got 0x${jit.register.rax.toString(16)})`);
+  for (const name of REG) assert.equal(jit.register[name], oracle.register[name], `rewritten return address: reg ${name} 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `rewritten return address: flag ${name}`);
+  assert.deepEqual(
+    [...mem.subarray(stackRegion.wasmOffset, stackRegion.wasmOffset + stackRegion.size)],
+    [...oracle.region[1].mem],
+    "rewritten return address: the guest stack bytes are identical to the interpreter's",
+  );
+  const oracleStep = interpret({ image, loadBase, entryRva: 0, budget: 10000 }).executed_count;
+  assert.equal(jit.instructionCount, oracleStep, "the run charges exactly the guest instruction the interpreter executes");
+
+  // ---- and the map cannot be talked into it: rewrite the return address to the
+  // DECOY instead and the very same mechanism must go there, because that is what
+  // the bytes now say.
+  image[0x42] = 0x0C; // mov rdx, 0x14000000C — the decoy's own address
+  mem.set(image, plan.region[0].wasmOffset);
+  const straightOracle = interpretMultiRegion(image, spec, { loadBase, entryRva: 0, budget: 10000 });
+  assert.equal(straightOracle.register.rax, 0x1111n, "with the return address rewritten to the decoy, the oracle runs the decoy");
+  // Rewriting V's own code un-binds its table slot, exactly as the cache promises, so
+  // the host re-publishes every region before the steady-state run below.
+  for (const entryRva of [0x80, 0x0C, 0x40, 0x00]) runFunction(image, { ...option, entryRva });
+  cleanStack();
+  const jit2 = runFunction(image, { ...option, entryRva: 0 });
+  assert.equal(jit2.statusName, "ok", `the rewritten-to-decoy run must also unwind the entry frame (got ${jit2.statusName})`);
+  assert.equal(jit2.register.rax, 0x1111n, `the RET must follow the guest's bytes to the decoy (got 0x${jit2.register.rax.toString(16)})`);
+  for (const name of REG) assert.equal(jit2.register[name], straightOracle.register[name], `rewritten-to-decoy: reg ${name}`);
+  for (const name of FLAG) assert.equal(jit2.flag[name], straightOracle.flag[name], `rewritten-to-decoy: flag ${name}`);
 });
