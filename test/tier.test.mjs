@@ -44,7 +44,7 @@ function assertMatchesOracle(tiered, oracle, label) {
 test("cross-tier: WASM entry (integer+SSE) calls an interpreter-tier fallback (btc), bit-exact", () => {
   // A (entry, 0x00): mov ecx,5; movd xmm0,ecx; paddd xmm0,xmm0; movd edx,xmm0;
   //                  call B; add eax,ecx; add eax,edx; ret
-  // B (0x1B): mov eax,0x12345678; btc eax,ecx; ret   (the bit family → codegen fallback)
+  // B (0x1B): mov eax,0x12345678; bswap ax; nop; ret   (a 16-bit bswap is a codegen fallback)
   const code = [
     0xb9, 0x05, 0x00, 0x00, 0x00,       // 0x00 mov ecx,5
     0x66, 0x0f, 0x6e, 0xc1,             // 0x05 movd xmm0,ecx
@@ -55,7 +55,7 @@ test("cross-tier: WASM entry (integer+SSE) calls an interpreter-tier fallback (b
     0x01, 0xd0,                         // 0x18 add eax,edx
     0xc3,                               // 0x1A ret
     0xb8, 0x78, 0x56, 0x34, 0x12,       // 0x1B B: mov eax,0x12345678
-    0x0f, 0xbb, 0xc8,                   // 0x20 btc eax,ecx
+    0x66, 0x0f, 0xc8,                   // 0x20 bswap ax  (16-bit bswap → interpreter fallback)
     0xc3,                               // 0x23 ret
   ];
   const image = Buffer.from(code);
@@ -75,13 +75,13 @@ test("cross-tier: WASM entry (integer+SSE) calls an interpreter-tier fallback (b
   // Tiered run: A on the WASM tier, B on the interpreter tier, a real call across.
   const tiered = runTiered(image, { loadBase, entryRva: 0, functionEntry: [0, B], budget: 100000 });
   assert.equal(tiered.report.tier[0], "wasm", "the integer+SSE entry must be chosen for the WASM tier");
-  assert.equal(tiered.report.tier[B], "interp", "the btc function must fall back to the interpreter tier");
+  assert.equal(tiered.report.tier[B], "interp", "the std function must fall back to the interpreter tier");
   assert.ok(tiered.report.wasmFunctionRun >= 1, "at least one function ran on the WASM tier");
   assert.ok(tiered.report.interpFunctionRun >= 1, "at least one function ran on the interpreter tier");
   assert.ok(tiered.report.interpEntryRun.includes(B), "the fallback function ran on the interpreter tier at a cross-tier call");
 
   assertMatchesOracle(tiered, oracle, "cross-tier (WASM→interp)");
-  assert.equal(tiered.register.rax, 0x12345667n, "rax = btc(0x12345678, bit ecx=5) = 0x12345658, +ecx(5) +edx(10) = 0x12345667");
+  assert.equal(tiered.register.rax, 0x12347865n, "rax = bswap16(0x12345678) = 0x12347856, +ecx(5) +edx(10) = 0x12347865");
   // MEMORY bit-exact against the whole-interpreter reference — the pushed return
   // address (loadBase+0x16) is a stale qword on the guest stack in BOTH paths.
   assert.ok(tiered.memory.equals(wholeInterp.memory), "guest memory bit-exact between tiered and pure-interpreter runs");
@@ -92,11 +92,11 @@ test("cross-tier: WASM entry (integer+SSE) calls an interpreter-tier fallback (b
 });
 
 test("cross-tier reverse: interpreter-tier entry (btc) calls a WASM-tier leaf, bit-exact", () => {
-  // A (entry, 0x00): mov eax,0x100; btc eax,ecx; call B; add eax,ecx; ret
+  // A (entry, 0x00): mov eax,0x100; bswap ax; nop; call B; add eax,ecx; ret
   // B (0x10, WASM-tier leaf): mov ecx,7; ret
   const code = [
     0xb8, 0x00, 0x01, 0x00, 0x00,       // 0x00 mov eax,0x100
-    0x0f, 0xbb, 0xc8,                   // 0x05 btc eax,ecx  (interpreter fallback)
+    0x66, 0x0f, 0xc8,                   // 0x05 bswap ax  (interpreter fallback)
     0xe8, 0x03, 0x00, 0x00, 0x00,       // 0x08 call B (target 0x10)
     0x01, 0xc8,                         // 0x0D add eax,ecx
     0xc3,                               // 0x0F ret
@@ -113,12 +113,12 @@ test("cross-tier reverse: interpreter-tier entry (btc) calls a WASM-tier leaf, b
   assertMatchesOracle(wholeInterp, oracle, "reverse whole-interp reference");
 
   const tiered = runTiered(image, { loadBase, entryRva: 0, functionEntry: [0, B], budget: 100000 });
-  assert.equal(tiered.report.tier[0], "interp", "the btc entry must fall back to the interpreter tier");
+  assert.equal(tiered.report.tier[0], "interp", "the std entry must fall back to the interpreter tier");
   assert.equal(tiered.report.tier[B], "wasm", "the compilable leaf must be chosen for the WASM tier");
   assert.ok(tiered.report.wasmEntryRun.includes(B), "the leaf ran on the WASM tier, called from the interpreter tier");
 
   assertMatchesOracle(tiered, oracle, "cross-tier (interp→WASM)");
-  assert.equal(tiered.register.rax, 0x108n, "rax = btc(0x100, bit ecx=0) = 0x101, + ecx(7) = 0x108");
+  assert.equal(tiered.register.rax, 0x8n, "rax = bswap16(0x100) = 0x1, + ecx(7) = 0x8");
   assert.ok(tiered.memory.equals(wholeInterp.memory), "guest memory bit-exact between tiered and pure-interpreter runs");
 });
 
@@ -162,7 +162,7 @@ test("report: tier counts and coverage are surfaced", () => {
     0x01, 0xc8,                         // 0x0A add eax,ecx
     0xc3,                               // 0x0C ret
     0xb8, 0x78, 0x56, 0x34, 0x12,       // 0x0D B: mov eax,0x12345678
-    0x0f, 0xbb, 0xc8,                   // 0x12 btc eax,ecx
+    0x66, 0x0f, 0xc8,                   // 0x12 bswap ax  (interpreter fallback)
     0xc3,                               // 0x15 ret
   ];
   const image = Buffer.from(code);

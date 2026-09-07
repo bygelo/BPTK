@@ -1675,12 +1675,12 @@ test("resume: the reference shim's jcc/call/indirect agree with lib/lift64 inter
 });
 
 test("resume: a single block reports the address after its emitted prefix", () => {
-  // mov eax,1; btc eax,ecx; ret — the bit family is an honest codegen fallback, so
-  // the prefix stops at 0x05 and that is exactly where the interpreter must pick up.
-  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xbb, 0xc8, 0xc3];
+  // mov eax,1; cpuid; ret — cpuid is an honest codegen fallback, so the prefix
+  // stops at 0x05 and that is exactly where the interpreter must pick up.
+  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3];
   const image = Buffer.from(code);
   const jit = runBlock(liftBlock(image, 0), { image, loadBase });
-  assert.equal(jit.complete, false, "btc is not emittable — the prefix must stop honestly");
+  assert.equal(jit.complete, false, "cpuid is not emittable — the prefix must stop honestly");
   assert.equal(jit.resumeRip, loadBase + 0x05n, "resumeRip is the VA of the first instruction the codegen could not emit");
   assert.equal(jit.register.rax, 1n, "everything before the stop did run");
 });
@@ -2466,4 +2466,129 @@ test("return map: a guest that rewrites its own return address goes where the BY
   assert.equal(jit2.register.rax, 0x1111n, `the RET must follow the guest's bytes to the decoy (got 0x${jit2.register.rax.toString(16)})`);
   for (const name of REG) assert.equal(jit2.register[name], straightOracle.register[name], `rewritten-to-decoy: reg ${name}`);
   for (const name of FLAG) assert.equal(jit2.flag[name], straightOracle.flag[name], `rewritten-to-decoy: flag ${name}`);
+});
+
+// ---------------------------------------------------------------------------
+// The bit-test family, the bit scans, xadd, xchg, and the one-operand mul/imul
+// accumulator pair. Each microprogram runs through BOTH engines and the end
+// states must agree bit-exactly; memory effects ride back into the comparison
+// through a register load, since the harness compares registers and flags.
+// ---------------------------------------------------------------------------
+
+test("bt/bts/btr/btc register form: CF takes the bit and the modifying forms write back", () => {
+  // mov eax,0x80000001; bt eax,31; ret — CF=1, eax untouched
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x80, 0x0f, 0xba, 0xe0, 0x1f, 0xc3], "bt-31"));
+  // mov eax,0x80000001; bt eax,1; ret — CF=0
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x80, 0x0f, 0xba, 0xe0, 0x01, 0xc3], "bt-1"));
+  // mov eax,0; bts eax,5; ret — eax=0x20, CF=0
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xba, 0xe8, 0x05, 0xc3], "bts-set"));
+  // mov eax,0xffffffff; btr eax,3; ret — eax=0xfffffff7, CF=1
+  cover(assertEquivalent([0xb8, 0xff, 0xff, 0xff, 0xff, 0x0f, 0xba, 0xf0, 0x03, 0xc3], "btr-clear"));
+  // mov eax,0xf0; btc eax,4; ret — eax=0xe0, CF=1
+  cover(assertEquivalent([0xb8, 0xf0, 0x00, 0x00, 0x00, 0x0f, 0xba, 0xf8, 0x04, 0xc3], "btc-toggle"));
+});
+
+test("bt register offset wraps within the operand width, including a negative offset", () => {
+  // mov eax,0x10; mov ecx,33; bt eax,ecx; ret — offset 33 wraps to bit 1 → CF=0
+  cover(assertEquivalent([0xb8, 0x10, 0x00, 0x00, 0x00, 0xb9, 0x21, 0x00, 0x00, 0x00, 0x0f, 0xa3, 0xc1, 0xc3], "bt-wrap-33"));
+  // mov eax,0x80000000; mov ecx,-1; bt eax,ecx; ret — offset -1 wraps to bit 31 → CF=1
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x80, 0xb9, 0xff, 0xff, 0xff, 0xff, 0x0f, 0xa3, 0xc1, 0xc3], "bt-wrap-negative"));
+  // mov eax,0; mov ecx,64; bts eax,ecx; ret — offset 64 wraps to bit 0 and bts sets it
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x00, 0xb9, 0x40, 0x00, 0x00, 0x00, 0x0f, 0xab, 0xc1, 0xc3], "bts-wrap-64"));
+});
+
+test("bt/bts/btr memory form: the bit offset crosses the byte and the write lands", () => {
+  // lea rbx,[rip+0x19]; bt dword [rbx],23; ret; ...; dd 0x00800000
+  // bit 23 lives in the third byte, so the byte-addressing path must find it.
+  cover(assertEquivalent(Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0x0f, 0xba, 0x23, 0x17, 0xc3]),
+    Buffer.alloc(0x20 - 12),
+    Buffer.from([0x00, 0x00, 0x80, 0x00]),
+  ]), "bt-mem-cross-byte"));
+  // lea rbx,[rip+disp]; mov ecx,3; bts dword [rbx],ecx; mov eax,[rbx]; ret
+  // with dd 0x00000200: CF = old bit 3 = 0, memory becomes 0x00000208, eax reads it back.
+  cover(assertEquivalent(Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0xb9, 0x03, 0x00, 0x00, 0x00,
+      0x0f, 0xab, 0x0b, 0x8b, 0x03, 0xc3]),
+    Buffer.alloc(0x20 - 18),
+    Buffer.from([0x00, 0x02, 0x00, 0x00]),
+  ]), "bts-mem-writeback"));
+  // lea rbx,[rip+disp]; mov ecx,9; btr dword [rbx],ecx; mov eax,[rbx]; ret
+  // with dd 0x00000200: CF = old bit 9 = 1, memory becomes 0.
+  cover(assertEquivalent(Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0xb9, 0x09, 0x00, 0x00, 0x00,
+      0x0f, 0xb3, 0x0b, 0x8b, 0x03, 0xc3]),
+    Buffer.alloc(0x20 - 18),
+    Buffer.from([0x00, 0x02, 0x00, 0x00]),
+  ]), "btr-mem-writeback"));
+});
+
+test("bsf/bsr: scan results, the zero source keeps the destination, and zf records it", () => {
+  // mov ecx,0x100; bsf eax,ecx; ret — eax=8, zf=0
+  cover(assertEquivalent([0xb9, 0x00, 0x01, 0x00, 0x00, 0x0f, 0xbc, 0xc1, 0xc3], "bsf-low"));
+  // mov ecx,0x100; bsr eax,ecx; ret — eax=8 (the only set bit)
+  cover(assertEquivalent([0xb9, 0x00, 0x01, 0x00, 0x00, 0x0f, 0xbd, 0xc1, 0xc3], "bsr-low"));
+  // mov eax,0x777; mov ecx,0; bsf eax,ecx; ret — the oracle's contract: zf=1 and
+  // the destination keeps its value.
+  cover(assertEquivalent([0xb8, 0x77, 0x07, 0x00, 0x00, 0xb9, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xbc, 0xc1, 0xc3], "bsf-zero-preserves"));
+  // mov rcx,0x100000000; bsr rax,rcx; ret — the highest bit is 32
+  cover(assertEquivalent([0x48, 0xb9, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x48, 0x0f, 0xbd, 0xc1, 0xc3], "bsr-64"));
+});
+
+test("xchg: register-register and register-memory swaps, no flags", () => {
+  // mov eax,1; mov ecx,2; xchg eax,ecx; ret
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0xb9, 0x02, 0x00, 0x00, 0x00, 0x91, 0xc3], "xchg-eax-ecx"));
+  // mov ecx,7; mov edx,9; xchg ecx,edx; ret
+  cover(assertEquivalent([0xb9, 0x07, 0x00, 0x00, 0x00, 0xba, 0x09, 0x00, 0x00, 0x00, 0x87, 0xca, 0xc3], "xchg-reg-reg"));
+  // lea rbx,[rip+disp]; mov ecx,5; xchg [rbx],ecx; mov eax,[rbx]; ret with dd 0x40:
+  // memory and ecx swap, then eax reads the stored 5.
+  cover(assertEquivalent(Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0xb9, 0x05, 0x00, 0x00, 0x00,
+      0x87, 0x0b, 0x8b, 0x03, 0xc3]),
+    Buffer.alloc(0x20 - 17),
+    Buffer.from([0x40, 0x00, 0x00, 0x00]),
+  ]), "xchg-mem"));
+});
+
+test("xadd: the sum lands in the destination, the old destination in the source, add flags", () => {
+  // mov eax,10; mov ecx,32; xadd eax,ecx; ret — eax=42, ecx=10
+  cover(assertEquivalent([0xb8, 0x0a, 0x00, 0x00, 0x00, 0xb9, 0x20, 0x00, 0x00, 0x00, 0x0f, 0xc1, 0xc1, 0xc3], "xadd-reg"));
+  // mov rax,0x8000000000000000; mov rcx,1; xadd rax,rcx; ret — 64-bit carry-out sets cf
+  cover(assertEquivalent([0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
+    0x48, 0xb9, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x48, 0x0f, 0xc1, 0xc1, 0xc3], "xadd-64-carry"));
+  // lea rbx,[rip+disp]; mov ecx,5; xadd [rbx],ecx; mov eax,[rbx]; ret with dd 7:
+  // memory 7+5=12, ecx leaves with the old 7, eax reads 12.
+  cover(assertEquivalent(Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0xb9, 0x05, 0x00, 0x00, 0x00,
+      0x0f, 0xc1, 0x0b, 0x8b, 0x03, 0xc3]),
+    Buffer.alloc(0x20 - 18),
+    Buffer.from([0x07, 0x00, 0x00, 0x00]),
+  ]), "xadd-mem"));
+});
+
+test("mul/imul one-operand: the full accumulator pair and the overflow flags", () => {
+  // mov eax,3; mov ecx,5; mul ecx; ret — eax=15, edx=0, cf=of=0
+  cover(assertEquivalent([0xb8, 0x03, 0x00, 0x00, 0x00, 0xb9, 0x05, 0x00, 0x00, 0x00, 0xf7, 0xe1, 0xc3], "mul-32-no-overflow"));
+  // mov eax,0x10000; mov ecx,0x10000; mul ecx; ret — product 2^32: eax=0, edx=1, cf=of=1
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x01, 0x00, 0xb9, 0x00, 0x00, 0x01, 0x00, 0xf7, 0xe1, 0xc3], "mul-32-overflow"));
+  // mov rax,0x8000000000000000; mov rcx,2; mul rcx; ret — product 2^64: rax=0, rdx=1
+  cover(assertEquivalent([0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
+    0x48, 0xb9, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x48, 0xf7, 0xe1, 0xc3], "mul-64-overflow"));
+  // mov eax,100; mov bl,3; mul bl; ret — ax=300: al=0x2c, ah=0x01, upper rax untouched
+  cover(assertEquivalent([0xb8, 0x64, 0x00, 0x00, 0x00, 0xb3, 0x03, 0xf6, 0xe3, 0xc3], "mul-8-accumulator"));
+  // mov ax,1000; mov bx,1000; mul bx; ret — dx:ax = 0x000f:0x4240
+  cover(assertEquivalent([0x66, 0xb8, 0xe8, 0x03, 0x66, 0xbb, 0xe8, 0x03, 0x66, 0xf7, 0xe3, 0xc3], "mul-16-accumulator"));
+  // mov eax,-3; mov ecx,4; imul ecx; ret — product -12: eax=0xfffffff4, edx=0xffffffff
+  // (a 32-bit write zero-extends the upper half), and NO overflow: the sign fill of
+  // the low half IS the high half, so cf=of=0.
+  cover(assertEquivalent([0xb8, 0xfd, 0xff, 0xff, 0xff, 0xb9, 0x04, 0x00, 0x00, 0x00, 0xf7, 0xe9, 0xc3], "imul-32-signed"));
+  // mov eax,0x40000000; mov ecx,4; imul ecx; ret — product 2^32: high half is NOT the
+  // sign fill (low is 0), so cf=of=1.
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x40, 0xb9, 0x04, 0x00, 0x00, 0x00, 0xf7, 0xe9, 0xc3], "imul-32-overflow"));
+  // mov rax,-2; mov rcx,3; imul rcx; ret — rdx:rax = -6 sign-extended, cf=of=0
+  cover(assertEquivalent([0x48, 0xb8, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+    0x48, 0xb9, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x48, 0xf7, 0xe9, 0xc3], "imul-64-negative"));
 });
