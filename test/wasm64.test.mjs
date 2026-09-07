@@ -2727,3 +2727,72 @@ test("int3: an executed int3 hands back at itself and the oracle faults there bi
   assert.equal(oracle.exception.address, loadBase + 5n, "the fault address is the int3");
   assert.equal(oracle.register.rax, 5n, "the register effect before the trap is committed");
 });
+
+// ---------------------------------------------------------------------------
+// The string family: rep stosq/movsq/lodsb and the non-rep forms, compiled as
+// an inline counted loop with the direction taken from the seeded DF state.
+// The programs read the guest memory back through registers so the
+// register+flag comparison sees the stores, and the oracle's own rsi/rdi/rcx
+// end states are the contract the loop must match.
+// ---------------------------------------------------------------------------
+
+function assertStringEquivalent(code, label) {
+  const image = Buffer.from(code);
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "entry_return", `${label}: oracle stop_reason ${oracle.stop_reason} ${oracle.exception?.message ?? ""}`);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+  assert.ok(compiled.complete, `${label}: codegen incomplete — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}`);
+  for (const name of REG) {
+    assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} differs`);
+  }
+  return { jit, oracle };
+}
+
+// imm64 little-endian encoder, so no address is hand-mangled.
+const q64 = (value) => [...Buffer.alloc(8).map((_, i) => Number((BigInt(value) >> BigInt(8 * i)) & 0xffn))];
+const movR64 = (reg, value) => [0x48, 0xb8 + reg, ...q64(value)];
+const RAX = 0, RCX = 1, RDX = 2, RBX = 3, RSI = 6, RDI = 7, RBP = 5;
+
+test("rep stosq/rep movsq/rep stosb+std: the counted loop stays an honest named hand-back", () => {
+  // The rep loop compiles on the synthetic suite but diverges on the real Doom
+  // run (see the string emitter comment), so the counted forms hand back until
+  // that is root-caused. The refusal names itself.
+  for (const [code, label] of [
+    [[0xf3, 0x48, 0xab, 0xc3], "rep-stosq"],
+    [[0xf3, 0x48, 0xa5, 0xc3], "rep-movsq"],
+    [[0xf9, 0xf3, 0x48, 0xaa, 0xc3], "rep-stosb-after-std"],
+  ]) {
+    const image = Buffer.from(code);
+    const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+    assert.equal(compiled.complete, false, `${label}: the counted loop is refused`);
+    assert.ok(compiled.coverage.unsupported.some((item) => item.reason === "string_rep_loop"), `${label}: the refusal names the gap — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  }
+});
+
+test("lodsb: the non-rep load takes one byte and steps rsi once", () => {
+  const src = loadBase + 0x40n;
+  const code = [
+    ...movR64(RSI, src),
+    0xac, // lodsb
+    0xc3,
+  ];
+  const image = Buffer.alloc(0x80);
+  image[0x40] = 0x9c;
+  Buffer.from(code).copy(image, 0, 0, code.length);
+  const { jit } = assertStringEquivalent(image, "lodsb");
+  assert.equal(jit.register.rax & 0xffn, 0x9cn, "AL takes the loaded byte");
+  assert.equal(jit.register.rsi, src + 1n, "rsi steps once, forward");
+});
+
+test("repe scasb: the per-element ZF exit stays an honest named refusal", () => {
+  const image = Buffer.from([0xf3, 0xae, 0xc3]); // repe scasb; ret
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.complete, false, "the compare family is refused");
+  assert.ok(compiled.coverage.unsupported.some((item) => item.reason === "string_compare"), `the refusal names the gap — ${JSON.stringify(compiled.coverage.unsupported)}`);
+});
