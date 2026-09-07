@@ -422,3 +422,198 @@ test("1:1 synthetic — a hot caller re-entering an indirect-exiting function re
   assert.ok(tiered.tier_report.interpreter_tier_instruction * 4 < pure.tier_report.interpreter_tier_instruction,
     `the WASM tier must absorb most of the work (tiered ${tiered.tier_report.interpreter_tier_instruction} vs pure ${pure.tier_report.interpreter_tier_instruction} interpreted instructions)`);
 });
+// -------------------- recursion across the cross-module call --------------------
+//
+// A direct `call` to image code the calling region did not compile is no longer the
+// end of an invocation: lib/wasm64.mjs reserves a slot in the run's shared function
+// table and CALLS that region's own module in place, so the call and its return stay
+// inside WASM. One guest call used to cost three host round trips (the call, the
+// callee, the return address) and those two shapes were 59.5% of every hand-back on
+// Chocolate Doom.
+//
+// The hazard is RE-ENTRANCY. The guest register file lives in ONE set of scratch
+// slots per guest, so a region live on the host stack twice could clobber it and
+// corrupt the guest SILENTLY — the worst failure this runtime can produce. It does
+// not, because during a run the register file lives in WASM LOCALS (per-activation)
+// and the scratch slots are touched only at the prologue and epilogue a cross call
+// brackets itself with — which is exactly what an x86 call means. This case proves
+// that on a program that recurses BOTH ways at once, at a depth far past the limit
+// past which the tier stops building in-module frames, against pure interpretation.
+
+// rax = A(n) + S(n), where A and B are mutually recursive and S recurses directly,
+// and each computes n + f(n-1) with f(0) = 0. Every level pushes its argument and
+// restores it from the STACK after the call returns, so a clobbered register file or
+// a lost stack slot changes the answer instead of hiding.
+function buildRecursionImage(n) {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const at = (o) => { p = o; };
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  const imm32 = (v) => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff];
+  emit(0x48, 0xC7, 0xC1, ...imm32(n));            // 0x00 mov rcx, n
+  emit(0xE8, 0x34, 0x00, 0x00, 0x00);             // 0x07 call A (0x40)
+  emit(0x50);                                     // 0x0C push rax
+  emit(0x48, 0xC7, 0xC1, ...imm32(n));            // 0x0D mov rcx, n
+  emit(0xE8, 0xA7, 0x00, 0x00, 0x00);             // 0x14 call S (0xC0)
+  emit(0x5A);                                     // 0x19 pop rdx
+  emit(0x48, 0x01, 0xD0);                         // 0x1A add rax, rdx
+  emit(0xC3);                                     // 0x1D ret
+  at(0x40);                                       // A — calls B
+  emit(0x48, 0x83, 0xF9, 0x00);                   // 0x40 cmp rcx, 0
+  emit(0x74, 0x0F);                               // 0x44 je 0x55
+  emit(0x51);                                     // 0x46 push rcx
+  emit(0x48, 0x83, 0xE9, 0x01);                   // 0x47 sub rcx, 1
+  emit(0xE8, 0x30, 0x00, 0x00, 0x00);             // 0x4B call B (0x80)
+  emit(0x59);                                     // 0x50 pop rcx
+  emit(0x48, 0x01, 0xC8);                         // 0x51 add rax, rcx
+  emit(0xC3);                                     // 0x54 ret
+  emit(0x48, 0x31, 0xC0);                         // 0x55 xor rax, rax
+  emit(0xC3);                                     // 0x58 ret
+  at(0x80);                                       // B — calls A
+  emit(0x48, 0x83, 0xF9, 0x00);                   // 0x80 cmp rcx, 0
+  emit(0x74, 0x0F);                               // 0x84 je 0x95
+  emit(0x51);                                     // 0x86 push rcx
+  emit(0x48, 0x83, 0xE9, 0x01);                   // 0x87 sub rcx, 1
+  emit(0xE8, 0xB0, 0xFF, 0xFF, 0xFF);             // 0x8B call A (0x40)
+  emit(0x59);                                     // 0x90 pop rcx
+  emit(0x48, 0x01, 0xC8);                         // 0x91 add rax, rcx
+  emit(0xC3);                                     // 0x94 ret
+  emit(0x48, 0x31, 0xC0);                         // 0x95 xor rax, rax
+  emit(0xC3);                                     // 0x98 ret
+  at(0xC0);                                       // S — calls itself
+  emit(0x48, 0x83, 0xF9, 0x00);                   // 0xC0 cmp rcx, 0
+  emit(0x74, 0x0F);                               // 0xC4 je 0xD5
+  emit(0x51);                                     // 0xC6 push rcx
+  emit(0x48, 0x83, 0xE9, 0x01);                   // 0xC7 sub rcx, 1
+  emit(0xE8, 0xF0, 0xFF, 0xFF, 0xFF);             // 0xCB call S (0xC0)
+  emit(0x59);                                     // 0xD0 pop rcx
+  emit(0x48, 0x01, 0xC8);                         // 0xD1 add rax, rcx
+  emit(0xC3);                                     // 0xD4 ret
+  emit(0x48, 0x31, 0xC0);                         // 0xD5 xor rax, rax
+  emit(0xC3);                                     // 0xD8 ret
+  return img;
+}
+
+for (const depth of [8, 400]) {
+  test(`1:1 synthetic — mutual and direct recursion ${depth} deep is bit-exact through the tier`, () => {
+    const image = buildRecursionImage(depth);
+    const option = { image, loadBase: 0x140000000n, entryRva: 0, budget: 1000000 };
+
+    const oracle = runImage64(option);
+    assert.equal(oracle.stop_reason, "entry_return", "the recursion must return through the entry frame");
+    assert.equal(oracle.register.rax, BigInt(depth * (depth + 1)), "the oracle computes A(n) + S(n) = n(n+1)");
+
+    const pure = runTieredImage({ ...option, forceInterpreter: true });
+    assertSameState(pure, { register: oracle.register, flag: oracle.flag, rip: oracle.rip, stop_reason: oracle.stop_reason }, `recursion ${depth}: interpreter-tier vs runImage64`);
+
+    // `wasmAudit` is deliberately NOT used here, and the reason is a property of the
+    // AUDIT rather than of the tier: it re-derives an invocation by interpreting
+    // until rip reaches the module's resume address, and an address alone does not
+    // identify a point in a RECURSIVE program — the same rip occurs at every depth,
+    // so the audit's own oracle stops at the wrong frame and reports a difference
+    // that is its own. The equality proved here is the stronger one anyway: the whole
+    // run's final registers, flags, rip, stop reason and every byte of every region.
+    // The per-invocation equality of a cross-module call is proved directly in
+    // test/wasm64.test.mjs, against an oracle that runs the recursion to completion.
+    const tiered = runTieredImage(option);
+    assertSameState(tiered, pure, `recursion ${depth}: tiered vs interpreter`);
+    assertSameMemory(tiered, pure, `recursion ${depth}: tiered vs interpreter`);
+    // THE MECHANISM. Each of A, B and S gets a region of its own — a region no longer
+    // follows a direct call into its callee, because it can CALL that callee's region
+    // instead — so a recursion carried end to end by the WASM tier, with the
+    // interpreter executing nothing at all, is only possible through the shared call
+    // table. A broken cross call shows up here as interpreted instruction.
+    assert.equal(tiered.tier_report.interpreter_tier_instruction, 0,
+      `recursion ${depth}: the interpreter must execute nothing — the whole recursion crosses module boundaries inside WASM`);
+    assert.ok(tiered.tier_report.wasm_tier_instruction >= pure.instruction_count,
+      `recursion ${depth}: the WASM tier must carry every instruction (WASM ${tiered.tier_report.wasm_tier_instruction} vs run ${pure.instruction_count})`);
+  });
+}
+
+// -------------------- corpus-gated real binary: Chocolate Doom x64 --------------------
+
+// The guest this tier exists for. PuTTY above proves the tiering on CRT startup and
+// a dialog specialization; Doom proves it on the thing a game actually does — a WAD
+// load and a render loop, millions of instruction of SSE, string ops and deep call
+// chains, where the cross-module call fires hundreds of thousands of times.
+//
+// The comparison is anchored on the instruction count THE TIER ACTUALLY PERFORMED,
+// never on a shared budget: the tier commits whole blocks and a module runs to a
+// block boundary, so a tiered run at budget B stops a few instruction PAST B and a
+// fixed-budget comparison would be comparing two different points of the guest. Pure
+// interpretation is then run to exactly that count and the two states must be equal
+// on every register, every flag, rip, the stop reason, and every byte of every mapped
+// region — the whole guest, not a summary of it.
+const DOOM_EXE = join(resolveStageDir(), "corpus-007", "package", "chocolate-doom.exe");
+const DOOM_WAD = join(resolveStageDir(), "corpus-007", "wad", "freedoom1.wad");
+const DOOM_SKIP = existsSync(DOOM_EXE) && existsSync(DOOM_WAD) ? false : "corpus-007 not staged (set BPTK_CORPUS_STAGE)";
+
+function doomOption(budget) {
+  const bytes = new Uint8Array(readFileSync(DOOM_EXE));
+  const wad = readFileSync(DOOM_WAD);
+  const mapped = mapPe64State(bytes, null);
+  const importSet = new Map();
+  for (const entry of mapped.import ?? []) importSet.set((mapped.load_base + BigInt(entry.iat_slot_rva)) & MASK64, entry);
+  const stackBase = 0x00007ff000000000;
+  const layout = createHleLayout({
+    load_base: Number(mapped.load_base & MASK64),
+    image_size_byte: mapped.image_size_byte,
+    stack_base: stackBase,
+    stack_end: stackBase + 0x00100000,
+  });
+  return {
+    image: mapped.image,
+    loadBase: mapped.load_base,
+    entryRva: mapped.entry_rva,
+    budget,
+    importSet,
+    resourceRva: mapped.directory?.[2]?.rva ?? 0,
+    hle: {
+      layout,
+      clock: createGuestClock({ mode: "virtual_monotonic" }),
+      executableName: "chocolate-doom.exe",
+      hostFile: new Map([["C:\\game\\freedoom1.wad", wad]]),
+      environment: { DOOMWADDIR: "C:\\game" },
+      commandLine: ["-iwad", "C:\\game\\freedoom1.wad"],
+    },
+  };
+}
+
+test("1:1 Chocolate Doom x64 — the tiered run is bit-exact to pure interpretation at the count it performed", { skip: DOOM_SKIP }, () => {
+  // Anchor: on Doom too, the tiered runner's own interpreter tier reproduces the
+  // reference interpreter (lib/exec64.mjs runImage64) bit-for-bit. That is what makes
+  // it a legitimate memory oracle below, where runImage64 returns no region list.
+  const anchorBudget = 200000;
+  const anchorOracle = runImage64(doomOption(anchorBudget));
+  const anchorTier = runTieredImage({ ...doomOption(anchorBudget), forceInterpreter: true });
+  assertSameState(anchorTier, { register: anchorOracle.register, flag: anchorOracle.flag, rip: anchorOracle.rip, stop_reason: anchorOracle.stop_reason }, "Doom interpreter-tier vs runImage64");
+  assert.equal(anchorTier.instruction_count, anchorOracle.instruction_count, "Doom interpreter tier consumes the budget identically to runImage64");
+
+  const budget = 4000000;
+  const tiered = runTieredImage(doomOption(budget));
+  assert.equal(tiered.stop_reason, "instruction_budget_exhausted", `the run must be bounded by its budget, not stopped early (${tiered.stop_reason})`);
+  // The tier commits WHOLE BLOCKS, so a tiered run at budget B stops a few
+  // instruction past B. The comparison is therefore anchored on what the tier
+  // actually PERFORMED — interpreting to that same count is the only thing that puts
+  // both engines at the same point of the guest. A fixed-budget comparison would be
+  // comparing two different instants and would pass or fail for the wrong reason.
+  const performed = tiered.instruction_count;
+  assert.ok(performed >= budget, "a tiered run never stops short of its budget");
+  const pure = runTieredImage({ ...doomOption(performed), forceInterpreter: true });
+  assert.equal(pure.instruction_count, performed, "pure interpretation runs to exactly the count the tier performed");
+  assertSameState(tiered, pure, "Doom tiered vs interpreter");
+  assertSameMemory(tiered, pure, "Doom tiered vs interpreter");
+
+  // The mechanism this case exists to guard: the WASM tier carries the large
+  // majority of Doom's executed instruction, and it does so through cross-module
+  // calls — a caller that could not reach its callee would show up as a collapse in
+  // instruction-per-invocation long before it showed up as a wrong answer.
+  const wasm = tiered.tier_report.wasm_tier_instruction;
+  const interp = tiered.tier_report.interpreter_tier_instruction;
+  assert.ok(wasm > interp * 10, `the WASM tier must carry Doom (WASM ${wasm} vs interpreter ${interp})`);
+  assert.ok(wasm / tiered.tier_report.wasm_tier_invocation > 25,
+    `each invocation must carry real work (${(wasm / tiered.tier_report.wasm_tier_invocation).toFixed(1)} instruction per invocation)`);
+  console.log(`tierrun Doom 1:1 @ ${performed} instruction → rip 0x${tiered.rip.toString(16)}; ` +
+    `WASM-tier ${wasm} vs interpreter ${interp} (${(100 * interp / (wasm + interp)).toFixed(2)}% interpreter residency); ` +
+    `${tiered.tier_report.wasm_tier_invocation} invocations, ${(wasm / tiered.tier_report.wasm_tier_invocation).toFixed(1)} instruction each`);
+});

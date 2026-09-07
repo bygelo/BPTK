@@ -18,7 +18,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpret, liftBlock, decodeStructured, executeSse, materializeFlag } from "../lib/lift64.mjs";
-import { compileBlock, runBlock, compileFunction, runFunction } from "../lib/wasm64.mjs";
+import { compileBlock, runBlock, compileFunction, runFunction, createSharedGuestPlan, createCallSlotAllocator } from "../lib/wasm64.mjs";
 
 const loadBase = 0x140000000n;
 const REG = ["rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"];
@@ -2118,4 +2118,263 @@ test("cache: a reused module re-seeds from THIS call's region bytes, never the f
   assert.equal(runWithArena(0x2222n).register.rax, 0x2222n, "the second run must NOT replay the first call's arena");
   assert.equal(runWithArena(0x3333n).register.rax, 0x3333n, "and neither must the third");
   assert.equal(runWithArena(0x1111n).register.rax, 0x1111n, "returning to the first value returns the first result");
+});
+
+// -------------------- the CROSS-MODULE call (and re-entrancy) --------------------
+//
+// A direct `call` whose target is not a block of the calling region used to END the
+// invocation: the module handed back at the call, the host ran the callee as its own
+// invocation, and the callee's RET handed back again at the return address. Three
+// host round trips for one guest call. `option.callSlot` reserves a slot in a shared
+// `WebAssembly.Table` for that target and the terminator calls the callee's own
+// compiled region in-place, so the call AND its return stay inside WASM.
+//
+// The hazard the mechanism has to answer is RE-ENTRANCY: the guest register file
+// lives in one set of scratch slots per plan, so a region that is live on the stack
+// twice — direct recursion, or two regions calling each other — could clobber it and
+// corrupt the guest SILENTLY. These cases prove it does not, against the interpreter,
+// on programs that recurse both ways; and the last one proves the depth limit turns
+// a recursion too deep for the HOST stack into an ordinary resumable hand-back rather
+// than a crash or a wrong answer.
+
+// A ↔ B are mutually recursive; S recurses directly. Each computes n + f(n-1) with
+// f(0) = 0, so each returns n(n+1)/2, and the entry returns A(n) + S(n). Every call
+// is a direct rel32 call, and every function restores the argument from the STACK
+// after the call — so a clobbered register file or a lost stack slot changes the
+// answer rather than hiding.
+function buildRecursionImage(n) {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const at = (o) => { p = o; };
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  const imm32 = (v) => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff];
+  // entry @0 — rax = A(n) + S(n)
+  emit(0x48, 0xC7, 0xC1, ...imm32(n));            // 0x00 mov rcx, n
+  emit(0xE8, 0x34, 0x00, 0x00, 0x00);             // 0x07 call A (0x40)
+  emit(0x50);                                     // 0x0C push rax
+  emit(0x48, 0xC7, 0xC1, ...imm32(n));            // 0x0D mov rcx, n
+  emit(0xE8, 0xA7, 0x00, 0x00, 0x00);             // 0x14 call S (0xC0)
+  emit(0x5A);                                     // 0x19 pop rdx
+  emit(0x48, 0x01, 0xD0);                         // 0x1A add rax, rdx
+  emit(0xC3);                                     // 0x1D ret
+  // A @0x40 — calls B
+  at(0x40);
+  emit(0x48, 0x83, 0xF9, 0x00);                   // 0x40 cmp rcx, 0
+  emit(0x74, 0x0F);                               // 0x44 je 0x55
+  emit(0x51);                                     // 0x46 push rcx
+  emit(0x48, 0x83, 0xE9, 0x01);                   // 0x47 sub rcx, 1
+  emit(0xE8, 0x30, 0x00, 0x00, 0x00);             // 0x4B call B (0x80)
+  emit(0x59);                                     // 0x50 pop rcx
+  emit(0x48, 0x01, 0xC8);                         // 0x51 add rax, rcx
+  emit(0xC3);                                     // 0x54 ret
+  emit(0x48, 0x31, 0xC0);                         // 0x55 xor rax, rax
+  emit(0xC3);                                     // 0x58 ret
+  // B @0x80 — calls A
+  at(0x80);
+  emit(0x48, 0x83, 0xF9, 0x00);                   // 0x80 cmp rcx, 0
+  emit(0x74, 0x0F);                               // 0x84 je 0x95
+  emit(0x51);                                     // 0x86 push rcx
+  emit(0x48, 0x83, 0xE9, 0x01);                   // 0x87 sub rcx, 1
+  emit(0xE8, 0xB0, 0xFF, 0xFF, 0xFF);             // 0x8B call A (0x40)
+  emit(0x59);                                     // 0x90 pop rcx
+  emit(0x48, 0x01, 0xC8);                         // 0x91 add rax, rcx
+  emit(0xC3);                                     // 0x94 ret
+  emit(0x48, 0x31, 0xC0);                         // 0x95 xor rax, rax
+  emit(0xC3);                                     // 0x98 ret
+  // S @0xC0 — calls itself
+  at(0xC0);
+  emit(0x48, 0x83, 0xF9, 0x00);                   // 0xC0 cmp rcx, 0
+  emit(0x74, 0x0F);                               // 0xC4 je 0xD5
+  emit(0x51);                                     // 0xC6 push rcx
+  emit(0x48, 0x83, 0xE9, 0x01);                   // 0xC7 sub rcx, 1
+  emit(0xE8, 0xF0, 0xFF, 0xFF, 0xFF);             // 0xCB call S (0xC0)
+  emit(0x59);                                     // 0xD0 pop rcx
+  emit(0x48, 0x01, 0xC8);                         // 0xD1 add rax, rcx
+  emit(0xC3);                                     // 0xD4 ret
+  emit(0x48, 0x31, 0xC0);                         // 0xD5 xor rax, rax
+  emit(0xC3);                                     // 0xD8 ret
+  return img;
+}
+
+// The SHARED-memory harness a cross-module call needs: one WebAssembly.Memory the
+// image and stack live in, one call table, and the compile option every region of
+// this guest shares. `regionInstructionCap` is deliberately small so a callee is
+// never swallowed into its caller's region — the call has to go through the table.
+function crossHarness(image, cap = 16) {
+  const spec = [
+    { base: IMAGE_BASE, size: Math.max(image.length + 16, 0x1000), kind: "image" },
+    { base: STACK_BASE, size: 0x10000, kind: "stack" },
+  ];
+  const plan = createSharedGuestPlan(spec, loadBase);
+  const mem = new Uint8Array(plan.memory.buffer);
+  mem.set(image, plan.region[0].wasmOffset);
+  const option = {
+    image, loadBase, decodeStructured, region: plan.region, sharedPlan: plan,
+    partialRegion: true, regionInstructionCap: cap, iterationCap: 1_000_000,
+    callSlot: createCallSlotAllocator(plan),
+  };
+  const stackRegion = plan.region[1];
+  return { plan, option, mem, spec, stackRegion };
+}
+
+test("cross-module call: a direct call to a target outside the region calls that region IN-MODULE", () => {
+  const image = buildRecursionImage(8);
+  const { option, plan } = crossHarness(image);
+
+  // Each of these calls a function its own region cannot contain, so each must
+  // resolve to a table call rather than to a hand-back.
+  for (const [entryRva, label] of [[0x00, "entry"], [0x40, "A"], [0x80, "B"]]) {
+    const compiled = compileFunction(image, { ...option, entryRva });
+    assertRealModule(compiled.bytes);
+    assert.ok(compiled.usesTable, `${label}: the region must import the shared call table`);
+    assert.ok(compiled.branchKind.includes("call_cross"), `${label}: branchKind ${JSON.stringify(compiled.branchKind)} must contain call_cross`);
+    assert.ok(!compiled.coverage.unsupported.some((u) => u.reason === "control_call_external"),
+      `${label}: an in-image direct call is no longer an external-call refusal — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  }
+  // S calls ITSELF, and its own entry is block 0 of its own region — so the recursion
+  // is an ordinary in-region call whose RET dispatches through the region's own
+  // return-address table, and it never reaches the host stack at all. Direct
+  // self-recursion is therefore cheaper than a cross call, not a special case of it.
+  const selfRegion = compileFunction(image, { ...option, entryRva: 0xC0 });
+  assert.equal(selfRegion.usesTable, false, "a self-recursive region needs no table: it calls its own block 0");
+  assert.ok(selfRegion.branchKind.includes("call"), `S: branchKind ${JSON.stringify(selfRegion.branchKind)} must contain an in-region call`);
+  // A slot was reserved for each cross-region callee, and only for one.
+  assert.deepEqual([...plan.callSlot.keys()].sort((a, b) => a - b), [0x40, 0x80, 0xC0], "one table slot per out-of-region direct-call target");
+});
+
+test("cross-module call: mutual and direct recursion run entirely in WASM and stay bit-exact", () => {
+  const n = 8;
+  const image = buildRecursionImage(n);
+  const { option, plan, mem, spec, stackRegion } = crossHarness(image);
+  const oracle = interpretMultiRegion(image, spec, { loadBase, entryRva: 0, budget: 100000 });
+  assert.equal(oracle.register.rax, BigInt(n * (n + 1)), "the oracle computes A(n) + S(n) = n(n+1)");
+
+  // Publish every region: a slot holds a "not compiled yet" stub until the region it
+  // names is compiled and instantiated, which is exactly what the tiered host's
+  // residency probe does after the first hand-back. Running each entry once here is
+  // that same lazy fill, done up front so the measured run below is the steady state.
+  for (const entryRva of [0xC0, 0x80, 0x40, 0x00]) runFunction(image, { ...option, entryRva, register: { rcx: 0n } });
+
+  // A clean stack, so the bytes can be compared against the oracle's fresh one.
+  mem.fill(0, stackRegion.wasmOffset, stackRegion.wasmOffset + stackRegion.size);
+  const jit = runFunction(image, { ...option, entryRva: 0 });
+
+  // ONE host invocation carried the whole thing — the entry, both recursions, and
+  // every return. That is the mechanism: without the table this is dozens of them.
+  assert.equal(jit.statusName, "ok", `the run must return through the entry sentinel, not hand back (got ${jit.statusName} at 0x${jit.resumeRip.toString(16)})`);
+  for (const name of REG) {
+    assert.equal(jit.register[name], oracle.register[name], `reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `flag ${name} WASM ${jit.flag[name]} != oracle ${oracle.flag[name]}`);
+  // The guest STACK is where a broken re-entrancy would show first: every level
+  // pushes its argument and pops it after the call returns.
+  assert.deepEqual(
+    [...mem.subarray(stackRegion.wasmOffset, stackRegion.wasmOffset + stackRegion.size)],
+    [...oracle.region[1].mem],
+    "the guest stack bytes are identical to the interpreter's",
+  );
+  // The guest instruction charged is the guest instruction executed — nested
+  // regions add their own count to their caller's, so a host's budget still means
+  // what pure interpretation's means.
+  const oracleStep = interpret({ image, loadBase, entryRva: 0, budget: 100000 }).executed_count;
+  assert.equal(jit.instructionCount, oracleStep, "the run charges exactly the guest instruction the interpreter executes");
+});
+
+test("cross-module call: recursion deeper than the host stack may carry hands back, and still ends bit-exact", () => {
+  // Far past CROSS_CALL_DEPTH_LIMIT (64) in lib/wasm64.mjs: the terminator must stop
+  // building in-module frames and hand back at the CALL, which is the pre-existing
+  // resumable exit. Driving that exit the way the tiered host drives it — commit the
+  // state, re-enter RESIDENT at the reported rip — must reach the identical answer.
+  const n = 400;
+  const image = buildRecursionImage(n);
+  const { option, mem, spec, stackRegion } = crossHarness(image);
+  const oracle = interpretMultiRegion(image, spec, { loadBase, entryRva: 0, budget: 4_000_000 });
+  const oracleStep = interpret({ image, loadBase, entryRva: 0, budget: 4_000_000 }).executed_count;
+
+  for (const entryRva of [0xC0, 0x80, 0x40, 0x00]) runFunction(image, { ...option, entryRva, register: { rcx: 0n } });
+  mem.fill(0, stackRegion.wasmOffset, stackRegion.wasmOffset + stackRegion.size);
+
+  let jit = runFunction(image, { ...option, entryRva: 0 });
+  let handback = 0;
+  let step = jit.instructionCount;
+  // The host loop, in miniature: a resumable exit is COMMITTED and re-entered where
+  // the guest now stands, on the frame it already has.
+  while (jit.statusName !== "ok") {
+    assert.equal(jit.resumable, true, `a hand-back must be resumable (status ${jit.statusName})`);
+    handback += 1;
+    assert.ok(handback < 5000, "the run must converge rather than spin");
+    const registerFile = REG.map((name) => jit.register[name]);
+    jit = runFunction(image, {
+      ...option,
+      entryRva: Number(jit.resumeRip - loadBase),
+      registerFile, rspOverride: registerFile[4], flag: jit.flag, xmm: jit.xmm ?? undefined,
+      entrySentinel: false,
+    });
+    step += jit.instructionCount;
+  }
+  assert.ok(handback > 0, "a recursion this deep MUST hit the depth limit — otherwise this case proves nothing");
+  for (const name of REG) assert.equal(jit.register[name], oracle.register[name], `reg ${name} after a depth-limited recursion`);
+  for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `flag ${name} after a depth-limited recursion`);
+  assert.deepEqual(
+    [...mem.subarray(stackRegion.wasmOffset, stackRegion.wasmOffset + stackRegion.size)],
+    [...oracle.region[1].mem],
+    "the guest stack is identical to the interpreter's across every hand-back",
+  );
+  assert.equal(step, oracleStep, "the guest instruction charged across every hand-back equals the interpreter's count");
+});
+test("cross-module call: rewriting a CALLEE's code invalidates its caller's table binding too", () => {
+  // The cache's standing guarantee is that a guest which rewrites its own code can
+  // never keep running a stale module. A cross-module call widens what a module
+  // depends on — the caller executes the callee's region without the host entering
+  // it — so the guarantee has to widen with it. This is that case: the callee's
+  // bytes change while ONLY the caller is ever entered.
+  const image = Buffer.alloc(0x200);
+  let p2 = 0;
+  const emit = (...b) => { for (const x of b) image[p2++] = x; };
+  // entry @0: rax = 0; call LEAF; ret   — the region cannot contain LEAF (cap 4)
+  emit(0x48, 0x31, 0xC0);                          // 0x00 xor rax, rax
+  emit(0xE8, 0x38, 0x00, 0x00, 0x00);              // 0x03 call 0x40
+  emit(0xC3);                                      // 0x08 ret
+  p2 = 0x40;
+  emit(0x48, 0x83, 0xC0, 0x07);                    // 0x40 add rax, 7
+  emit(0xC3);                                      // 0x44 ret
+
+  const { option, mem } = crossHarness(image, 4);
+  const compiled = compileFunction(image, { ...option, entryRva: 0 });
+  assert.ok(compiled.branchKind.includes("call_cross"), "the leaf must be reached through the table");
+  assert.deepEqual(compiled.crossTarget, [0x40], "the caller declares the region it calls");
+
+  // The host loop in miniature: enter at the guest entry and keep re-entering at
+  // whatever resume address comes back, exactly as lib/tierrun.mjs does, until the
+  // entry frame unwinds. An unbound (or newly UNbound) callee simply hands back at
+  // its own entry, so the drive loop is what re-compiles it from the live bytes.
+  const driveFromEntry = () => {
+    let jit = runFunction(image, { ...option, entryRva: 0 });
+    for (let turn = 0; jit.statusName !== "ok"; turn += 1) {
+      assert.ok(turn < 32, "the run must converge rather than spin");
+      assert.equal(jit.resumable, true, `a hand-back must be resumable (status ${jit.statusName})`);
+      const registerFile = REG.map((name) => jit.register[name]);
+      jit = runFunction(image, {
+        ...option,
+        entryRva: Number(jit.resumeRip - loadBase),
+        registerFile, rspOverride: registerFile[4], flag: jit.flag, entrySentinel: false,
+      });
+    }
+    return jit.register.rax;
+  };
+
+  assert.equal(driveFromEntry(), 7n, "the caller reaches the leaf and gets its result");
+
+  // The guest now rewrites the LEAF — `add rax, 7` becomes `add rax, 9` — and the
+  // host never asks for the leaf's entry again on its own. Without the caller's
+  // revalidation reaching its callee, the table would keep calling the module
+  // compiled from the OLD bytes and this would still answer 7.
+  image[0x43] = 0x09;
+  mem.set(image, 0);
+  assert.equal(driveFromEntry(), 9n, "the caller must NOT keep calling the stale leaf module through the table");
+
+  // And again, so the re-bind is a standing property rather than a one-shot.
+  image[0x43] = 0x0B;
+  mem.set(image, 0);
+  assert.equal(driveFromEntry(), 11n, "every later rewrite is caught too");
 });
