@@ -29,3 +29,39 @@ Tests: added `test/report.test.mjs` (16 tests) + trace tests in `test/corpus.tes
 ## Remaining
 
 None in scope. Every Pillar-3 item is implemented and gate-green. `passing` is honestly 0 — no real .exe reaches an interactive stage because the runtime (BPTK-010) is red. The corpus and export-coverage ledger remain the scoreboard other lanes measure against; growing it further means acquiring more lawful i386 binaries with real pins.
+
+## Known x86 fidelity gap: DIV/IDIV quotient overflow
+
+Found while compiling `div`/`idiv` into the WASM tier, and worth recording
+because it is a **wrong-answer** gap, not a missing feature.
+
+On real x86, `div`/`idiv` raise **#DE** when the quotient does not fit the
+destination width — the same vector as divide-by-zero. `lib/exec64.mjs` raises a
+structured fault for a zero divisor, but for quotient overflow it does not: it
+computes the quotient and writes it **masked**:
+
+```js
+writeAccumulatorPair(machine, size, quotient & mask, remainder & mask);
+```
+
+so an overflowing quotient is silently truncated where hardware would fault.
+
+### Why the tier reproduces the gap rather than fixing it
+
+The tier's contract is bit-exactness **against this interpreter**, not against
+hardware. Emitting the architectural #DE in the compiled path would have made the
+tier disagree with the oracle and broken the 1:1 test on a real binary. So the
+codegen reproduces the masking exactly, and the gap stays where it belongs — in
+the oracle.
+
+### What it costs
+
+A guest that relies on #DE for a range check, or that faults deliberately, gets a
+truncated quotient and keeps running instead of trapping. No corpus binary is
+known to depend on it, and none of the recorded run reach it, so this is a latent
+divergence rather than an observed failure. Fixing it means changing `exec64`'s
+`div`/`idiv` to raise the fault **and** re-proving every 1:1 case at once, since
+both engine must move together — the tier's masking would then be the bug.
+
+Recorded rather than fixed: a one-sided change here would silently break the
+tier's equivalence proof, which is the more valuable property.
