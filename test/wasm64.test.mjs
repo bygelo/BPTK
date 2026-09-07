@@ -2695,3 +2695,35 @@ test("shld/shrd: the fill crosses the operand boundary and cf takes the last bit
     0xc3,
   ], "shrd-64"));
 });
+
+// ---------------------------------------------------------------------------
+// The breakpoint trap (int3): the assemblers pad function gaps with it, so the
+// compile must carry it — as a structured pre-instruction stop — and an
+// executed one must hand back at itself for the interpreter to fault on,
+// bit-exact with the oracle.
+// ---------------------------------------------------------------------------
+
+test("int3: the padded function compiles whole and the padding never runs", () => {
+  // mov eax,1; ret; cc cc cc — the MSVC-style gap padding after the entry ret.
+  const image = Buffer.from([0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3, 0xcc, 0xcc, 0xcc]);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.complete, true, `the int3 pad compiles to a structured hand-back — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  const jit = runFunction(image, { loadBase, decodeStructured });
+  assert.equal(jit.statusName, "ok", "the pad never executes — the entry ret unwinds first");
+  assert.equal(jit.register.rax, 1n);
+});
+
+test("int3: an executed int3 hands back at itself and the oracle faults there bit-exactly", () => {
+  // mov eax,5; int3 — the tier bails AT the int3; the interpreter faults on it.
+  const image = Buffer.from([0xb8, 0x05, 0x00, 0x00, 0x00, 0xcc]);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.complete, true, "the int3 itself compiles (to the resumable stop)");
+  const jit = runFunction(image, { loadBase, decodeStructured });
+  assert.equal(jit.statusName, "fallback", "the module stops before the int3 and hands back");
+  assert.equal(jit.resumeRip, loadBase + 5n, "the resume rip is the int3's own address");
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "fault");
+  assert.equal(oracle.exception.message, "breakpoint");
+  assert.equal(oracle.exception.address, loadBase + 5n, "the fault address is the int3");
+  assert.equal(oracle.register.rax, 5n, "the register effect before the trap is committed");
+});

@@ -617,3 +617,18 @@ test("1:1 Chocolate Doom x64 — the tiered run is bit-exact to pure interpretat
     `WASM-tier ${wasm} vs interpreter ${interp} (${(100 * interp / (wasm + interp)).toFixed(2)}% interpreter residency); ` +
     `${tiered.tier_report.wasm_tier_invocation} invocations, ${(wasm / tiered.tier_report.wasm_tier_invocation).toFixed(1)} instruction each`);
 });
+
+test("1:1 synthetic — an executed int3 compiles to a hand-back and both tiers fault identically", () => {
+  const img = Buffer.alloc(0x40);
+  img[0] = 0xb8; img.writeUInt32LE(7, 1); img[5] = 0xcc; // mov eax,7; int3
+  const loadBase = 0x140000000n;
+  const option = { image: img, loadBase, entryRva: 0, budget: 10000 };
+
+  const oracle = runImage64(option);
+  assert.equal(oracle.stop_reason, "fault", "the reference interpreter faults on the breakpoint");
+  assert.equal(oracle.exception.message, "breakpoint");
+  const pure = runTieredImage({ ...option, forceInterpreter: true });
+  const tiered = runTieredImage(option);
+  assertSameState(tiered, pure, "tiered vs interpreter (executed int3)");
+  assertSameState(tiered, { register: oracle.register, flag: oracle.flag, rip: oracle.rip, stop_reason: oracle.stop_reason }, "tiered vs runImage64");
+});
