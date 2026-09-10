@@ -18,6 +18,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { interpret, liftBlock, decodeStructured, executeSse, materializeFlag } from "../lib/lift64.mjs";
+import { decodeX64Instruction } from "../lib/x64decode.mjs";
 import { compileBlock, runBlock, compileFunction, runFunction, createSharedGuestPlan, createCallSlotAllocator } from "../lib/wasm64.mjs";
 
 const loadBase = 0x140000000n;
@@ -2938,6 +2939,133 @@ test("decode: 0F 1E NOP consumes its full ModRM+SIB+disp operand, so the sweep d
   // The byte after the operand is the ret, at offset 8.
   const next = decodeStructured(image, 8);
   assert.equal(next.op, "ret", `the sweep lands on the ret, not mid-operand (got ${next.op})`);
+});
+
+// -------------------- VEX prefixes (C4 / C5) --------------------
+// In 64-bit mode 0xC4/0xC5 are ALWAYS the AVX VEX prefixes, never LES/LDS. The
+// VEX subset is not served, so both cases below assert a REFUSAL — but a refusal
+// whose LENGTH spans the whole encoding. Consuming one byte (the old behavior)
+// left up to fourteen VEX payload bytes to be re-decoded as fresh instructions:
+// a desync of the same class the 0F 1E operand fix addressed.
+//
+// The hardware lengths below were cross-checked with llvm-objdump (`-d` over a
+// raw x86-64 ELF carrying these exact bytes), which is an independent third
+// decoder — the raw bytes of each case are in the comment.
+
+test("decode: C5 (two-byte VEX) consumes its full encoding, so the sweep stays synchronised", () => {
+  // Each case is one VEX instruction followed by C3 (ret). The refusal must step
+  // OVER the instruction so the next decode lands exactly on the ret. The length
+  // is asserted against the byte count llvm-objdump reports for the same bytes.
+  for (const [code, length, label] of [
+    [[0xc5, 0xf8, 0x10, 0x07, 0xc3], 4, "vmovups xmm0,[rdi]"], // c5 f8 10 07
+    [[0xc5, 0xfb, 0x10, 0x04, 0x25, 0x00, 0x10, 0x00, 0x00, 0xc3], 9, "vmovsd xmm0,[0x1000] …SIB+disp32"],
+    [[0xc5, 0xf8, 0x10, 0x47, 0x10, 0xc3], 5, "vmovups xmm0,[rdi+16] …disp8"],
+    [[0xc5, 0xf8, 0x28, 0xca, 0xc3], 4, "vmovaps xmm1,xmm2"],
+    [[0xc5, 0xf0, 0xc2, 0xc2, 0x00, 0xc3], 5, "vcmpps xmm0,xmm1,xmm2,0 …imm8"],
+    [[0xc5, 0xf1, 0xfe, 0xc2, 0xc3], 4, "vpaddd xmm0,xmm1,xmm2"],
+    [[0xc5, 0xf8, 0x77, 0xc3], 3, "vzeroupper …no ModRM"],
+  ]) {
+    const image = Buffer.from(code);
+    const node = decodeStructured(image, 0);
+    assert.equal(node.served, false, `${label}: AVX is outside the served subset — an honest refusal`);
+    assert.equal(node.op, "unsupported", `${label}: the refusal names itself`);
+    assert.equal(node.length, length, `${label}: the refusal consumes the whole encoding (hardware length ${length}, reported ${node.length})`);
+    // The SECOND independent decoder must agree — two implementations, one answer.
+    assert.equal(decodeX64Instruction(image, 0).length, length, `${label}: x64decode reports the same length`);
+    // The byte after the encoding is the ret — the sweep must land ON it, not
+    // inside the VEX payload.
+    const next = decodeStructured(image, length);
+    assert.equal(next.op, "ret", `${label}: the next decode lands on the ret, not mid-encoding (got ${next.op} at ${length})`);
+    // And the interpreter stops AT the VEX instruction, one instruction in.
+    const oracle = interpret({ image, loadBase, entryRva: 0, budget: 64 });
+    assert.equal(oracle.stop_reason, "unsupported_opcode", `${label}: an honest stop (${oracle.stop_reason})`);
+    assert.equal(oracle.executed_count, 0, `${label}: the VEX instruction is the first thing reached`);
+    assert.equal(oracle.rip, loadBase, `${label}: rip stays AT the refused instruction`);
+  }
+});
+
+test("decode: C4 (three-byte VEX) consumes its full encoding, so the sweep stays synchronised", () => {
+  for (const [code, length, label] of [
+    [[0xc4, 0xe2, 0x79, 0x18, 0x07, 0xc3], 5, "vbroadcastss xmm0,[rdi]"],
+    [[0xc4, 0xe2, 0x79, 0x18, 0x04, 0x25, 0x00, 0x10, 0x00, 0x00, 0xc3], 10, "vbroadcastss xmm0,[0x1000] …SIB+disp32"],
+    [[0xc4, 0xe2, 0x79, 0x18, 0x47, 0x10, 0xc3], 6, "vbroadcastss xmm0,[rdi+16] …disp8"],
+    [[0xc4, 0xe3, 0x79, 0x0f, 0xc2, 0x01, 0xc3], 6, "vpalignr xmm0,xmm1,xmm2,1 …0F3A imm8"],
+    [[0xc4, 0xe1, 0xf9, 0x6f, 0x07, 0xc3], 5, "vmovdqa xmm0,[rdi]"],
+    [[0xc4, 0xe2, 0xf9, 0xb8, 0x47, 0x10, 0xc3], 6, "vfmadd231pd xmm0,xmm0,[rdi+16] …W=1"],
+    // The map-1 0F71 shift group carries an imm8 ONLY when pp==1 and the ModRM
+    // reg field names a real shift — /2 (PSRLW) does, /0 does not, so the same
+    // opcode byte yields a five-byte and a six-byte instruction.
+    [[0xc4, 0xe1, 0x79, 0x71, 0xd0, 0x03, 0xc3], 6, "vpsrlw xmm0,xmm0,3 …0F71 /2 + imm8"],
+    [[0xc4, 0xe1, 0x79, 0x71, 0xc0, 0xc3], 5, "0F71 /0 has no imm8"],
+  ]) {
+    const image = Buffer.from(code);
+    const node = decodeStructured(image, 0);
+    assert.equal(node.served, false, `${label}: AVX is outside the served subset — an honest refusal`);
+    assert.equal(node.op, "unsupported", `${label}: the refusal names itself`);
+    assert.equal(node.length, length, `${label}: the refusal consumes the whole encoding (hardware length ${length}, reported ${node.length})`);
+    assert.equal(decodeX64Instruction(image, 0).length, length, `${label}: x64decode reports the same length`);
+    const next = decodeStructured(image, length);
+    assert.equal(next.op, "ret", `${label}: the next decode lands on the ret, not mid-encoding (got ${next.op} at ${length})`);
+    const oracle = interpret({ image, loadBase, entryRva: 0, budget: 64 });
+    assert.equal(oracle.stop_reason, "unsupported_opcode", `${label}: an honest stop (${oracle.stop_reason})`);
+    assert.equal(oracle.rip, loadBase, `${label}: rip stays AT the refused instruction`);
+  }
+});
+
+test("decode: a linear sweep steps OVER a VEX refusal by its full length, landing on the next instruction", () => {
+  // The load-bearing case: lib/x64decode.mjs's length is what a sweep ADVANCES by,
+  // even where the opcode is refused. mov eax,0x11223344 ; vmovdqu ymm7,[rbx+rcx*8]
+  // ; int3. With a one-byte VEX refusal the sweep re-enters the payload and reports
+  // three bogus instructions; with the full length it reports three real ones:
+  // the mov, the refused VEX (5 bytes here), and the int3.
+  const code = [
+    0xb8, 0x44, 0x33, 0x22, 0x11,       // mov eax, 0x11223344
+    0xc5, 0xfe, 0x6f, 0x3c, 0xcb,       // vmovdqu ymm7, [rbx + rcx*8]  (5 bytes)
+    0xcc,                               // int3
+  ];
+  const image = Buffer.alloc(0x20);
+  Buffer.from(code).copy(image, 0, 0, code.length);
+
+  const node = decodeStructured(image, 0);
+  assert.equal(node.mnemonic, "mov", "the sweep starts with the served mov");
+  assert.equal(node.length, 5, "the mov is 5 bytes");
+
+  const vex = decodeStructured(image, node.length);
+  assert.equal(vex.served, false, "the VEX is refused");
+  assert.equal(vex.opcode, 0xc5, "the refusal names 0xc5");
+  assert.equal(vex.length, 5, `the VEX encoding is 5 bytes (reported ${vex.length})`);
+  assert.equal(decodeX64Instruction(image, node.length).length, 5, "x64decode agrees on the VEX length");
+
+  // The sweep must land on the int3, not on a byte inside the VEX payload.
+  const after = decodeStructured(image, node.length + vex.length);
+  assert.equal(after.op, "int3", `the sweep lands on the int3, not mid-VEX (got ${after.op})`);
+  assert.equal(node.length + vex.length + after.length, code.length, "three instructions cover the whole sequence");
+
+  // And a sweep of the same bytes that ADVANCES by each node's length — the shape
+  // the reference decoder's tests use — must visit exactly those three offsets.
+  const visited = [];
+  let offset = 0;
+  while (offset < code.length) {
+    const step = decodeX64Instruction(image, offset);
+    visited.push(offset);
+    offset += step.length;
+  }
+  assert.deepEqual(visited, [0, 5, 10], `the sweep visits the three real boundaries (got ${visited.join(",")})`);
+
+  // The interpreter and the tier name the SAME boundary. The interpreter retires
+  // the served mov and stops with rip AT the VEX; the tier's fallback stopRva is
+  // that same RVA. Built from the oracle's own stop, so the assertion is anchored
+  // on executed state rather than a literal.
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 64 });
+  assert.equal(oracle.stop_reason, "unsupported_opcode", `the oracle stops at the VEX (${oracle.stop_reason})`);
+  assert.equal(oracle.rip, loadBase + BigInt(node.length), "the oracle's rip is the VEX instruction");
+  assert.equal(oracle.register.rax, 0x11223344n, "the served mov ran");
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.complete, false, "the region is an honest fallback — AVX is not served");
+  const fallback = compiled.coverage.unsupported.find((u) => u.reason === "not_served");
+  assert.ok(fallback, `the fallback names not_served — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.equal(fallback.opcode, 0xc5, "it names the VEX opcode");
+  assert.equal(loadBase + BigInt(fallback.stopRva), oracle.rip, "the tier's hand-back address is the oracle's stopped rip");
 });
 
 test("decode: A9 TEST rax, imm32 sign-extends to 64 bits, like its CMP sibling", () => {
