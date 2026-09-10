@@ -34,6 +34,18 @@ const FLAG = ["cf", "pf", "af", "zf", "sf", "of"];
 function assertSameState(actual, expect, label) {
   for (const n of NAME) assert.equal(actual.register[n], expect.register[n], `${label}: reg ${n} tiered 0x${actual.register[n].toString(16)} != interp 0x${expect.register[n].toString(16)}`);
   for (const f of FLAG) assert.equal(actual.flag[f], expect.flag[f], `${label}: flag ${f} tiered ${actual.flag[f]} != interp ${expect.flag[f]}`);
+  // The SSE file and the direction flag, when the surfaces carry them. Leaving
+  // these out is how a decode bug that cleared DF survived a suite that otherwise
+  // pinned every register and flag — a surface not read is a surface not covered.
+  for (let i = 0; i < 16; i += 1) {
+    const n = `xmm${i}`;
+    if (actual.xmm?.[n] !== undefined && expect.xmm?.[n] !== undefined) {
+      assert.equal(actual.xmm[n], expect.xmm[n], `${label}: ${n} tiered 0x${actual.xmm[n].toString(16)} != interp 0x${expect.xmm[n].toString(16)}`);
+    }
+  }
+  if (actual.flag?.df !== undefined && expect.flag?.df !== undefined) {
+    assert.equal(actual.flag.df, expect.flag.df, `${label}: df tiered ${actual.flag.df} != interp ${expect.flag.df}`);
+  }
   assert.equal(actual.rip, expect.rip, `${label}: rip tiered 0x${actual.rip.toString(16)} != interp 0x${expect.rip.toString(16)}`);
   assert.equal(actual.stop_reason, expect.stop_reason, `${label}: stop_reason tiered ${actual.stop_reason} != interp ${expect.stop_reason}`);
 }
