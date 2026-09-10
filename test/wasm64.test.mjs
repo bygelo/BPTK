@@ -2759,19 +2759,94 @@ const q64 = (value) => [...Buffer.alloc(8).map((_, i) => Number((BigInt(value) >
 const movR64 = (reg, value) => [0x48, 0xb8 + reg, ...q64(value)];
 const RAX = 0, RCX = 1, RDX = 2, RBX = 3, RSI = 6, RDI = 7, RBP = 5;
 
-test("rep stosq/rep movsq/rep stosb+std: the counted loop stays an honest named hand-back", () => {
-  // The rep loop compiles on the synthetic suite but diverges on the real Doom
-  // run (see the string emitter comment), so the counted forms hand back until
-  // that is root-caused. The refusal names itself.
+test("rep stosq/rep movsq: an EMPTY rep retires as one no-op and charges exactly one instruction", () => {
+  // rcx == 0 out of the box: the loop body never runs, but the oracle still retires
+  // the instruction once. This is the narrowest case; the counted case below is the
+  // one that exercises the loop body and the rcx-element charge.
   for (const [code, label] of [
     [[0xf3, 0x48, 0xab, 0xc3], "rep-stosq"],
     [[0xf3, 0x48, 0xa5, 0xc3], "rep-movsq"],
-    [[0xf9, 0xf3, 0x48, 0xaa, 0xc3], "rep-stosb-after-std"],
   ]) {
     const image = Buffer.from(code);
     const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
-    assert.equal(compiled.complete, false, `${label}: the counted loop is refused`);
-    assert.ok(compiled.coverage.unsupported.some((item) => item.reason === "string_rep_loop"), `${label}: the refusal names the gap — ${JSON.stringify(compiled.coverage.unsupported)}`);
+    assert.equal(compiled.complete, true, `${label}: the counted loop compiles whole — ${JSON.stringify(compiled.coverage.unsupported)}`);
+    const jit = runFunction(image, { image, loadBase, decodeStructured });
+    assert.equal(jit.statusName, "ok", `${label}: a zero-count rep retires as a no-op`);
+    // The charge is anchored on the oracle: the empty rep retires ONCE (a no-op)
+    // and the ret retires once more. Pinning a literal here is what let an
+    // under-charging emitter pass — the oracle's count is the contract.
+    const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+    assert.equal(jit.instructionCount, oracle.executed_count, `${label}: the charge must equal the oracle's retired count`);
+  }
+});
+
+test("rep movsq/rep stosb+std with a NON-ZERO rcx: the loop body runs and the charge is the oracle's element count", () => {
+  // The empty rep above proves nothing about the loop body. This runs it: rcx = 3
+  // means three elements, and the oracle retires the string op once AND each
+  // iteration — so a tier that charged only the block, or charged rcx where the
+  // oracle charges rcx + 1, walks its budget past interpretation's stop. Register,
+  // flag, instruction-count and memory equivalence is asserted by
+  // assertStringEquivalent; the count is the part that drifts silently.
+  const src = loadBase + 0x400n;
+  const dst = loadBase + 0x800n;
+  for (const [code, label, count] of [
+    [[...movR64(RSI, src), ...movR64(RDI, dst), ...movR64(RCX, 3n), 0xf3, 0x48, 0xa5, 0xc3], "rep-movsq rcx=3", 3n],
+    // Backward: `std` before the rep makes the delta negative. This is the case an
+    // earlier revision dropped rather than fixed — the interpreter could not even
+    // run its own `std` (a size-less cld/std node threw in executeExtra).
+    [[...movR64(RDI, dst + 8n), ...movR64(RCX, 4n), 0xb8, 0x41, 0x00, 0x00, 0x00, 0xfd, 0xf3, 0xaa, 0xfc, 0xc3], "std; rep-stosb rcx=4", 4n],
+  ]) {
+    const image = Buffer.alloc(0x1000);
+    Buffer.from(code).copy(image, 0, 0, code.length);
+    for (let i = 0; i < 24; i += 1) image[0x400 + i] = i + 1;
+    const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+    assert.equal(oracle.stop_reason, "entry_return", `${label}: oracle stops at the ret (${oracle.stop_reason})`);
+    const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+    assert.equal(compiled.complete, true, `${label}: compiles whole — ${JSON.stringify(compiled.coverage.unsupported)}`);
+    const jit = runFunction(image, { image, loadBase, decodeStructured });
+    assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}`);
+    // The string op is charged once for the whole rep, then once per element.
+    assert.equal(jit.instructionCount, oracle.executed_count, `${label}: the tier's charge must equal the instructions the oracle retired (${jit.instructionCount} vs ${oracle.executed_count})`);
+    assert.equal(jit.register.rcx, 0n, `${label}: rcx is spent`);
+    assert.ok(jit.instructionCount > Number(count), `${label}: the loop really ran (charge ${jit.instructionCount} > the ${count} element count)`);
+    for (const name of REG) assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+    for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} differs`);
+  }
+});
+
+test("cld/std: the direction flag is carried, and clc/stc are the CARRY flag (opcodes 0xFC/0xFD vs 0xF8/0xF9)", () => {
+  // 0xFC/0xFD are CLD/STD. 0xF8/0xF9 are CLC/STC — a different flag entirely. An
+  // earlier revision mapped 0xF8/0xF9 to cld/std, so a guest `clc` silently cleared
+  // the direction flag and left CF untouched; and the cld/std node carried no
+  // `size`, so executeExtra's sizeMask(undefined) threw and the interpreter could
+  // not execute its own cld/std at all. Both are pinned here.
+  const src = loadBase + 0x400n;
+  const dst = loadBase + 0x800n;
+  // A backward rep movsb after `std` must copy the bytes in DESCENDING order.
+  const code = [...movR64(RSI, src + 3n), ...movR64(RDI, dst + 3n), ...movR64(RCX, 4n), 0xfd, 0xf3, 0xa4, 0xfc, 0xc3];
+  const image = Buffer.alloc(0x1000);
+  Buffer.from(code).copy(image, 0, 0, code.length);
+  for (let i = 0; i < 4; i += 1) image[0x400 + i] = 0xa0 + i; // a0 a1 a2 a3
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "entry_return", "the interpreter runs its own std/cld");
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assert.equal(compiled.complete, true, "the backward string sequence compiles whole");
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  for (const name of REG) assert.equal(jit.register[name], oracle.register[name], `reg ${name} differs`);
+  for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `flag ${name} differs`);
+
+  // CLC/STC set the CARRY flag only — the direction flag must be untouched.
+  for (const [code2, label, expectCf] of [
+    [[0xf9, 0xc3], "stc", true],
+    [[0xf8, 0xc3], "clc", false],
+  ]) {
+    const image2 = Buffer.from(code2);
+    const compiled2 = compileFunction(image2, { loadBase, decodeStructured, guestLen: image2.length + 0x10000 });
+    assert.equal(compiled2.complete, true, `${label}: compiles whole`);
+    const jit2 = runFunction(image2, { image: image2, loadBase, decodeStructured });
+    assert.equal(jit2.statusName, "ok", `${label}: run status ${jit2.statusName}`);
+    assert.equal(jit2.flag.cf, expectCf, `${label}: CF is ${expectCf}`);
+    assert.equal(jit2.flag.df, false, `${label}: the direction flag is NOT touched — this is not a cld/std`);
   }
 });
 

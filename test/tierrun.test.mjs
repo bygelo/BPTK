@@ -580,6 +580,14 @@ function doomOption(budget) {
 }
 
 test("1:1 Chocolate Doom x64 — the tiered run is bit-exact to pure interpretation at the count it performed", { skip: DOOM_SKIP }, () => {
+  // The comparison below is anchored on the count the tier actually performed and
+  // checks every register, flag, rip, stop reason, and region byte at that point —
+  // the whole guest. `wasmAudit` is deliberately NOT set here: the per-invocation
+  // audit re-derives each invocation by RE-INTERPRETING from its snapshot, which
+  // this module's in-module HLE-import serving can make unreachable, and which costs
+  // a full replay per invocation (minutes on Doom, against ~1.5 s for the whole
+  // anchored run). The anchored whole-run comparison is the stronger, faster check;
+  // wasmAudit remains available as a bounded per-invocation spot check when debugging.
   // Anchor: on Doom too, the tiered runner's own interpreter tier reproduces the
   // reference interpreter (lib/exec64.mjs runImage64) bit-for-bit. That is what makes
   // it a legitimate memory oracle below, where runImage64 returns no region list.
