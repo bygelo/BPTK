@@ -315,6 +315,15 @@ def validate_path(error: list[str]) -> None:
         relative = path.relative_to(ROOT)
         if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts or ".claude" in relative.parts:
             continue
+        # web/payload/ holds the browser-test payload (real game binaries the
+        # display layer runs), and .gitignore declares it out of git for exactly
+        # that reason (R-003). Scanning it made `npm run gate` fail on any machine
+        # that had actually run the browser test — the repo's own documented
+        # workflow — so it is skipped here the same way the other out-of-git trees
+        # above are. Nothing TRACKED is exempted by this: the binary and
+        # unrecognized-file checks below still apply to every committed path.
+        if len(relative.parts) > 1 and relative.parts[0] == "web" and relative.parts[1] == "payload":
+            continue
         if path.is_dir() and path.name in BANNED_DIRECTORY:
             error.append(f"plural directory name is disallowed: {relative}")
         if not path.is_file():
