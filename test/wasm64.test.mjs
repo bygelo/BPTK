@@ -2874,6 +2874,61 @@ test("lodsb: the non-rep load takes one byte and steps rsi once", () => {
   assert.equal(jit.register.rsi, src + 1n, "rsi steps once, forward");
 });
 
+test("decode: rcl/rcr refuse honestly instead of faulting the oracle, and the refusal consumes the whole instruction", () => {
+  // Group 2 /2 and /3 rotate THROUGH the carry flag, which no shift arm models.
+  // They used to decode `served: true` with an op no executor handles, so the
+  // interpreter — the correctness oracle — faulted on its own decode while the
+  // tier had already refused the same gap as `rotate_rcl`. And the refusal must
+  // consume the immediate count byte, or the next decode starts mid-instruction.
+  for (const [code, label] of [
+    [[0xc0, 0xd0, 0x05, 0xc3], "rcl al,5 (C0 /2 ib)"],
+    [[0xd1, 0xd8, 0xc3], "rcr eax,1 (D1 /3)"],
+    [[0xc1, 0xd8, 0x04, 0xc3], "rcr eax,4 (C1 /3 ib)"],
+  ]) {
+    const image = Buffer.from(code);
+    const node = decodeStructured(image, 0);
+    assert.equal(node.served, false, `${label}: refused, not served`);
+    assert.equal(node.op, "unsupported", `${label}: the refusal names itself`);
+    const oracle = interpret({ image, loadBase, entryRva: 0, budget: 64 });
+    assert.equal(oracle.stop_reason, "unsupported_opcode", `${label}: an honest stop, never a fault (${oracle.stop_reason})`);
+    // c0 d1 05 is 3 byte; the instruction after it must decode as its own node.
+    assert.equal(node.length, code.length - 1, `${label}: the refusal consumes the whole instruction`);
+  }
+});
+
+test("decode: 0F 1E NOP consumes its full ModRM+SIB+disp operand, so the sweep does not desync", () => {
+  // 0F 1E (NOP Ev) takes the same operand encoding as its 0F 1F sibling. Reading
+  // only the ModRM byte reported length 3 for a form whose hardware length is 8,
+  // and the five bytes it left behind decoded as fresh instructions (00 10 is
+  // `add [rax],dl`) — a wrong answer AND a resume-point desync.
+  const code = [0x0f, 0x1e, 0x84, 0x24, 0x00, 0x10, 0x00, 0x00, 0xc3];
+  const image = Buffer.from(code);
+  const node = decodeStructured(image, 0);
+  assert.equal(node.op, "nop", "it is a hint NOP");
+  assert.equal(node.length, 8, `the operand is consumed (hardware length 8, reported ${node.length})`);
+  // The byte after the operand is the ret, at offset 8.
+  const next = decodeStructured(image, 8);
+  assert.equal(next.op, "ret", `the sweep lands on the ret, not mid-operand (got ${next.op})`);
+});
+
+test("decode: A9 TEST rax, imm32 sign-extends to 64 bits, like its CMP sibling", () => {
+  // A9 id at 64 bits sign-extends the imm32 (SDM). Reading it raw unsigned made
+  // `test rax, 0x80000000` AND against 0x0000000080000000 rather than
+  // 0xffffffff80000000, so ZF came out true where hardware gives false — and the
+  // branch after it inverted.
+  const RAX_ = 0;
+  const case_ = (op) => {
+    const code = [...movR64(RAX_, 0x8000000000000000n), 0x48, op, 0x00, 0x00, 0x00, 0x80, 0xc3];
+    const image = Buffer.alloc(0x40);
+    Buffer.from(code).copy(image, 0, 0, code.length);
+    return interpret({ image, loadBase, entryRva: 0, budget: 64 });
+  };
+  const test = case_(0xa9);
+  const cmp = case_(0x3d);
+  assert.equal(test.flag.zf, false, "TEST rax, 0x80000000 with rax=0x8000000000000000 sets no ZF — the imm sign-extends");
+  assert.equal(cmp.flag.zf, test.flag.zf, "the TEST accumulator form must agree with the CMP accumulator form");
+});
+
 test("repe scasb: the per-element ZF exit stays an honest named refusal", () => {
   const image = Buffer.from([0xf3, 0xae, 0xc3]); // repe scasb; ret
   const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
