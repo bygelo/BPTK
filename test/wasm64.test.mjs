@@ -3174,3 +3174,127 @@ test("address size: the tier wraps a 67 effective address at 32 bits", () => {
   const jit = assertMultiRegionEquivalent(Buffer.from(code), region, {}, "addr32-wrap");
   assert.equal(jit.register.rax, 0x5en, "the 67 base is rbx's low 32 bits, so the read lands at [0x10]");
 });
+
+// ---------------------------------------------------------------------------
+// 0F AE — the fence / memory-hint family (group 16). Each form is lifted,
+// compiled and run through BOTH engines; every state surface (registers, flags,
+// mxcsr, rip, and the memory bytes) must agree bit-exactly. The length each form
+// consumes must be the HARDWARE length, including the SIB+disp32 shape.
+// ---------------------------------------------------------------------------
+
+test("0f ae: lfence/mfence/sfence are state-free retires (no reg, flag or memory change)", () => {
+  // mov eax,0x1234; {lfence|mfence|sfence}; ret — the hint touches nothing.
+  for (const [op, label] of [[0xe8, "lfence"], [0xf0, "mfence"], [0xf8, "sfence"]]) {
+    const code = [0xb8, 0x34, 0x12, 0x00, 0x00, 0x0f, 0xae, op, 0xc3];
+    const node = decodeStructured(Buffer.from(code), 5);
+    assert.equal(node.served, true, `${label}: served`);
+    assert.equal(node.mnemonic, label, `${label}: mnemonic`);
+    assert.equal(node.length, 3, `${label}: hardware length is 3 (0f ae + modrm)`);
+    const jit = assertEquivalent(code, `fence-${label}`);
+    assert.equal(jit.register.rax, 0x1234n, `${label}: the hint does not disturb a register`);
+  }
+});
+
+test("0f ae: clflush and 66-prefixed clflushopt compile as an address-gated no-op", () => {
+  // lea rbx,[rip+disp]; clflush [rbx]; mov eax,[rbx]; ret — the clflush resolves
+  // the address but writes no byte, so the readback is unchanged.
+  const clflush = Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0x0f, 0xae, 0x3b, 0x8b, 0x03, 0xc3]),
+    Buffer.alloc(0x20 - 13),
+    Buffer.from([0x40, 0x00, 0x00, 0x00]),
+  ]);
+  const node = decodeStructured(clflush, 7);
+  assert.equal(node.op, "clflush");
+  assert.equal(node.mnemonic, "clflush");
+  assert.equal(node.length, 3);
+  const jit = assertEquivalent(clflush, "clflush-mem");
+  assert.equal(jit.register.rax, 0x40n, "the clflush leaves the cache line byte intact");
+
+  // 66 0f ae /7 negated — clflushopt: same address-gated no-op, length 4.
+  const clflushopt = Buffer.concat([
+    Buffer.from([0x48, 0x8d, 0x1d, 0x19, 0x00, 0x00, 0x00, 0x66, 0x0f, 0xae, 0x3b, 0x8b, 0x03, 0xc3]),
+    Buffer.alloc(0x20 - 14),
+    Buffer.from([0x2a, 0x00, 0x00, 0x00]),
+  ]);
+  const nodeOpt = decodeStructured(clflushopt, 7);
+  assert.equal(nodeOpt.mnemonic, "clflushopt");
+  assert.equal(nodeOpt.length, 4);
+  const jitOpt = assertEquivalent(clflushopt, "clflushopt-mem");
+  assert.equal(jitOpt.register.rax, 0x2an, "clflushopt leaves the line byte intact");
+});
+
+test("0f ae: the operand length is the hardware length for the SIB+disp32 shape", () => {
+  // clflush [rax+rcx*4+disp32] is 0f ae /7 with mod=10, rm=100 (SIB) + disp32 —
+  // 8 byte total (2 opcode + 1 modrm + 1 sib + 4 disp). Reading only the ModRM
+  // byte would report 3 and desync a sweep.
+  const code = [0x0f, 0xae, 0xbc, 0x88, 0x44, 0x33, 0x22, 0x11, 0xc3];
+  const node = decodeStructured(Buffer.from(code), 0);
+  assert.equal(node.served, true, "the SIB+disp32 clflush is served");
+  assert.equal(node.length, 8, `hardware length is 8, decoded ${node.length}`);
+  // stmxcsr uses the same operand shape; assert its length too (mod=10, /3).
+  const stmxcsr = [0x0f, 0xae, 0x9c, 0x8c, 0x44, 0x33, 0x22, 0x11, 0xc3];
+  const nodeSt = decodeStructured(Buffer.from(stmxcsr), 0);
+  assert.equal(nodeSt.op, "stmxcsr");
+  assert.equal(nodeSt.length, 8, `stmxcsr SIB+disp32 hardware length is 8, decoded ${nodeSt.length}`);
+});
+
+test("0f ae /3 stmxcsr + /2 ldmxcsr round-trip the MXCSR bit-exactly", () => {
+  // The MXCSR pair is a straight-line body, so it is checked the way a body op is:
+  // the oracle runs it, the multi-block module compiles it whole, and the two agree
+  // on registers, flags, AND the MXCSR itself.
+  const checkMxcsr = (code, label, expectRax) => {
+    const image = Buffer.from(code);
+    const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+    assert.equal(oracle.stop_reason, "entry_return", `${label}: oracle stop ${oracle.stop_reason}`);
+    const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+    assertRealModule(compiled.bytes);
+    assert.ok(compiled.complete, `${label}: codegen incomplete — fell back on ${JSON.stringify(compiled.coverage.unsupported)}`);
+    const jit = runFunction(image, { image, loadBase, decodeStructured });
+    assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}`);
+    for (const name of REG) assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} differs`);
+    for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} differs`);
+    assert.equal(jit.flag.mxcsr >>> 0, oracle.flag.mxcsr >>> 0, `${label}: MXCSR tier 0x${(jit.flag.mxcsr >>> 0).toString(16)} != oracle 0x${(oracle.flag.mxcsr >>> 0).toString(16)}`);
+    assert.equal(jit.instructionCount, oracle.executed_count, `${label}: instruction count`);
+    assert.equal(jit.register.rax, expectRax, `${label}: rax`);
+    return { jit, oracle };
+  };
+
+  // mov dword [rsp-4],0x5f80; stmxcsr [rsp-4]; mov eax,[rsp-4]; ret
+  // The stored dword is the live MXCSR (INIT 0x1f80 when untouched), so eax reads
+  // it back. This pins STMXCSR as a real store, not a served no-op.
+  checkMxcsr([0xc7, 0x44, 0x24, 0xfc, 0x80, 0x5f, 0x00, 0x00, 0x0f, 0xae, 0x5c, 0x24, 0xfc, 0x8b, 0x44, 0x24, 0xfc, 0xc3], "stmxcsr-store", 0x1f80n);
+
+  // mov dword [rsp-4],0x5f80; ldmxcsr [rsp-4]; stmxcsr [rsp-8]; mov eax,[rsp-8]; ret
+  // ldmxcsr installs the loaded dword and a following stmxcsr reads it back — the
+  // guest's own save/massage/restore, which is why a served no-op would be wrong.
+  checkMxcsr([0xc7, 0x44, 0x24, 0xfc, 0x80, 0x5f, 0x00, 0x00, 0x0f, 0xae, 0x54, 0x24, 0xfc, 0x0f, 0xae, 0x5c, 0x24, 0xf8, 0x8b, 0x44, 0x24, 0xf8, 0xc3], "mxcsr-ldmxcsr-0x5f80", 0x5f80n);
+});
+
+test("0f ae: each sub-op lands on its exact disposition (served vs honest refusal)", () => {
+  // THE DISPOSITION TABLE. Every form this family can decode is pinned to what
+  // the decoder must do with it, so an over-eager lift that serves an unimplemented
+  // op (the rcl/rcr defect class) fails here rather than passing silently.
+  const table = [
+    // [bytes, served, mnemonic|null]
+    [[0x0f, 0xae, 0xe8], true, "lfence"],   // /5 mod=3
+    [[0x0f, 0xae, 0xf0], true, "mfence"],   // /6 mod=3
+    [[0x0f, 0xae, 0xf8], true, "sfence"],   // /7 mod=3
+    [[0x0f, 0xae, 0x3b], true, "clflush"],  // /7 mod=0 [rbx]
+    [[0x66, 0x0f, 0xae, 0x3b], true, "clflushopt"], // 66 /7
+    [[0x0f, 0xae, 0x5c, 0x24, 0x08], true, "stmxcsr"], // /3 mod=1 [rsp+8]
+    [[0x0f, 0xae, 0x54, 0x24, 0x08], true, "ldmxcsr"], // /2 mod=1 [rsp+8]
+    [[0x0f, 0xae, 0x00], false, null],      // /0 fxsave — NOT served
+    [[0x0f, 0xae, 0x08], false, null],      // /1 fxrstor — NOT served
+    [[0x0f, 0xae, 0x20], false, null],      // /4 xsave — NOT served
+    [[0x0f, 0xae, 0x28], false, null],      // /5 memory xrstor — NOT served
+    [[0x0f, 0xae, 0xc0], false, null],      // /0 mod=3 (fxrstor-family) — NOT served
+    [[0x0f, 0xae, 0xd8], false, null],      // /3 mod=3 stmxcsr reg form — architecturally #UD
+  ];
+  for (const [bytes, served, mnemonic] of table) {
+    const node = decodeStructured(Buffer.from([...bytes, 0xc3]), 0);
+    const label = bytes.map((b) => b.toString(16).padStart(2, "0")).join(" ");
+    assert.equal(node.served, served, `${label}: served must be ${served}, got ${node.served} (op ${node.op})`);
+    if (served) assert.equal(node.mnemonic, mnemonic, `${label}: mnemonic`);
+    else assert.equal(node.opcodeText, "0fae", `${label}: the refusal names 0fae`);
+  }
+});
