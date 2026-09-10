@@ -2929,9 +2929,95 @@ test("decode: A9 TEST rax, imm32 sign-extends to 64 bits, like its CMP sibling",
   assert.equal(cmp.flag.zf, test.flag.zf, "the TEST accumulator form must agree with the CMP accumulator form");
 });
 
-test("repe scasb: the per-element ZF exit stays an honest named refusal", () => {
+// The COMPARE family (cmps/scas). Unlike the fixed-count movs/stos/lods loop, a
+// REPE/REPNE compare ALSO stops early when the element's ZF result says to: the
+// interpreter (executeString) always runs the FIRST element for a non-zero rcx,
+// then continues only while rcx holds AND the flag invites another — REPE while
+// the element compared EQUAL (ZF == 1), REPNE while it compared UNEQUAL (ZF == 0).
+// On that early exit it leaves rcx at the REMAINING count and lands rip on the
+// next instruction. The tier's loop must stop with exactly that rcx, and charge
+// exactly the elements it ran. Each case below is anchored on
+// interpret(...).executed_count, never a literal.
+
+// Builds a code+data image, runs both engines, and asserts bit-exact GPRs, flags,
+// and the oracle's exact retired count. Returns { jit, oracle }.
+function assertCompareEquivalent(code, fill, label) {
+  const image = Buffer.alloc(0x1000);
+  fill(image);
+  Buffer.from(code).copy(image, 0, 0, code.length);
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 4096 });
+  assert.equal(oracle.stop_reason, "entry_return", `${label}: oracle stop_reason ${oracle.stop_reason} ${oracle.exception?.message ?? ""}`);
+  const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+  assert.equal(compiled.complete, true, `${label}: the compare family compiles whole now — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  const jit = runFunction(image, { image, loadBase, decodeStructured });
+  assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}`);
+  for (const name of REG) {
+    assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
+  }
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} WASM ${jit.flag[name]} != oracle ${oracle.flag[name]}`);
+  }
+  assert.equal(jit.instructionCount, oracle.executed_count, `${label}: the charge must equal the oracle's retired count (${jit.instructionCount} vs ${oracle.executed_count})`);
+  return { jit, oracle };
+}
+
+test("repe/repne cmps/scas: the per-element ZF exit stops early with rcx holding the REMAINING count", () => {
+  const src = loadBase + 0x100n;
+  const dst = loadBase + 0x200n;
+  // Each case's `expectRcx` is the count the interpreter leaves behind when it
+  // stops on the flag — asserted against BOTH engines, since it is the observable
+  // the early exit turns on.
+  for (const [label, code, fill, expectRcx] of [
+    // repe cmpsb rcx=5: bytes 1 equal, byte 2 mismatches → 2 elements run, 3 remain.
+    ["repe cmpsb early", [...movR64(RSI, src), ...movR64(RDI, dst), ...movR64(RCX, 5n), 0xf3, 0xa6, 0xc3], (m) => { for (let i = 0; i < 8; i += 1) { m[0x100 + i] = 0x11; m[0x200 + i] = 0x11; } m[0x201] = 0x22; }, 3n],
+    // repe cmpsb rcx=5: the FIRST byte mismatches → 1 element runs, 4 remain. The
+    // flag exit must not be consulted before the first element, or the loop would
+    // run zero elements and leave 5.
+    ["repe cmpsb first-unequal", [...movR64(RSI, src), ...movR64(RDI, dst), ...movR64(RCX, 5n), 0xf3, 0xa6, 0xc3], (m) => { for (let i = 0; i < 8; i += 1) { m[0x100 + i] = 0x11; m[0x200 + i] = 0x22; } }, 4n],
+    // repe cmpsb rcx=5: all equal → the count is spent, rcx ends 0.
+    ["repe cmpsb full", [...movR64(RSI, src), ...movR64(RDI, dst), ...movR64(RCX, 5n), 0xf3, 0xa6, 0xc3], (m) => { for (let i = 0; i < 8; i += 1) { m[0x100 + i] = 0x11; m[0x200 + i] = 0x11; } }, 0n],
+    // repne scasb rcx=5: AL matches on element 2 → REPNE stops (ZF == 1), 3 remain.
+    ["repne scasb early", [...movR64(RAX, 0x33n), ...movR64(RDI, dst), ...movR64(RCX, 5n), 0xf2, 0xae, 0xc3], (m) => { m[0x200] = 0x10; m[0x201] = 0x33; m[0x202] = 0x10; m[0x203] = 0x10; m[0x204] = 0x10; }, 3n],
+    // repne scasb rcx=5: never matches → the count is spent.
+    ["repne scasb full", [...movR64(RAX, 0x33n), ...movR64(RDI, dst), ...movR64(RCX, 5n), 0xf2, 0xae, 0xc3], (m) => { for (let i = 0; i < 5; i += 1) m[0x200 + i] = 0x10; }, 0n],
+  ]) {
+    const { jit, oracle } = assertCompareEquivalent(code, fill, label);
+    assert.equal(oracle.register.rcx, expectRcx, `${label}: the ORACLE leaves rcx at ${expectRcx}`);
+    assert.equal(jit.register.rcx, expectRcx, `${label}: the tier leaves rcx at the same remaining count (got ${jit.register.rcx})`);
+  }
+});
+
+test("cmps/scas: the non-rep forms run one element and set the cmp flags from it", () => {
+  const src = loadBase + 0x100n;
+  const dst = loadBase + 0x200n;
+  // The compare subtract is a plain `cmp` over memory operands: unequal sets
+  // CF/SF, equal sets ZF, and each steps its index register(s) once.
+  const unequal = assertCompareEquivalent(
+    [...movR64(RSI, src), ...movR64(RDI, dst), 0xa6, 0xc3], // cmpsb
+    (m) => { m[0x100] = 0x10; m[0x200] = 0x20; },
+    "cmpsb unequal",
+  );
+  assert.equal(unequal.oracle.flag.zf, false, "unequal compare clears ZF");
+  assert.equal(unequal.oracle.flag.cf, true, "unequal compare sets the borrow");
+  assert.equal(unequal.jit.register.rsi, src + 1n, "cmpsb steps rsi once");
+  assert.equal(unequal.jit.register.rdi, dst + 1n, "cmpsb steps rdi once");
+
+  const equal = assertCompareEquivalent(
+    [...movR64(RAX, 0x55n), ...movR64(RDI, dst), 0xae, 0xc3], // scasb
+    (m) => { m[0x200] = 0x55; },
+    "scasb equal",
+  );
+  assert.equal(equal.oracle.flag.zf, true, "an equal compare sets ZF");
+  assert.equal(equal.jit.register.rdi, dst + 1n, "scasb steps rdi once");
+});
+
+test("scas/scas: the per-element ZF exit is no longer a named hand-back", () => {
+  // The reason that named this gap must be gone: the compare family now compiles
+  // (any case above would fail on `assert.equal(compiled.complete, true)`), and
+  // the coverage report must not carry the old `string_compare` refusal at all.
   const image = Buffer.from([0xf3, 0xae, 0xc3]); // repe scasb; ret
   const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
-  assert.equal(compiled.complete, false, "the compare family is refused");
-  assert.ok(compiled.coverage.unsupported.some((item) => item.reason === "string_compare"), `the refusal names the gap — ${JSON.stringify(compiled.coverage.unsupported)}`);
+  assert.equal(compiled.complete, true, "repe scasb compiles whole");
+  assert.ok(!compiled.coverage.unsupported.some((item) => item.reason === "string_compare"), `string_compare must be gone — ${JSON.stringify(compiled.coverage.unsupported)}`);
 });
