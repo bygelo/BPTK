@@ -2835,18 +2835,27 @@ test("cld/std: the direction flag is carried, and clc/stc are the CARRY flag (op
   for (const name of REG) assert.equal(jit.register[name], oracle.register[name], `reg ${name} differs`);
   for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `flag ${name} differs`);
 
-  // CLC/STC set the CARRY flag only — the direction flag must be untouched.
-  for (const [code2, label, expectCf] of [
-    [[0xf9, 0xc3], "stc", true],
-    [[0xf8, 0xc3], "clc", false],
+  // CLC/STC set the CARRY flag only — the direction flag must be untouched. The
+  // sequence has to SET df first: asserting df stays false after `clc` on a machine
+  // whose df starts false is vacuous, and would have passed against the very bug
+  // this guards (0xF8/0xF9 lifted as cld/std). So `std` runs first, and df must
+  // still be true afterwards.
+  for (const [code2, label, expectCf, expectDf] of [
+    [[0xfd, 0xf8, 0xc3], "std; clc", false, true],
+    [[0xfd, 0xf9, 0xc3], "std; stc", true, true],
+    [[0xfc, 0xf8, 0xc3], "cld; clc", false, false],
   ]) {
     const image2 = Buffer.from(code2);
     const compiled2 = compileFunction(image2, { loadBase, decodeStructured, guestLen: image2.length + 0x10000 });
     assert.equal(compiled2.complete, true, `${label}: compiles whole`);
+    const oracle2 = interpret({ image: image2, loadBase, entryRva: 0, budget: 4096 });
+    assert.equal(oracle2.stop_reason, "entry_return", `${label}: the interpreter runs its own sequence`);
     const jit2 = runFunction(image2, { image: image2, loadBase, decodeStructured });
     assert.equal(jit2.statusName, "ok", `${label}: run status ${jit2.statusName}`);
     assert.equal(jit2.flag.cf, expectCf, `${label}: CF is ${expectCf}`);
-    assert.equal(jit2.flag.df, false, `${label}: the direction flag is NOT touched — this is not a cld/std`);
+    // The oracle's flags() now surfaces df too, so this compares rather than trusts.
+    assert.equal(oracle2.flag.df, expectDf, `${label}: the oracle's DF is ${expectDf}`);
+    assert.equal(jit2.flag.df, oracle2.flag.df, `${label}: DF must match the oracle (0xFD sets it, 0xF8/0xF9 must NOT clear it)`);
   }
 });
 
