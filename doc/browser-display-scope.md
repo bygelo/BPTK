@@ -52,7 +52,7 @@ web/host.mjs         fetch a staged freeware payload (or <input type=file>), run
 
 ## Honesty + rules
 - The canvas shows the runtime's **own** surface bytes — never a mock or a screenshot of real Windows.
-- `passing` stays 0 (a visible dialog is not a playable game).
+- this work moves no benchmark: `passing` is 1 (BPTK-001, the approved license and reuse decision) and none of it is game-runtime, because a visible dialog is not a playable game.
 - Determinism holds: same bytes → same surface hash, Node and browser.
 - New `web/*.mjs` must be admitted to `tool/validate.py`'s allowed surface (like lib/) + `content.json`
   in the same commit, or the gate fails.
