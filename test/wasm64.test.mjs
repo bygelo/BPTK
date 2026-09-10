@@ -1234,6 +1234,20 @@ class MultiRegionMachine {
     this.reg = new Array(16).fill(0n);
     this.rip = 0n;
     this.flagSource = null;
+    // The fs/gs bases a segment-overridden memory operand resolves through,
+    // mirroring lib/exec64.mjs's Machine so the reference oracle can cross-check
+    // the tier on a TEB-relative read.
+    this.fsBase = 0n;
+    this.gsBase = 0n;
+  }
+  // The segment base a memory operand resolves through: the operand's own decoded
+  // segment name (fs/gs from the prefix), else zero — the same rule lib/exec64.mjs
+  // and lib/lift64.mjs apply.
+  segmentBaseOf(mem) {
+    if (mem === undefined || mem.segment === undefined) return 0n;
+    if (mem.segment === "fs") return this.fsBase;
+    if (mem.segment === "gs") return this.gsBase;
+    return 0n;
   }
   flags() { return materializeFlag(this.flagSource); }
   locate(address, sizeByte) {
@@ -1273,11 +1287,18 @@ class MultiRegionMachine {
     let addr = 0n;
     if (mem.rip_relative) addr = nextRip + BigInt(mem.disp);
     else {
-      if (mem.base !== null) addr += this.reg[mem.base];
-      if (mem.index !== null) addr += this.reg[mem.index] * BigInt(mem.scale);
+      // A `67` address-size override computes the whole address at 32 bits: the
+      // base/index narrow (base32/index32) and the sum wraps (addr32) — the rule
+      // every engine applies.
+      if (mem.base !== null) addr += mem.base32 ? (this.reg[mem.base] & 0xffffffffn) : this.reg[mem.base];
+      if (mem.index !== null) {
+        const idx = mem.index32 ? (this.reg[mem.index] & 0xffffffffn) : this.reg[mem.index];
+        addr += idx * BigInt(mem.scale);
+      }
       addr += BigInt(mem.disp);
+      if (mem.addr32) addr &= 0xffffffffn;
     }
-    return addr & MASK64_MR;
+    return (addr + this.segmentBaseOf(mem)) & MASK64_MR;
   }
   readOperand(op, nextRip) {
     if (op.kind === "imm") return op.value & mrSizeMask(op.size);
@@ -1326,7 +1347,7 @@ function mrExecNode(m, node, nextRip, sentinel) {
     case "movzx": m.writeReg(node.dst, m.readOperand(node.src, nextRip) & mrSizeMask(node.srcSize)); m.rip = nextRip; return false;
     case "movsx": m.writeReg(node.dst, mrSigned(m.readOperand(node.src, nextRip), node.srcSize) & mrSizeMask(node.size)); m.rip = nextRip; return false;
     case "movsxd": m.writeReg(node.dst, mrSigned(m.readOperand(node.src, nextRip), 32) & mrSizeMask(node.size)); m.rip = nextRip; return false;
-    case "lea": m.writeReg(node.dst, m.effectiveAddress(node.src, nextRip) & mrSizeMask(node.size)); m.rip = nextRip; return false;
+    case "lea": m.writeReg(node.dst, (m.effectiveAddress(node.src, nextRip) - m.segmentBaseOf(node.src)) & mrSizeMask(node.size)); m.rip = nextRip; return false;
     case "alu": {
       const mask = mrSizeMask(size);
       const a = m.readOperand(node.dst, nextRip) & mask;
@@ -1398,7 +1419,7 @@ function mrExecNode(m, node, nextRip, sentinel) {
 // SAME [{ base, size, kind }] list handed to wasm64. Seeds identically to
 // lib/wasm64.mjs seedStatePlan (image into the image region, rsp/sentinel in the
 // stack region). Returns end-of-run GPRs, flags, and each region's bytes.
-function interpretMultiRegion(image, regionSpec, { loadBase, register = {}, entryRva = 0, budget = 4096 }) {
+function interpretMultiRegion(image, regionSpec, { loadBase, register = {}, entryRva = 0, budget = 4096, fsBase = 0n, gsBase = 0n }) {
   const region = regionSpec.map((r) => ({ base: BigInt.asUintN(64, BigInt(r.base)), size: Number(r.size), kind: r.kind ?? "region", mem: Buffer.alloc(Number(r.size)) }));
   for (const r of region) {
     if (r.kind === "image" || r.kind === "flat") Buffer.from(image).copy(r.mem, 0, 0, Math.min(image.length, r.size));
@@ -1408,6 +1429,8 @@ function interpretMultiRegion(image, regionSpec, { loadBase, register = {}, entr
     }
   }
   const m = new MultiRegionMachine(region);
+  m.fsBase = BigInt.asUintN(64, BigInt(fsBase));
+  m.gsBase = BigInt.asUintN(64, BigInt(gsBase));
   const stk = region.find((r) => r.kind === "stack") ?? region[0];
   const img = region.find((r) => r.kind === "image" || r.kind === "flat") ?? region[0];
   const stackTop = BigInt.asUintN(64, stk.base + BigInt(stk.size - 16));
@@ -1419,16 +1442,18 @@ function interpretMultiRegion(image, regionSpec, { loadBase, register = {}, entr
   m.rip = BigInt.asUintN(64, BigInt(loadBase) + BigInt(entryRva));
 
   let stopped = false;
+  let executed = 0;
   for (let n = 0; n < budget; n += 1) {
     const rvaOff = Number(m.rip - img.base);
     const node = decodeStructured(img.mem, rvaOff);
     const nextRip = BigInt.asUintN(64, m.rip + BigInt(node.length));
+    executed += 1;
     if (mrExecNode(m, node, nextRip, sentinel)) { stopped = true; break; }
   }
   assert.ok(stopped, "multi-region oracle: the program must reach the entry RET within budget");
   const registerOut = {};
   for (let i = 0; i < 16; i += 1) registerOut[REG[i]] = m.reg[i] & MASK64_MR;
-  return { register: registerOut, flag: m.flags(), region };
+  return { register: registerOut, flag: m.flags(), region, executed_count: executed };
 }
 
 // Lifts+runs a microprogram through the multi-region oracle AND the WASM module
@@ -1438,13 +1463,17 @@ function assertMultiRegionEquivalent(code, regionSpec, seed, label) {
   const image = Buffer.from(code);
   const oracle = interpretMultiRegion(image, regionSpec, { loadBase, ...seed });
 
-  const compiled = compileFunction(image, { loadBase, decodeStructured, region: regionSpec, register: seed.register });
+  const compiled = compileFunction(image, { loadBase, decodeStructured, region: regionSpec, register: seed.register, fsBase: seed.fsBase, gsBase: seed.gsBase });
   assertRealModule(compiled.bytes);
   assert.ok(compiled.complete, `${label}: codegen incomplete — fell back on ${JSON.stringify(compiled.coverage.unsupported)}`);
   assert.ok(compiled.plan.multi, `${label}: the plan must be a true multi-region map`);
 
-  const jit = runFunction(image, { image, loadBase, decodeStructured, region: regionSpec, register: seed.register });
+  const jit = runFunction(image, { image, loadBase, decodeStructured, region: regionSpec, register: seed.register, fsBase: seed.fsBase, gsBase: seed.gsBase });
   assert.equal(jit.statusName, "ok", `${label}: run status ${jit.statusName}, expected ok`);
+  // The instruction charge, anchored on the reference machine's own executed
+  // count — never a literal. A memory-operand addressing change that dropped or
+  // duplicated an instruction's effect would move this number.
+  assert.equal(jit.instructionCount, oracle.executed_count, `${label}: WASM engaged ${jit.instructionCount} guest instruction, the reference machine engaged ${oracle.executed_count}`);
 
   for (const name of REG) {
     assert.equal(jit.register[name], oracle.register[name], `${label}: reg ${name} WASM 0x${jit.register[name].toString(16)} != oracle 0x${oracle.register[name].toString(16)}`);
@@ -3020,4 +3049,128 @@ test("scas/scas: the per-element ZF exit is no longer a named hand-back", () => 
   const compiled = compileFunction(image, { loadBase, decodeStructured, guestLen: image.length + 0x10000 });
   assert.equal(compiled.complete, true, "repe scasb compiles whole");
   assert.ok(!compiled.coverage.unsupported.some((item) => item.reason === "string_compare"), `string_compare must be gone — ${JSON.stringify(compiled.coverage.unsupported)}`);
+});
+
+// -------------------- segment (fs/gs) and address-size (67) overrides --------------------
+//
+// The two prefixes the Windows x64 CRT emits at the very front of every process:
+// a gs override resolving a TEB field, and a 67 prefix narrowing the operand's
+// address to 32 bits. decodeStructured used to REFUSE both (a segment prefix was
+// outside the M2 lift subset), so the tier handed back at the first TEB read —
+// line 14 of Chocolate Doom's entry is `65 67 48 8b 00` (mov rax, gs:[eax]).
+// Every test below is a shape the tier could not compile before the fix.
+
+test("segment: decode lifts a bare gs/fs override and stamps the base on the memory operand", () => {
+  // mov rax, gs:[eax] — the Chocolate Doom rva-4133 shape, gs AND 67 together.
+  const gs = decodeStructured(Buffer.from([0x65, 0x67, 0x48, 0x8b, 0x00]), 0);
+  assert.equal(gs.served, true, "a gs override must lift, not refuse");
+  assert.equal(gs.length, 5);
+  assert.equal(gs.src.segment, "gs", "the gs base is named on the memory operand");
+  assert.equal(gs.src.base32, true, "the 67 prefix narrows the base to 32 bits");
+  assert.equal(gs.src.addr32, true, "the 67 prefix truncates the whole address to 32 bits");
+  assert.equal(gs.src.absolute, undefined, "rm=000 with a base register is not the absolute form");
+  // mov rax, fs:[rax] — an fs override with no 67.
+  const fs = decodeStructured(Buffer.from([0x64, 0x48, 0x8b, 0x00]), 0);
+  assert.equal(fs.served, true);
+  assert.equal(fs.src.segment, "fs");
+  assert.equal(fs.src.base32, undefined, "no 67 means a full 64-bit base");
+  // The bare 64-bit form is unchanged (no segment, no 32-bit narrowing).
+  const plain = decodeStructured(Buffer.from([0x48, 0x8b, 0x00]), 0);
+  assert.equal(plain.served, true);
+  assert.equal(plain.src.segment, undefined);
+});
+
+test("address size: 67 with mod=00,rm=101 reads ABSOLUTE [disp32], never rip-relative", () => {
+  // 67 8b 05 40 00 00 00 — mov eax, [0x40]. Without the 67 the SAME ModRM is
+  // rip-relative; the SDM says the prefix selects the absolute disp32 form.
+  const abs = decodeStructured(Buffer.from([0x67, 0x8b, 0x05, 0x40, 0x00, 0x00, 0x00]), 0);
+  assert.equal(abs.served, true);
+  assert.equal(abs.length, 7);
+  assert.equal(abs.src.rip_relative, false, "67 makes the operand absolute, not rip-relative");
+  assert.equal(abs.src.absolute, true);
+  assert.equal(abs.src.disp, 0x40);
+  // The oracle reads it from absolute 0x40, NOT from rip_next+0x40.
+  const image = Buffer.alloc(0x100);
+  image[0x40] = 0x11; image[0x41] = 0x22; image[0x42] = 0x33; image[0x43] = 0x44;
+  Buffer.from([0x67, 0x8b, 0x05, 0x40, 0x00, 0x00, 0x00, 0xc3]).copy(image, 0);
+  const oracle = interpret({ image, loadBase: 0n, entryRva: 0, budget: 16 });
+  assert.equal(oracle.stop_reason, "entry_return", JSON.stringify(oracle.exception));
+  assert.equal(oracle.register.rax, 0x44332211n, "the load must come from absolute [0x40] (rip-relative would read 0x47)");
+});
+
+test("address size: a 67 32-bit base is zero-extended and the address truncates to 32 bits", () => {
+  // mov rbx, 0x1_0000_0020 ; 67 8b 03 (mov eax,[ebx]) — only the LOW 32 bits of rbx
+  // are the address, so this reads [0x20], not [0x100000020]. The data sits at 0x20,
+  // past the 13-byte instruction, so the code bytes do not shadow it.
+  const image = Buffer.alloc(0x40);
+  const code = [
+    0x48, 0xbb, 0x20, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, // mov rbx, 0x100000020
+    0x67, 0x8b, 0x03,                                           // mov eax, [ebx]
+    0xc3,
+  ];
+  Buffer.from(code).copy(image, 0);
+  image[0x20] = 0xab; image[0x21] = 0xcd;
+  const oracle = interpret({ image, loadBase: 0n, entryRva: 0, budget: 16 });
+  assert.equal(oracle.stop_reason, "entry_return", JSON.stringify(oracle.exception));
+  assert.equal(oracle.register.rax, 0xcdabn, "the base is rbx's low 32 bits, so the read lands at [0x20]");
+});
+
+test("segment: the tier compiles a gs TEB read the oracle and the module resolve identically", () => {
+  // mov rax, gs:[0x30] ; mov rcx, fs:[0x60] ; lea rdx, gs:[0x1000] ; ret.
+  // The gs:[0x30] and fs:[0x60] reads take the segment bases; the LEA does NOT,
+  // because LEA loads the effective offset itself.
+  const TEB = 0x7ff800000000n;
+  const code = Buffer.from([
+    0x65, 0x48, 0x8b, 0x04, 0x25, 0x30, 0x00, 0x00, 0x00, // mov rax, gs:[0x30]   (moffs)
+    0x64, 0x48, 0x8b, 0x0c, 0x25, 0x60, 0x00, 0x00, 0x00, // mov rcx, fs:[0x60]   (moffs)
+    0x65, 0x67, 0x48, 0x8d, 0x15, 0x00, 0x10, 0x00, 0x00, // lea rdx, gs:[0x1000] (67 → absolute)
+    0xc3,
+  ]);
+  const teb = Buffer.alloc(0x4000);
+  teb.writeBigUInt64LE(TEB, 0x30);          // NT_TIB.Self
+  teb.writeBigUInt64LE(0xcafebaben, 0x60);  // a value to read back through fs
+  const region = [
+    { base: IMAGE_BASE, size: 0x1000, kind: "image" },
+    { base: TEB, size: 0x4000, kind: "region", init: teb },
+  ];
+  const jit = assertMultiRegionEquivalent(code, region, { gsBase: TEB, fsBase: TEB }, "gs-teb-read");
+  assert.equal(jit.register.rax, TEB, "gs:[0x30] is NT_TIB.Self — the TEB base itself");
+  assert.equal(jit.register.rcx, 0xcafebaben, "fs:[0x60] reads through the fs base");
+  assert.equal(jit.register.rdx, 0x1000n, "LEA loads the effective offset, never the segment base");
+});
+
+test("address size: the tier compiles a 67 32-bit absolute load, bit-exact to the oracle", () => {
+  // mov eax, [0x40] under 67 — the absolute disp32 form the SDM defines. The byte
+  // the load reads lives in a low DATA region at 0x40, which only a non-rip-relative
+  // reading reaches: a rip-relative decode would read at
+  // (loadBase + 8 + 0x40) in the IMAGE region instead, a different byte.
+  const code = Buffer.from([0x67, 0x8b, 0x05, 0x40, 0x00, 0x00, 0x00, 0xc3]);
+  const init = Buffer.alloc(0x1000);
+  init[0x40] = 0x11; init[0x41] = 0x22; init[0x42] = 0x33; init[0x43] = 0x44;
+  const region = [
+    { base: IMAGE_BASE, size: 0x1000, kind: "image" },
+    { base: 0n, size: 0x1000, kind: "data", init },
+  ];
+  const jit = assertMultiRegionEquivalent(code, region, {}, "abs67-load");
+  assert.equal(jit.register.rax, 0x44332211n, "the tier reads absolute [0x40], matching the oracle");
+});
+
+test("address size: the tier wraps a 67 effective address at 32 bits", () => {
+  // mov rbx, 0x1_0000_0010 ; 67 mov al, [ebx] — the address is rbx's low 32 bits
+  // (0x10), so the read lands at 0x10 in a low DATA region, never at 0x100000010.
+  // A non-truncating engine would compute 0x100000010, which is mapped by nothing
+  // and faults — so this case proves the wrap, not merely a 32-bit base.
+  const code = [
+    0x48, 0xbb, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, // mov rbx, 0x100000010
+    0x67, 0x8a, 0x03,                                           // mov al, [ebx]
+    0xc3,
+  ];
+  const init = Buffer.alloc(0x1000);
+  init[0x10] = 0x5e;
+  const region = [
+    { base: IMAGE_BASE, size: 0x1000, kind: "image" },
+    { base: 0n, size: 0x1000, kind: "data", init },
+  ];
+  const jit = assertMultiRegionEquivalent(Buffer.from(code), region, {}, "addr32-wrap");
+  assert.equal(jit.register.rax, 0x5en, "the 67 base is rbx's low 32 bits, so the read lands at [0x10]");
 });
