@@ -301,6 +301,28 @@ Measured on the staged corpus (payloads still out of git):
 The next named SuperTux gap is still throughput through OpenAL table init
 (or an i386 SSE/WASM tier), not a missing opcode at these sites.
 
+## Cycle 17 — PuTTYgen dialog HLE (2026-09-12)
+
+Generic ANSI / resource / dialog HLE, not PuTTYgen-shaped stubs. `findResource`
+walks the PE resource tree by type and name. `DialogBoxParamA` loads
+`RT_DIALOG`, instantiates the template, and the i386 probe re-enters the
+guest `DLGPROC` for `WM_INITDIALOG`. comdlg32 file pickers return 0 (cancel).
+Non-`MB_OK` MessageBox returns 0. A modal dialog that never calls `EndDialog`
+is `hle_dialog_modal_idle`, not a fake `IDOK`.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-011 PuTTYgen: IAT **174/174** (was 118/174). `executeProbe` 10M:
+  **instruction_budget_exhausted**, **1233** HLE, **8.8 s**, EIP `0x41743f`.
+  `DialogBoxParamA` (template 201) then `CreateWindowExA` 34 / `MapDialogRect`
+  35 / `AppendMenuA` 36. Still inside guest `WM_INITDIALOG`. Not a shown
+  window. No `EndDialog`.
+- CORPUS-008 OpenTTD: unchanged **161/302** unserved. Serving stubs to pass
+  that gate is misaligned.
+- CORPUS-014 SuperTux / CORPUS-009 Plink / CORPUS-010 jq: not remesured this
+  cycle; prior numbers stand.
+
+`passing` stays 1 (BPTK-001 only). No corpus entry is interactive.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

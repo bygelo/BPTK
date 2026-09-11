@@ -367,6 +367,93 @@ function applyUserOp(user, symbol, argument) {
     }
     case "SendMessageA":
       return user.sendMessage(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0);
+    case "RegisterClassA":
+      return user.registerClass(argument[0], null, argument[1] ?? 0);
+    case "CreateWindowExA":
+      return user.createWindowEx({ class_name: argument[0], style: argument[1] ?? 0, text: argument[2] ?? "" });
+    case "GetMessageA": {
+      const sink = {};
+      return user.getMessage(sink);
+    }
+    case "DispatchMessageA":
+      return user.dispatchMessage(argument[0]);
+    case "PostMessageA":
+      return user.postMessage(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0);
+    case "DefDlgProcA":
+      return user.defWindowProc(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0);
+    case "GetWindowTextA":
+    case "GetWindowTextLengthA":
+      return user.getWindowText(argument[0]).length;
+    case "GetDlgItem":
+      return user.getDlgItem(argument[0], argument[1]);
+    case "GetDlgItemTextA":
+      return user.getWindowText(user.getDlgItem(argument[0], argument[1])).length;
+    case "SetDlgItemTextA":
+      return user.setWindowText(user.getDlgItem(argument[0], argument[1]), argument[2] ?? "");
+    case "GetDlgItemInt":
+      return user.getDlgItemInt(argument[0], argument[1]);
+    case "SetDlgItemInt":
+      return user.setDlgItemInt(argument[0], argument[1], argument[2] ?? 0);
+    case "SendDlgItemMessageA":
+      return user.sendDlgItemMessage(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0, argument[4] ?? 0);
+    case "IsDlgButtonChecked":
+      return user.isDlgButtonChecked(argument[0], argument[1]);
+    case "CheckRadioButton":
+      return user.checkRadioButton(argument[0], argument[1], argument[2], argument[3]);
+    case "EnableWindow":
+      return user.enableWindow(argument[0], argument[1]);
+    case "GetWindowLongA":
+      return user.getWindowLong(argument[0], argument[1]);
+    case "SetWindowLongA":
+      return user.setWindowLong(argument[0], argument[1], argument[2]);
+    case "SetWindowPos":
+      return user.setWindowPos(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5], argument[6]);
+    case "SetActiveWindow":
+      return user.setActiveWindow(argument[0]);
+    case "SetForegroundWindow":
+      return user.isWindow(argument[0]) ? 1 : 0;
+    case "GetDesktopWindow":
+      return user.getDesktopWindow();
+    case "GetDC":
+      return 0x00040000;
+    case "ReleaseDC":
+      return 1;
+    case "LoadCursorA":
+      return (0x00008000 | (argument[1] & 0xffff)) >>> 0;
+    case "LoadIconA":
+      return (0x00008100 | (argument[1] & 0xffff)) >>> 0;
+    case "CreateMenu":
+      return user.createMenu();
+    case "AppendMenuA":
+      return user.appendMenu(argument[0], argument[1], argument[2], argument[3] ?? "");
+    case "SetMenu":
+      return user.setMenu(argument[0], argument[1]);
+    case "CheckMenuItem":
+      return user.checkMenuItem(argument[0], argument[1], argument[2]);
+    case "CheckMenuRadioItem":
+      return user.checkMenuRadioItem(argument[0], argument[1], argument[2], argument[3], argument[4]);
+    case "EnableMenuItem":
+      return user.enableMenuItem(argument[0], argument[1], argument[2]);
+    case "SetTimer":
+      return user.setTimer(argument[0], argument[1], argument[2]);
+    case "KillTimer":
+      return user.killTimer(argument[0], argument[1]);
+    case "GetMessageTime":
+      return 0;
+    case "MapDialogRect":
+      return user.mapDialogRect(4, 8, 8, 16) !== null ? 1 : 0;
+    case "MessageBeep":
+      return 1;
+    case "MessageBoxA":
+    case "MessageBoxIndirectA":
+      return user.messageBox(argument[0] ?? "", argument[1] ?? "", argument[2] ?? 0);
+    case "IsDialogMessageA":
+      return user.isDialogMessage(argument[0], argument[1] ?? {});
+    case "EndDialog":
+      return user.endDialog(argument[0], argument[1]);
+    case "CreateDialogParamA":
+    case "DialogBoxParamA":
+      return 0;
     default:
       return null;
   }
@@ -446,6 +533,52 @@ function buildUserConformanceCase() {
   define("MsgWaitForMultipleObjects", { argument: [0, 0, 0, 0, 0x1ff] }, { return_value: 0x102, last_error: 0 });
   define("PeekMessageA", { scenario: [registerStep, createStep], argument: [0, 0, 0, 0, 1] }, { return_value: 0, last_error: 0 });
   define("SendMessageA", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, windowMessage.WM_NULL, 0, 0] }, { return_value: 0, last_error: 0 });
+  const registerAnsiStep = ["RegisterClassA", ["AppClass", 0]];
+  const createAnsiStep = ["CreateWindowExA", ["AppClass", 0]];
+  define("RegisterClassA", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
+  define("CreateWindowExA", { scenario: [registerAnsiStep], argument: ["AppClass", 0] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("GetMessageA", { scenario: [registerAnsiStep, createAnsiStep], argument: [] }, { return_value: (-1) >>> 0, last_error: 0 });
+  define("DispatchMessageA", { scenario: [registerAnsiStep, createAnsiStep], argument: [{ handle: FIRST_HANDLE, message: windowMessage.WM_NULL, w_param: 0, l_param: 0 }] }, { return_value: 0, last_error: 0 });
+  define("PostMessageA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, windowMessage.WM_NULL, 0, 0] }, { return_value: 1, last_error: 0 });
+  define("DefDlgProcA", { argument: [0, windowMessage.WM_NULL, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("GetWindowTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
+  define("GetWindowTextLengthA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
+  define("GetDlgItem", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1] }, { return_value: 0, last_error: 0 });
+  define("GetDlgItemTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1] }, { return_value: 0, last_error: 0x578 });
+  define("SetDlgItemTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, ""] }, { return_value: 0, last_error: 0x578 });
+  define("GetDlgItemInt", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1] }, { return_value: 0, last_error: 0x578 });
+  define("SetDlgItemInt", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, 0] }, { return_value: 0, last_error: 0x578 });
+  define("SendDlgItemMessageA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, 0, 0, 0] }, { return_value: 0, last_error: 0x578 });
+  define("IsDlgButtonChecked", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1] }, { return_value: 0, last_error: 0 });
+  define("CheckRadioButton", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, 2, 1] }, { return_value: 1, last_error: 0 });
+  define("EnableWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0] }, { return_value: 1, last_error: 0 });
+  define("GetWindowLongA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, -16] }, { return_value: 0, last_error: 0 });
+  define("SetWindowLongA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, -21, 9] }, { return_value: 0, last_error: 0 });
+  define("SetWindowPos", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0, 1, 2, 10, 20, 0] }, { return_value: 1, last_error: 0 });
+  define("SetActiveWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
+  define("SetForegroundWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
+  define("GetDesktopWindow", { argument: [] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("GetDC", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0x00040000, last_error: 0 });
+  define("ReleaseDC", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0x00040000] }, { return_value: 1, last_error: 0 });
+  define("LoadCursorA", { argument: [0, 32512] }, { return_value: 0x00008000 | 32512, last_error: 0 });
+  define("LoadIconA", { argument: [0, 32512] }, { return_value: 0x00008100 | 32512, last_error: 0 });
+  define("CreateMenu", { argument: [] }, { return_value: 0x00030000, last_error: 0 });
+  define("AppendMenuA", { scenario: [["CreateMenu", []]], argument: [0x00030000, 0, 1, ""] }, { return_value: 1, last_error: 0 });
+  define("SetMenu", { scenario: [registerAnsiStep, createAnsiStep, ["CreateMenu", []]], argument: [FIRST_HANDLE, 0x00030000] }, { return_value: 1, last_error: 0 });
+  define("CheckMenuItem", { scenario: [["CreateMenu", []], ["AppendMenuA", [0x00030000, 0, 1, ""]]], argument: [0x00030000, 1, 8] }, { return_value: 0, last_error: 0 });
+  define("CheckMenuRadioItem", { scenario: [["CreateMenu", []], ["AppendMenuA", [0x00030000, 0, 1, ""]]], argument: [0x00030000, 1, 1, 1, 0] }, { return_value: 1, last_error: 0 });
+  define("EnableMenuItem", { scenario: [["CreateMenu", []], ["AppendMenuA", [0x00030000, 0, 1, ""]]], argument: [0x00030000, 1, 1] }, { return_value: 0, last_error: 0 });
+  define("SetTimer", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, 10] }, { return_value: 1, last_error: 0 });
+  define("KillTimer", { scenario: [registerAnsiStep, createAnsiStep, ["SetTimer", [FIRST_HANDLE, 1, 10]]], argument: [FIRST_HANDLE, 1] }, { return_value: 1, last_error: 0 });
+  define("GetMessageTime", { argument: [] }, { return_value: 0, last_error: 0 });
+  define("MapDialogRect", { argument: [] }, { return_value: 1, last_error: 0 });
+  define("MessageBeep", { argument: [0] }, { return_value: 1, last_error: 0 });
+  define("MessageBoxA", { argument: ["ok", "", 0] }, { return_value: 1, last_error: 0 });
+  define("MessageBoxIndirectA", { argument: ["ok", "", 0] }, { return_value: 1, last_error: 0 });
+  define("IsDialogMessageA", { argument: [0, {}] }, { return_value: 0, last_error: 0 });
+  define("EndDialog", { argument: [0, 1] }, { return_value: 0, last_error: 0x578 });
+  define("CreateDialogParamA", { argument: [0, 1, 0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("DialogBoxParamA", { argument: [0, 1, 0, 0, 0] }, { return_value: 0, last_error: 0 });
 
   defineLib("comctl32.dll", "InitCommonControls", { argument: [] }, { return_value: 0, last_error: 0 });
   defineLib("comctl32.dll", "InitCommonControlsEx", { argument: [0] }, { return_value: 1, last_error: 0 });

@@ -293,6 +293,16 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.setRop2(argument[0], argument[1]);
     case "GetROP2":
       return gdi.getRop2(argument[0]);
+    case "CreateCompatibleBitmap":
+      return gdi.createCompatibleBitmap(argument[0], argument[1], argument[2]);
+    case "GetCurrentObject":
+      return gdi.getCurrentObject(argument[0], argument[1]);
+    case "GetObjectA": {
+      const info = gdi.getObject(argument[0]);
+      return info === null ? 0 : 24;
+    }
+    case "GetDIBits":
+      return gdi.getDIBits(argument[0], argument[1], argument[2], argument[3], argument[4], argument[4] === 0 ? false : () => {});
     default:
       return null;
   }
@@ -356,6 +366,10 @@ function buildGdiConformanceCase() {
   define("GetDeviceCaps", { argument: [0, 999] }, { return_value: 0, last_error: 0 });
   define("SetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE, rasterOp2.R2_WHITE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
   define("GetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
+  define("CreateCompatibleBitmap", { scenario: [dcStep], argument: [FIRST_HANDLE, 2, 2] }, { return_value: FIRST_HANDLE + 4, last_error: 0 });
+  define("GetCurrentObject", { scenario: [dcStep], argument: [FIRST_HANDLE, 7] }, { return_value: 0, last_error: 0 });
+  define("GetObjectA", { scenario: [dcStep, ["CreateCompatibleBitmap", [FIRST_HANDLE, 2, 2]]], argument: [FIRST_HANDLE + 4] }, { return_value: 24, last_error: 0 });
+  define("GetDIBits", { scenario: [dcStep, ["CreateCompatibleBitmap", [FIRST_HANDLE, 2, 2]]], argument: [FIRST_HANDLE, FIRST_HANDLE + 4, 0, 2, 0] }, { return_value: 2, last_error: 0 });
 
   return caseList;
 }
