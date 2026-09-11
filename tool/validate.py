@@ -253,6 +253,7 @@ ALLOWED_MJS_PATH = {
     Path("test/net.test.mjs"),
     Path("test/package.test.mjs"),
     Path("test/pe64.test.mjs"),
+    Path("test/pe-export.test.mjs"),
     Path("test/performance.test.mjs"),
     Path("test/policy.test.mjs"),
     Path("test/recompile.test.mjs"),
