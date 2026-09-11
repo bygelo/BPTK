@@ -183,6 +183,25 @@ prints its real `--version` text; the next named gap is the null `[eax+8]`
 during CRT teardown, not the stack probe. SuperTux's next named gap is
 interpreter throughput through OpenAL table init.
 
+## Cycle 11 — PEB.ProcessParameters, ripgrep process_exit (2026-09-12)
+
+CRT teardown did `fs:[0x18] → PEB → +0x10 → [eax+8]` (ProcessParameters
+Flags). The PEB pointer was NULL. The PEB page now carries a parameters
+block at `+0x200` and `PEB+0x10` points at it.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-013 ripgrep `--version`: **process_exit 0**, **181840** instruction,
+  458 HLE, output `ripgrep 14.1.1 (rev 4649aa9700)` plus PCRE2 line.
+  No-arg: **process_exit 2**, **176792** instruction, output
+  `rg: ripgrep requires at least one pattern to execute a search`.
+- CORPUS-014 SuperTux: unchanged 10M OpenAL budget stop.
+
+`passing` stays 1 (BPTK-001 only). Ripgrep `--version` is a measured 1:1
+console completion (ExitProcess 0 with the real banner). It is not an
+interactive session and does not search a corpus file. SuperTux is still
+not a playable frame; the next named gap is interpreter throughput through
+OpenAL table init.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

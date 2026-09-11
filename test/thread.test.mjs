@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { buildTebImage, tebField, pebField, SEH_CHAIN_END, TEB_SIZE_BYTE, createThreadScheduler, threadOp, threadPriority, waitResult, INFINITE, runContentionFixture } from "../lib/thread.mjs";
+import { buildTebImage, tebField, pebField, pebProcessParametersOffset, processParametersField, SEH_CHAIN_END, TEB_SIZE_BYTE, createThreadScheduler, threadOp, threadPriority, waitResult, INFINITE, runContentionFixture } from "../lib/thread.mjs";
 
 const binPath = fileURLToPath(new URL("../bin/bptk.mjs", import.meta.url));
 
@@ -107,6 +107,8 @@ test("teb builder places every documented field at its documented displacement",
   assert.equal(built.teb.readUInt32LE(tebField.tls_slot), 0, "the inline TLS slot array starts zeroed");
   assert.equal(built.teb.readUInt32LE(tebField.thread_local_storage_pointer), 0, "PE TLS array pointer stays unset without a declared base");
   assert.equal(built.peb.readUInt32LE(pebField.image_base_address), 0x00400000);
+  assert.equal(built.peb.readUInt32LE(pebField.process_parameters), 0xf0001000 + pebProcessParametersOffset);
+  assert.equal(built.peb.readUInt32LE(pebProcessParametersOffset + processParametersField.flags), 0);
   assert.equal(built.peb.readUInt8(pebField.being_debugged), 0);
   assert.equal(built.fs_base, 0xf0000000);
   assert.equal(built.gs_base, 0);
@@ -126,6 +128,18 @@ test("fs:[0x18] self pointer is the TEB linear address and dereferences to itsel
   assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
   assert.equal(report.register.eax >>> 0, report.thread.teb_base >>> 0);
   assert.equal(report.register.ecx >>> 0, 0xffffffff);
+});
+
+test("fs:[0x30] walks PEB.ProcessParameters so [params+8] is a mapped Flags dword", (context) => {
+  // mov eax, fs:[0x30]; mov eax, [eax+0x10]; mov eax, [eax+8]; ret
+  const report = readRun(context, [
+    ...fsLoadEax(tebField.process_environment_block),
+    0x8b, 0x40, pebField.process_parameters,
+    0x8b, 0x40, processParametersField.flags,
+    0xc3,
+  ], { import_value: true });
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.equal(report.register.eax >>> 0, 0);
 });
 
 test("fs:[0x30] walks the PEB to the image base", (context) => {
