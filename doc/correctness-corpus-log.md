@@ -202,6 +202,28 @@ interactive session and does not search a corpus file. SuperTux is still
 not a playable frame; the next named gap is interpreter throughput through
 OpenAL table init.
 
+## Cycle 12 — PMOVMSKB src, mapped VAD, ripgrep search (2026-09-12)
+
+`66 0F D7 /r` was reading `xmm[reg]` instead of the r/m source, so
+hashbrown's `pmovmskb edi, xmm0` scanned xmm7 and never left the probe
+loop. `MapViewOfFile` now allocates a granularity-aligned committed VAD
+(MEM_MAPPED) so rust memmap's `VirtualProtect` is not ERROR_INVALID_ADDRESS
+487. i386 `executeProbe` forwards `host_file`.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-013 ripgrep `--version`: **process_exit 0**, **181697** instruction,
+  458 HLE, same real banner.
+- CORPUS-013 ripgrep `PCRE2 C:\game\README.md` with the staged README as a
+  host file: **process_exit 0**, **1701493** instruction, 8219 HLE, real
+  line-numbered hits (136, 139, 140, …) with ANSI color. MapView +
+  VirtualProtect + UnmapViewOfFile succeed.
+- CORPUS-014 SuperTux: unchanged 10M OpenAL budget stop.
+
+`passing` stays 1 (BPTK-001 only). Ripgrep `--version` and a one-file
+search are measured 1:1 console completions. They are not an interactive
+session. SuperTux is still not a playable frame; the next named gap is
+interpreter throughput through OpenAL table init.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

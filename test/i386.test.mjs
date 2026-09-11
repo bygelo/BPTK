@@ -870,6 +870,10 @@ test("microprogram: SSE2 PMOVMSKB gathers the sign bit of each of 16 byte lanes"
   // bytes 80 80 00 80 set mask bits 0,1,3 -> 0x0b.
   const report = runMicro(context, [0xb8, 0x80, 0x80, 0x00, 0x80, 0x66, 0x0f, 0x6e, 0xc0, 0x66, 0x0f, 0xd7, 0xc0, 0xc3]);
   assertReferenceState(report, { register: { eax: 0x0b } });
+  // Cross-register: pmovmskb edi, xmm0 (66 0f d7 f8). The same-index form
+  // above cannot catch a dest/src swap; rust hashbrown uses this encoding.
+  const cross = runMicro(context, [0xb8, 0x80, 0x80, 0x00, 0x80, 0x66, 0x0f, 0x6e, 0xc0, 0x66, 0x0f, 0xd7, 0xf8, 0xc3]);
+  assertReferenceState(cross, { register: { edi: 0x0b } });
 });
 
 test("microprogram: SSE2 MOVQ stores the low qword and zero-extends the register destination", (context) => {

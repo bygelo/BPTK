@@ -1168,7 +1168,10 @@ test("BPTK-146: the widened Plink surface serves the ANSI file and kernel object
   const mapping = invoke(guest, "kernel32.dll", "CreateFileMappingA", [0xffffffff, 0, 4, 0, 4096, 0]);
   const view = invoke(guest, "kernel32.dll", "MapViewOfFile", [mapping, 0, 0, 0, 64]);
   assert.notEqual(view, 0, "MapViewOfFile returns a guest-addressable view");
+  assert.equal(view & 0xffff, 0, "MapViewOfFile is allocation-granularity aligned");
   memory.writeMemory(view, 4, 0x41424344);
+  const oldProtect = dest + 0x40;
+  assert.equal(invoke(guest, "kernel32.dll", "VirtualProtect", [view, 64, 0x02, oldProtect]), 1, "VirtualProtect succeeds on a mapped view");
   assert.equal(invoke(guest, "kernel32.dll", "UnmapViewOfFile", [view]), 1);
 
   // CreateThread and CreateProcessA are the confined probe's honest refusals.
