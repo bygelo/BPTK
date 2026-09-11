@@ -1499,6 +1499,64 @@ test("BPTK-010 sync breadth: the address wait times out on an unchanged value an
   assert.equal(invoke(guest, "kernel32.dll", "WakeByAddressSingle", [target]), 1);
 });
 
+test("BPTK-010: VerSetConditionMask packs a 3-bit condition and VerifyVersionInfoW compares the profile", () => {
+  const { guest, memory } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "VerSetConditionMask", [0, 0, 2, 3]), 24);
+  assert.equal(guest.return_edx ?? 0, 0);
+  const info = guest.layout.arena_base + 0x200;
+  memory.writeMemory(info, 4, 284);
+  memory.writeMemory(info + 4, 4, 5);
+  memory.writeMemory(info + 8, 4, 0);
+  memory.writeMemory(info + 12, 4, 0);
+  memory.writeMemory(info + 16, 4, 0);
+  assert.equal(invoke(guest, "kernel32.dll", "VerifyVersionInfoW", [info, 2, 24, 0]), 1);
+  memory.writeMemory(info + 4, 4, 10);
+  assert.equal(invoke(guest, "kernel32.dll", "VerifyVersionInfoW", [info, 2, 8, 0]), 0);
+  assert.equal(guest.getLastError(), 1150);
+  assert.equal(invoke(guest, "kernel32.dll", "IsThreadAFiber", []), 0);
+});
+
+test("BPTK-010: LoadLibraryExW appends .dll and honors LOAD_LIBRARY_SEARCH_SYSTEM32", () => {
+  const { guest } = createConformanceMachine();
+  guest.writeWideString(guest.layout.arena_base + 0x80, "kernel32", 32);
+  assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryExW", [guest.layout.arena_base + 0x80, 0, 0x800]), 0x00020002);
+  guest.writeWideString(guest.layout.arena_base + 0x80, "api-ms-win-core-localization-l1-2-1", 64);
+  assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryExW", [guest.layout.arena_base + 0x80, 0, 0x800]), 0x00020002);
+  guest.writeAnsiString(guest.layout.arena_base + 0x80, "kernelbase", 32);
+  assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryA", [guest.layout.arena_base + 0x80]), 0x00020002);
+});
+
+test("BPTK-010: VirtualProtect succeeds on a mapped PE image range", () => {
+  const memory = createIsolatedWin32Memory();
+  let guestMs = 0;
+  const clock = {
+    mode: "virtual_monotonic",
+    elapsedGuestMs: () => guestMs,
+    advanceVirtualMs: (delta) => { guestMs += delta; },
+    tickCount: () => 0,
+    qpc: () => 0,
+    rdtsc: () => 0,
+    describe: () => ({ source: "one_monotonic_clock", mode: "virtual_monotonic" }),
+  };
+  const guest = createWin32Hle(memory, memory.layout, { executable_name: "game.exe", clock, image_base: 0x400000, image_size_byte: 0x20000 });
+  const oldProtect = memory.layout.arena_base + 0x40;
+  assert.equal(invoke(guest, "kernel32.dll", "VirtualProtect", [0x401000, 0x80, 4, oldProtect]), 1);
+  assert.equal(memory.readMemory(oldProtect, 4), 0x40);
+});
+
+test("BPTK-010: HeapAlloc(NULL) is the process heap the ucrt uses before HeapCreate", () => {
+  const { guest } = createConformanceMachine();
+  const block = invoke(guest, "kernel32.dll", "HeapAlloc", [0, 0, 32]);
+  assert.notEqual(block, 0, "a null heap handle allocates from the process heap");
+  assert.equal(invoke(guest, "kernel32.dll", "HeapFree", [0, 0, block]), 1);
+});
+
+test("BPTK-010: FlsGet/Set on FLS_OUT_OF_INDEXES keep the CRT per-thread block", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "FlsSetValue", [0xffffffff, 0x1234]), 1);
+  assert.equal(invoke(guest, "kernel32.dll", "FlsGetValue", [0xffffffff]), 0x1234);
+});
+
 test("BPTK-010: DisableThreadLibraryCalls succeeds so a sidecar DllMain IAT is bound", () => {
   const { guest } = createConformanceMachine();
   assert.equal(invoke(guest, "kernel32.dll", "DisableThreadLibraryCalls", [0x00400000]), 1);

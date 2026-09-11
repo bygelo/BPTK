@@ -431,6 +431,18 @@ test("microprogram: the flat-model segment override byte are the identity", (con
   assertReferenceState(report, { register: { eax: 0x5a }, eflags: 2 });
 });
 
+test("microprogram: MOV r32, Sreg zero-extends the Win32 FS selector", (context) => {
+  // mov eax, 0x11223344; mov eax, fs; ret — 0x8C /4,eax.
+  const report = runMicro(context, [0xb8, 0x44, 0x33, 0x22, 0x11, 0x8c, 0xe0, 0xc3]);
+  assertReferenceState(report, { register: { eax: 0x3b }, eflags: 2 });
+});
+
+test("microprogram: MOV Sreg, r/m16 then MOV r32, Sreg round-trips DS", (context) => {
+  // mov eax, 0x23; mov ds, ax; mov ebx, ds; ret
+  const report = runMicro(context, [0xb8, 0x23, 0x00, 0x00, 0x00, 0x8e, 0xd8, 0x8c, 0xdb, 0xc3]);
+  assertReferenceState(report, { register: { eax: 0x23, ebx: 0x23 }, eflags: 2 });
+});
+
 test("microprogram: the lock prefix is the identity on the bounded single-guest model", (context) => {
   // lock add eax,5 → 5 with even parity (two one-bit), so eflags = 6.
   const report = runMicro(context, [0xf0, 0x83, 0xc0, 0x05, 0xc3]);

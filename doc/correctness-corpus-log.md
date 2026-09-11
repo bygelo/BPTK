@@ -93,14 +93,36 @@ Measured on the staged corpus (payloads still out of git):
 - CORPUS-013 ripgrep: unchanged `read_fault` at address 0 after **20467**
   instruction (181 HLE calls).
 
+## Cycle 7 — process heap, FLS, VirtualProtect, version, locale (2026-09-12)
+
+The 4261-insn `0xe06d7363` was `std::bad_alloc`: ucrt called
+`HeapAlloc(NULL)` while `__acrt_heap` was still zero, then
+`FlsGetValue(0xFFFFFFFF)` because `__vcrt_flsindex` stayed
+`FLS_OUT_OF_INDEXES`. Both now follow the Win32 contract. i386 `0x8C`/`0x8E`
+MOV Sreg serves the Win32 selectors. `VirtualProtect` on a mapped PE image
+or sidecar succeeds (ucrt's `.fptable` is not an HLE `VirtualAlloc` region).
+`LoadLibrary` appends `.dll`, honors `LOAD_LIBRARY_SEARCH_SYSTEM32`, and
+resolves api-set / `kernelbase` names to kernel32. `VerSetConditionMask` /
+`VerifyVersionInfoW` bind the ucrt IAT that still held name RVA `0x105860`.
+Counted `LCMapString` no longer returns length+1; `LCMapStringEx` and
+`LocaleNameToLCID` serve the Vista GetProcAddress path.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux: **722/722** served, 21 sidecar module, reaches `entry`,
+  executes **32245** instruction and 508 HLE calls through DllMain and locale
+  init, then `read_fault` at `0xD81D1B4C` (eip `0x3502d9a3` in ucrt) after
+  `GetCPInfo`. `glDrawArrays` is still not a playable frame.
+- CORPUS-013 ripgrep: `read_fault` at address 0 after **20790** instruction
+  (181 HLE calls).
+
 ## Remaining
 
 `passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux
-now reaches `entry` through sidecar DllMain; the next named gap is C++ EH
-(BPTK-053), not another IAT row. OpenTTD 1.10.3 and PuTTYgen stay at
-`loaded` on unserved imports. Ripgrep's next named gap is the null read
-after 20467 instruction. More lawful i386 game binaries can now be admitted
-without piling up on bundled-DLL imports.
+now reaches `entry` through sidecar DllMain and locale init; the next named
+gap is locale/codepage state (BPTK-103), not C++ EH. OpenTTD 1.10.3 and
+PuTTYgen stay at `loaded` on unserved imports. Ripgrep's next named gap is
+the null read after 20790 instruction. More lawful i386 game binaries can
+now be admitted without piling up on bundled-DLL imports.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
