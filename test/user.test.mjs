@@ -297,8 +297,10 @@ function applyUserOp(user, symbol, argument) {
       return 1;
     case "RegisterClassW":
     case "RegisterClassExW":
+    case "RegisterClassExA":
       return user.registerClass(argument[0], null, argument[1] ?? 0);
     case "UnregisterClassW":
+    case "UnregisterClassA":
       return user.unregisterClass(argument[0]);
     case "CreateWindowExW":
       return user.createWindowEx({ class_name: argument[0], style: argument[1] ?? 0 });
@@ -489,7 +491,9 @@ function buildUserConformanceCase() {
 
   define("RegisterClassW", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
   define("RegisterClassExW", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
+  define("RegisterClassExA", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
   define("UnregisterClassW", { scenario: [registerStep], argument: ["AppClass"] }, { return_value: 1, last_error: 0 });
+  define("UnregisterClassA", { scenario: [registerStep], argument: ["AppClass"] }, { return_value: 1, last_error: 0 });
   define("CreateWindowExW", { scenario: [registerStep], argument: ["AppClass", 0] }, { return_value: FIRST_HANDLE, last_error: 0 });
   define("DestroyWindow", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
   define("DefWindowProcW", { argument: [0, windowMessage.WM_NULL, 0, 0] }, { return_value: 0, last_error: 0 });

@@ -688,6 +688,14 @@ test("microprogram: PEXTRW zero-extends the selected xmm word into a GPR", (cont
   assertReferenceState(report, { register: { eax: 0x0302 } });
 });
 
+test("microprogram: a fetch_fault names the retired instruction that transferred", (context) => {
+  // mov eax,1; jmp eax. JMP retires at 0x401005; the next fetch at 1 faults.
+  const report = runMicro(context, [0xb8, 0x01, 0x00, 0x00, 0x00, 0xff, 0xe0, 0xc3]);
+  assert.equal(report.stop_reason, "fetch_fault");
+  assert.equal(report.exception.previous_eip >>> 0, 0x401005);
+  assert.equal(report.last_retired_eip >>> 0, 0x401005);
+});
+
 test("microprogram: PINSRW inserts a GPR word into the selected xmm lane", (context) => {
   // xorps xmm0,xmm0; mov eax,0xaabbccdd; pinsrw xmm0,eax,1 (66 0f c4 c0 01)
   // writes 0xccdd into word 1 and leaves the other seven words zero.

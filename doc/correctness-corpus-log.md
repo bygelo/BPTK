@@ -344,6 +344,31 @@ Measured on the staged corpus (payloads still out of git):
 The next named SuperTux gap is the post-OpenAL fetch at `0x1397bc`, not
 another missing SSE form at the OpenAL site.
 
+## Cycle 19 — sidecar IAT: SHGetFolderPath and OpenProcessToken (2026-09-12)
+
+The `0x1397bc` fetch was not an unrelocated SuperTux RVA. SDL2
+`call dword [0x2C0F8218]` used an **unbound** `shell32!SHGetFolderPathW`
+IAT slot that still held the hint/name RVA. `previous_eip` on a fetch_fault
+named `sdl2+0xd74cc`. The next hole was physfs `OpenProcessToken`.
+
+`SHGetFolderPathW`/`A` write a declared virtual profile (CSIDL_APPDATA →
+`C:\Users\Guest\AppData\Roaming`; unknown CSIDL is `E_INVALIDARG`).
+`OpenProcessToken` issues a closeable token handle for
+`GetCurrentProcess` (`0xffffffff`). `RegisterClassExA` /
+`UnregisterClassA` are the ANSI twins. `ShellExecuteW` is the wide twin
+of the existing honest refusal.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 10M: unchanged OpenAL budget stop.
+- CORPUS-014 SuperTux 50M: `SHGetFolderPathW(0x801A)` returns `S_OK`,
+  `OpenProcessToken` succeeds, then **guest_exception `0xe06d7363`** after
+  **31359444** instruction, **3944** HLE, **24.0 s** (`vcruntime140`
+  `0x34004971`). Not a frame. SDL2 still has 156 unserved imports.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is that
+C++ throw after pref-path init, not another hint-RVA fetch at these two
+slots.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
