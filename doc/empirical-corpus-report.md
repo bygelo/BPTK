@@ -108,12 +108,12 @@ archive to i386.
 | CORPUS-006 Dwarf Fortress classic | game | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
 | CORPUS-007 Chocolate Doom | game | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
 | CORPUS-008 OpenTTD 1.10.3 win32 | game | i386 | loaded | import_present → BPTK-010 |
-| CORPUS-009 Plink 0.74 win32 | program | i386 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-009 Plink 0.74 win32 | program | i386 | entry | process_exit 0 on --version (766759 instruction, `plink: Release 0.74`); no-arg is process_exit 1 with the real usage banner → BPTK-010 |
 | CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | process_exit 0 on --version (4648 instruction, `jq-1.7.1`) and on `-n 1` (4361398 instruction, colored `1`) → BPTK-010 |
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | instruction_budget_exhausted in openal32 table init after 10000000 instruction → BPTK-009 (722/722 served; 21 sidecar module; 1045 HLE calls; DllMain, locale, FSTENV, and OpenAL CRT math ran) |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | instruction_budget_exhausted in openal32 table init after 10000000 instruction (14.2 s / 705k insn/s at `0x280ab69f`; 25M at `0x280abeb1`) → BPTK-009 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 2, **entry 12**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 2**. Playability is

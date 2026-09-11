@@ -263,6 +263,25 @@ Measured on the staged corpus (payloads still out of git):
 interactive session. SuperTux is still not a playable frame; the next named
 gap is interpreter throughput through OpenAL table init.
 
+## Cycle 15 — in-place SSE, SuperTux 2.3x, Plink --version (2026-09-12)
+
+Register-register MOVAPS / scalar ADDSD/MULSD/DIVSD / CVTDQ2PD write the
+xmm file directly instead of allocating a Buffer per instruction. The
+OpenAL table-init series is the same finite loop at the same sites; it
+just retires faster.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 10M: budget exhausted at `0x280ab69f`, **1045** HLE, **14.2 s / 705k insn/s** (was 33.4 s).
+- CORPUS-014 SuperTux 25M: budget exhausted at `0x280abeb1`, **1047** HLE, **33.0 s / 758k insn/s**.
+- CORPUS-009 Plink `--version`: **process_exit 0**, **766759** instruction, 1794 HLE, output `plink: Release 0.74` plus build/compiler/commit lines.
+- CORPUS-009 Plink no-arg / `--help`: **process_exit 1**, **1054390** / **1055370** instruction, real usage banner.
+- CORPUS-010 jq `--version`: unchanged **process_exit 0**, **4648** instruction.
+- CORPUS-013 ripgrep `--version`: unchanged **process_exit 0**, **181697** instruction.
+
+`passing` stays 1 (BPTK-001 only). SuperTux is still not a playable frame.
+The next named SuperTux gap is still throughput through OpenAL table init
+(or an i386 SSE tier), not a missing opcode at these sites.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
