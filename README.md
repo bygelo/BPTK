@@ -81,7 +81,14 @@ npm ci --ignore-scripts
 npm run gate
 ```
 
-The source gate requires Node.js 22 or later and Python 3. The product-and-roadmap validator remains available as `python3 tool/validate.py`.
+The source gate requires Node.js 22 or later and Python 3. The product-and-roadmap validator remains available as `python3 tool/validate.py`. Two grind commands recompute whether the execution surface is full, against a measured denominator rather than a remembered count:
+
+```sh
+node tool/fullness.mjs --help
+node tool/residency.mjs --help
+```
+
+`fullness` asks whether full WASM + full CPU + full GPU emulation is reached on this run's own evidence (exit 0 only when every leg is green). `residency` asks whether the WASM tier is carrying every staged x86-64 run with interpreter residency at or under 1%. Neither command sets `passing`, and a red report is an honest measurement — not a gate failure.
 
 ## Product thesis
 
@@ -149,4 +156,4 @@ Browser Porting Toolkit is a working name for a Maphy Technologies project. It i
 
 BPTK-authored material in this repository and the `@bygelo/bptk` tarball is licensed under the [Apache License 2.0](https://github.com/bygelo/BPTK/blob/main/LICENSE), with copyright and repository status recorded in [NOTICE](https://github.com/bygelo/BPTK/blob/main/NOTICE). The package remains dependency-free and uses only Node.js built-in modules; it incorporates no third-party software or game content. Local analysis reads bounded metadata and prefixes only. Factual prior-art references are not bundled dependencies.
 
-Apache-2.0 does not relicense a future dependency, user-supplied game, trademark, proprietary asset, or restricted SDK. The [third-party policy](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md) and [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md) require component-level provenance and obligation review before upstream material enters the repository. BPTK-001 remains planned until the runtime reuse graph and public-name path receive their required review.
+Apache-2.0 does not relicense a future dependency, user-supplied game, trademark, proprietary asset, or restricted SDK. The [third-party policy](https://github.com/bygelo/BPTK/blob/main/doc/third-party.md) and [legal boundary](https://github.com/bygelo/BPTK/blob/main/doc/legal-boundary.md) require component-level provenance and obligation review before upstream material enters the repository. BPTK-001 is the one passing benchmark: the outbound licence and upstream reuse posture were approved on 2026-09-07; the runtime-component reuse graph and public-product-name path stay deferred to a runtime release.

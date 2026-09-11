@@ -87,7 +87,7 @@ function buildSyntheticImage() {
   emit(0xC3);                                        // ret
   // Gfallback @0x80 — an op the codegen cannot emit → interpreter tier
   at(0x80);
-  emit(0x0F, 0xA2);                                  // cpuid (not emittable)
+  emit(0xDF, 0xE0);                                  // fnstsw ax (served by the interpreter, not the WASM subset)
   emit(0xC3);                                        // ret
   return img;
 }
@@ -126,7 +126,7 @@ test("1:1 synthetic — tiered run is bit-exact to pure interpretation, with a g
   // hands back AT it — so the engine split is now per INSTRUCTION, not per function,
   // and this asserts it in those terms: the interpreter executed the `btc` (and the
   // guest's own `ret` onto the entry sentinel), the WASM tier executed the rest.
-  assert.ok(tiered.tier_report.interpreter_tier_instruction >= 1, "the cpuid must run interpreter-tier");
+  assert.ok(tiered.tier_report.interpreter_tier_instruction >= 1, "fnstsw ax must run interpreter-tier");
   assert.ok(tiered.tier_report.wasm_tier_instruction > tiered.tier_report.interpreter_tier_instruction, "most of the run must be carried by the WASM tier");
   // The computed result carries through both tiers: rax = btc(5 + 3 + 7, rcx=5) —
   // 15 with bit 5 toggled — and the tiered value must equal the interpreted one.

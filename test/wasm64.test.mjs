@@ -1705,12 +1705,12 @@ test("resume: the reference shim's jcc/call/indirect agree with lib/lift64 inter
 });
 
 test("resume: a single block reports the address after its emitted prefix", () => {
-  // mov eax,1; cpuid; ret — cpuid is an honest codegen fallback, so the prefix
+  // mov eax,1; f2xm1; ret — a transcendental x87 the lift refuses, so the prefix
   // stops at 0x05 and that is exactly where the interpreter must pick up.
-  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3];
+  const code = [0xb8, 0x01, 0x00, 0x00, 0x00, 0xd9, 0xf0, 0xc3];
   const image = Buffer.from(code);
   const jit = runBlock(liftBlock(image, 0), { image, loadBase });
-  assert.equal(jit.complete, false, "cpuid is not emittable — the prefix must stop honestly");
+  assert.equal(jit.complete, false, "f2xm1 is not emittable — the prefix must stop honestly");
   assert.equal(jit.resumeRip, loadBase + 0x05n, "resumeRip is the VA of the first instruction the codegen could not emit");
   assert.equal(jit.register.rax, 1n, "everything before the stop did run");
 });
@@ -2445,6 +2445,87 @@ function buildReturnRewriteImage() {
   return img;
 }
 
+function buildRetIntoCallerImage() {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  emit(0x48, 0x31, 0xC0);             // 0x00 xor rax, rax
+  emit(0xE8, 0x38, 0x00, 0x00, 0x00); // 0x03 call 0x40
+  emit(0x48, 0x83, 0xC0, 0x01);       // 0x08 add rax, 1
+  emit(0xC3);                         // 0x0C ret
+  p = 0x40;
+  emit(0x48, 0x83, 0xC0, 0x07);       // 0x40 add rax, 7
+  emit(0xC3);                         // 0x44 ret
+  return img;
+}
+
+function buildJmpIntoLeafImage() {
+  const img = Buffer.alloc(0x200);
+  let p = 0;
+  const emit = (...b) => { for (const x of b) img[p++] = x; };
+  const imm32 = (v) => [v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff];
+  emit(0x48, 0xC7, 0xC0, ...imm32(1)); // 0x00 mov rax, 1
+  emit(0xE9, ...imm32(0x34));          // 0x07 jmp 0x40 (0x40 - 0x0C = 0x34)
+  p = 0x40;
+  emit(0x48, 0x83, 0xC0, 0x02);        // 0x40 add rax, 2
+  emit(0xC3);                          // 0x44 ret
+  return img;
+}
+
+test("return map: host-entry callee RET to a bound caller resume point stays in WASM", () => {
+  // xor rax; call leaf; add rax,1; ret — leaf @0x40 is a separate region.
+  // Host-enter the leaf (no call_indirect swallow) with the return address already
+  // on the stack pointing at 0x08, which is a block of the already-bound caller at
+  // 0x00, not its own region. If the RET still hands back solely because 0x08 is
+  // outside the leaf, this fails.
+  const image = buildRetIntoCallerImage();
+  const { option, plan, spec, stackRegion } = crossHarness(image, 16);
+  const caller = compileFunction(image, { ...option, entryRva: 0 });
+  assert.ok(caller.returnSite.includes(0x08), `caller returnSite must name 0x08 (${JSON.stringify(caller.returnSite)})`);
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 10000 });
+  assert.equal(oracle.register.rax, 8n, "xor; call leaf; add 1 → 8");
+
+  for (const entryRva of [0x40, 0x00]) runFunction(image, { ...option, entryRva });
+  assert.equal(plan.callSlot.has(0x08), false, "0x08 is a resume point of 0x00, not its own region");
+
+  const STACK_BASE_LOCAL = 0x7ff000000000n;
+  const sentinel = 0xdead000000000000n | (loadBase & 0xffffn);
+  const rsp = plan.stackTop - 16n;
+  const view = new DataView(plan.memory.buffer);
+  const stackOff = (va) => stackRegion.wasmOffset + Number(va - STACK_BASE_LOCAL);
+  view.setBigUint64(stackOff(rsp), loadBase + 0x08n, true);
+  view.setBigUint64(stackOff(rsp + 8n), sentinel, true);
+  const registerFile = new Array(16).fill(0n);
+  registerFile[4] = rsp;
+
+  const jit = runFunction(image, {
+    ...option, entryRva: 0x40, entrySentinel: false, registerFile, rspOverride: rsp,
+  });
+  assert.notEqual(jit.statusName, "fallback", `RET to bound 0x08 must not hand back (got ${jit.statusName} at 0x${jit.resumeRip.toString(16)})`);
+  assert.equal(jit.statusName, "ok", `got ${jit.statusName} at 0x${jit.resumeRip.toString(16)}`);
+  assert.equal(jit.register.rax, oracle.register.rax, `rax WASM 0x${jit.register.rax.toString(16)} != oracle 0x${oracle.register.rax.toString(16)}`);
+  for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `flag ${name}`);
+});
+
+test("cross-module jmp: a direct jmp to another bound region starts at that region's entry", () => {
+  // jmp_cross must enter the target at its ENTRY. If emitCrossContinue set
+  // startAtRip for jmp, RIP at the transfer is the SOURCE block (0x00), the
+  // target unmatched-FALLBACKs, and this fails. Cap=2 so the jmp target is
+  // outside the entry region's decode budget (otherwise 0x40 is the same region).
+  const image = buildJmpIntoLeafImage();
+  const { option } = crossHarness(image, 2);
+  const jmpRegion = compileFunction(image, { ...option, entryRva: 0 });
+  assert.ok(jmpRegion.branchKind.includes("jmp_cross"), `entry must jmp_cross (${JSON.stringify(jmpRegion.branchKind)})`);
+  const oracle = interpret({ image, loadBase, entryRva: 0, budget: 10000 });
+  assert.equal(oracle.register.rax, 3n, "mov 1; jmp leaf; add 2 → 3");
+  for (const entryRva of [0x40, 0x00]) runFunction(image, { ...option, entryRva });
+  const jit = runFunction(image, { ...option, entryRva: 0 });
+  assert.notEqual(jit.statusName, "fallback", `jmp_cross must stay in WASM (got ${jit.statusName} at 0x${jit.resumeRip.toString(16)})`);
+  assert.equal(jit.statusName, "ok", `got ${jit.statusName} at 0x${jit.resumeRip.toString(16)}`);
+  assert.equal(jit.register.rax, oracle.register.rax, `rax WASM 0x${jit.register.rax.toString(16)} != oracle 0x${oracle.register.rax.toString(16)}`);
+  for (const name of FLAG) assert.equal(jit.flag[name], oracle.flag[name], `flag ${name}`);
+});
+
 test("return map: a guest that rewrites its own return address goes where the BYTES say", () => {
   const image = buildReturnRewriteImage();
   const { option, plan, mem, spec, stackRegion } = crossHarness(image);
@@ -2595,6 +2676,82 @@ test("xadd: the sum lands in the destination, the old destination in the source,
     Buffer.alloc(0x20 - 18),
     Buffer.from([0x07, 0x00, 0x00, 0x00]),
   ]), "xadd-mem"));
+});
+
+test("x87: fld1; fld1; faddp; fstp qword lands 2.0 in rax, bit-exact with the interpreter", () => {
+  // fld1; fld1; faddp st1,st0; fstp qword [rsp-8]; mov rax,[rsp-8]; ret
+  cover(assertEquivalent([
+    0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1, 0xdd, 0x5c, 0x24, 0xf8, 0x48, 0x8b, 0x44, 0x24, 0xf8, 0xc3,
+  ], "x87-faddp-2.0"));
+});
+
+test("x87: fistp rounds 1.5 to even 2, matching x87RoundToInt not trunc-toward-zero", () => {
+  // fld1; fld1; fld1; faddp; faddp → 3; fld1; fld1; faddp → 2; fdivp → 1.5;
+  // fistp dword; mov eax,[rsp-16]; ret. Nearest-even of 1.5 is 2; trunc is 1.
+  cover(assertEquivalent([
+    0xd9, 0xe8, 0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1, 0xde, 0xc1,
+    0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1, 0xde, 0xf9,
+    0xdb, 0x5c, 0x24, 0xf0, 0x8b, 0x44, 0x24, 0xf0, 0xc3,
+  ], "x87-fistp-nearest-even"));
+});
+
+test("x87: fsubr dest-top (D8 E9) is y-x, not a throw", () => {
+  // fldz; fld1; fsubr st1; fistp dword; mov eax,[rsp-16]; ret → st0 = 0-1 = -1
+  cover(assertEquivalent([
+    0xd9, 0xee, 0xd9, 0xe8, 0xd8, 0xe9, 0xdb, 0x5c, 0x24, 0xf0, 0x8b, 0x44, 0x24, 0xf0, 0xc3,
+  ], "x87-fsubr-d8e9"));
+});
+
+test("x87: fdivr dest-top (D8 F1) is y/x, not a throw", () => {
+  // fld1; fld1; faddp → 2; fld1 → st0=1 st1=2; fdivr st1 dest-top: st0 = 2/1 = 2
+  cover(assertEquivalent([
+    0xd9, 0xe8, 0xd9, 0xe8, 0xde, 0xc1, 0xd9, 0xe8, 0xd8, 0xf1,
+    0xdb, 0x5c, 0x24, 0xf0, 0x8b, 0x44, 0x24, 0xf0, 0xc3,
+  ], "x87-fdivr-d8f1"));
+});
+
+test("x87: fsubr dest-st(i) (DC E1) is y-x, not a throw", () => {
+  // fld1; fldz → st0=0 st1=1; fsubr st1 dest-st(i): st1 = 0-1 = -1; fstp discards 0; fistp → -1
+  cover(assertEquivalent([
+    0xd9, 0xe8, 0xd9, 0xee, 0xdc, 0xe1, 0xdd, 0x5c, 0x24, 0xf8,
+    0xdb, 0x5c, 0x24, 0xf0, 0x8b, 0x44, 0x24, 0xf0, 0xc3,
+  ], "x87-fsubr-dce1"));
+});
+
+test("x87: fild/fmulp/fistp computes 6*7=42 through the shipped decoder", () => {
+  cover(assertEquivalent([
+    0xc7, 0x44, 0x24, 0xfc, 0x06, 0x00, 0x00, 0x00,
+    0xc7, 0x44, 0x24, 0xf8, 0x07, 0x00, 0x00, 0x00,
+    0xdb, 0x44, 0x24, 0xfc,
+    0xdb, 0x44, 0x24, 0xf8,
+    0xde, 0xc9,
+    0xdb, 0x5c, 0x24, 0xf0,
+    0x8b, 0x44, 0x24, 0xf0,
+    0xc3,
+  ], "x87-fild-fmulp-42"));
+});
+
+test("cpuid: leaf 0 vendor, leaf 1 features, other leaves zero — bit-exact with executeCpuid", () => {
+  // mov eax,0; cpuid; ret
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3], "cpuid-leaf0"));
+  // mov eax,1; cpuid; ret
+  cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3], "cpuid-leaf1"));
+  // mov eax,99; cpuid; ret — undeclared leaf zeros eax/ebx/ecx/edx
+  cover(assertEquivalent([0xb8, 0x63, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3], "cpuid-other"));
+});
+
+test("leave: mov rsp,rbp then pop rbp, then the following ret runs in the same block", () => {
+  // push rbp; mov rbp,rsp; mov eax,42; sub rsp,16; leave; ret
+  // leave undoes the sub and restores the caller's rbp; eax stays 42.
+  cover(assertEquivalent([
+    0x55, 0x48, 0x89, 0xe5, 0xb8, 0x2a, 0x00, 0x00, 0x00, 0x48, 0x83, 0xec, 0x10, 0xc9, 0xc3,
+  ], "leave-frame"));
+  // movabs rax,0x1111111111111111; push rax; mov rbp,rsp; mov eax,42; leave; ret
+  // leave pops the saved 0x1111… into rbp; eax is 42.
+  cover(assertEquivalent([
+    0x48, 0xb8, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x11,
+    0x50, 0x48, 0x89, 0xe5, 0xb8, 0x2a, 0x00, 0x00, 0x00, 0xc9, 0xc3,
+  ], "leave-pop-into-rbp"));
 });
 
 test("cmpxchg: dest is replaced on a match, the accumulator loads dest on a miss, sub flags", () => {
