@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { deflateSync } from "node:zlib";
+import { crc32, deflateSync } from "node:zlib";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 import { resolveStageDir } from "../lib/corpus.mjs";
@@ -121,10 +121,61 @@ test("a DOS-only executable is refused with a structured reason", (context) => {
   assert.throws(() => ingestInput(inputPath), (error) => error.input_code === "unsupported_executable_format");
 });
 
+function createStoredZip(entries) {
+  const localPart = [];
+  const centralPart = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name, "utf8");
+    const data = Buffer.isBuffer(entry.data) ? entry.data : Buffer.from(entry.data);
+    const checksum = crc32(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt32LE(checksum, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    localPart.push(local, name, data);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt32LE(checksum, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt32LE(offset, 42);
+    centralPart.push(central, name);
+    offset += 30 + name.length + data.length;
+  }
+  const centralBuffer = Buffer.concat(centralPart);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(centralBuffer.length, 12);
+  eocd.writeUInt32LE(offset, 16);
+  return Buffer.concat([...localPart, centralBuffer, eocd]);
+}
+
 test("a zip archive is refused until archive ingestion is implemented", (context) => {
   const inputPath = createRoot(context, "game.zip");
   writeFileSync(inputPath, Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]));
   assert.throws(() => ingestInput(inputPath), (error) => error.input_code === "archive_ingest_unimplemented");
+});
+
+test("ingest of a zip names the selected executable machine, including x86_64", (context) => {
+  const inputPath = createRoot(context, "tool.zip");
+  writeFileSync(inputPath, createStoredZip([
+    { name: "bin/tool.exe", data: createPe32File({ machine: 0x8664 }) },
+  ]));
+  const outputDir = createRoot(context, "zip64") + "-out";
+  const report = ingestInput(inputPath, { output: outputDir });
+  assert.equal(report.is_ingested, true);
+  assert.equal(report.package_manifest.executable, "bin/tool.exe");
+  assert.equal(report.detection.probe_eligible, false);
+  assert.match(report.detection.probe_reason, /x86_64/);
 });
 
 test("ingest of an existing package directory recognizes it", (context) => {

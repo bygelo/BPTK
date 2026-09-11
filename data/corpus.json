@@ -203,6 +203,57 @@
       "acquired_at": "2026-09-05",
       "state": "acquired",
       "note": "A 32-bit GUI program: exercises the user32/gdi32 window-and-dialog import breadth in the export-coverage ledger, distinct from the console-only i386 entries."
+    },
+    {
+      "entry_id": "CORPUS-012",
+      "title": "curl 8.22.0 win64",
+      "kind": "program",
+      "category": "network client",
+      "payload_kind": "archive",
+      "source_url": "https://curl.se/windows/dl-8.22.0_1/curl-8.22.0_1-win64-mingw.zip",
+      "origin_url": "https://curl.se/windows/",
+      "license": "curl",
+      "redistribution_basis": "The curl license permits redistribution of the unmodified binary; the file is the project's own official Windows build, with a published sha256 on curl.se.",
+      "size_byte": 8691604,
+      "sha256": "7f23b039f6ea4197362d4468e1a0e71428201222e1bef3b680d5ef7b2aefb714",
+      "game_loop": false,
+      "acquired_at": "2026-09-12",
+      "state": "acquired",
+      "note": "Official mingw x86-64 network client: a console program whose import surface is ws2_32 and the Universal CRT, distinct from jq and Plink."
+    },
+    {
+      "entry_id": "CORPUS-013",
+      "title": "ripgrep 14.1.1 win32",
+      "kind": "program",
+      "category": "command-line search",
+      "payload_kind": "archive",
+      "source_url": "https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-i686-pc-windows-msvc.zip",
+      "origin_url": "https://github.com/BurntSushi/ripgrep",
+      "license": "MIT OR Unlicense",
+      "redistribution_basis": "The MIT or Unlicense dual license permits redistribution of the unmodified binary; the file is the project release asset and the published sha256 matches.",
+      "size_byte": 1918749,
+      "sha256": "1e5c99e4851c964152db07c79151982c7fa7a549b645b6b47daae07a9c185f8e",
+      "game_loop": false,
+      "acquired_at": "2026-09-12",
+      "state": "acquired",
+      "note": "An i386 Rust/MSVC console program: a 32-bit non-game utility on a different CRT and language runtime than jq or Plink, so the coverage ledger sees a new import family."
+    },
+    {
+      "entry_id": "CORPUS-014",
+      "title": "SuperTux 0.7.0 win32",
+      "kind": "game",
+      "category": "platformer",
+      "payload_kind": "archive",
+      "source_url": "https://github.com/SuperTux/supertux/releases/download/v0.7.0/SuperTux-v0.7.0-win32-portable.zip",
+      "origin_url": "https://www.supertux.org/",
+      "license": "GPL-3.0-or-later",
+      "redistribution_basis": "The GPL-3.0-or-later license permits redistribution of the unmodified release; the file is the project release asset.",
+      "size_byte": 307358208,
+      "sha256": "0207949f2c7e1e7e2e45f87c17b2310bdfa526d0b55106490a7cc98708dfc9eb",
+      "game_loop": true,
+      "acquired_at": "2026-09-12",
+      "state": "acquired",
+      "note": "A 32-bit SDL platformer with its own art: the i386 game entry that is not a transport sim or a Doom engine, so the Win32/SDL import surface and the DDraw-era BottleShip class get a third distinct title."
     }
   ]
 }

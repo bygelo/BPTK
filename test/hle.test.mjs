@@ -15,7 +15,7 @@ import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
-import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
+import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
 
 // A bounded machine with a read-only host-file store and an initial
 // environment, for the file-read + WAD-search path (the corpus-007 lane). The
@@ -427,6 +427,18 @@ function buildExerciserData(dataOffset) {
   data.write("KERNEL32.dll\0", dataOffset.kernel32_name, "ascii");
   return data;
 }
+
+test("api-set and ntdll names resolve to the same kernel32 or msvcrt row", () => {
+  const wait = resolveHleExport("api-ms-win-core-synch-l1-2-0.dll", "WaitOnAddress");
+  assert.equal(wait?.library, "kernel32.dll");
+  assert.equal(wait?.symbol, "WaitOnAddress");
+  const exit = resolveHleExport("ntdll.dll", "ExitProcess");
+  assert.equal(exit?.library, "kernel32.dll");
+  const crt = resolveHleExport("api-ms-win-crt-heap-l1-1-0.dll", "malloc");
+  assert.ok(crt, "the CRT heap api-set must resolve");
+  assert.equal(crt.symbol, "malloc");
+  assert.equal(resolveHleExport("kernel32.dll", "NoSuchExport"), null);
+});
 
 test("conformance: every Win32 core HLE export carries case and matches the oracle", () => {
   const caseTable = buildConformanceCaseTable();

@@ -26,9 +26,18 @@ Tests: added `test/report.test.mjs` (16 tests) + trace tests in `test/corpus.tes
 - CORPUS-010 jq 1.7.1 win32 i386 (MIT, console) — sha256 `e4efdd6a…5166df`, 1027584 B, jqlang GitHub release.
 - CORPUS-011 PuTTYgen 0.81 win32 i386 (MIT, GUI) — sha256 `577de7e2…072480`, 883480 B, the.earth.li official mirror. GUI binary broadens the user32/gdi32 import surface in the export-coverage ledger.
 
+## Cycle 3 — corpus growth + generic HLE/api-set (2026-09-12)
+
+`data/corpus.json`: 11 → **14** lawful DRM-free entries. Added three project-official-served binaries with verified pins (payloads never enter git):
+- CORPUS-012 curl 8.22.0 win64 (curl license, console) — sha256 `7f23b039…efb714`, 8691604 B, curl.se official Windows zip. Ingest now reports the selected executable's machine, so this archive is `x86_64` at `entry` (BPTK-031), not a false i386.
+- CORPUS-013 ripgrep 14.1.1 win32 i386 (MIT OR Unlicense, console) — sha256 `1e5c99e4…185f8e`, 1918749 B, GitHub release. Reaches `entry` after the kernel32/ntdll/userenv/bcryptprimitives widening; stops on unsupported `0x0f 0xc7` (CMPXCHG8B / rdrand group).
+- CORPUS-014 SuperTux 0.7.0 win32 (GPL-3.0-or-later, SDL platformer) — sha256 `0207949f…dfc9eb`, 307358208 B, project portable zip. Ingest required a distinct `archive_input_byte` (512 MiB) so a zip is not mistaken for one inflate chunk. Loaded; 190 of 722 import served. Remaining unserved are bundled game DLLs (msvcp140, sdl2 leftovers, glew, physfs, opengl, openal) plus C++ CRT — the BottleShip-class next work is mapping sidecar PE modules, not more kernel32 rows.
+
+The archive-vs-chunk bound split, inspect/security file-size alignment to the 512 MiB download bound, and api-set/ntdll name-forward in `computeImportService` are generic (they change every title, not one).
+
 ## Remaining
 
-None in scope. Every Pillar-3 item is implemented and gate-green. `passing` is honestly 0 — no real .exe reaches an interactive stage because the runtime (BPTK-010) is red. The corpus and export-coverage ledger remain the scoreboard other lanes measure against; growing it further means acquiring more lawful i386 binaries with real pins.
+`passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux and OpenTTD 1.10.3 stay at `loaded` on unserved imports. Ripgrep's next named gap is `0x0f 0xc7` on the i386 probe. Grow more lawful i386 **game** binaries only after sidecar DLL mapping exists, otherwise they pile up at the same bundled-DLL frontier.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 

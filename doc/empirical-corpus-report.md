@@ -90,6 +90,37 @@ regresses none. Run against the identical record set, it refuses with
 gate holding honestly on real record. The gate is covered by test for the
 single-beneficiary, multi-beneficiary, regression, and sandboxed-adapter case.
 
+## 2026-09-12 pass (14 entry)
+
+The manifest grew to fourteen hash-pinned lawful freeware entry. Inspect and
+security file-size limits match the 512 MiB download bound; ingest distinguishes
+`archive_input_byte` (whole zip/7z) from `chunk_input_byte` (one inflate). A zip
+or 7z now reports the selected executable's machine instead of defaulting every
+archive to i386.
+
+| Entry | Kind | Machine | Reached stage | Named generic gap |
+|---|---|---|---|---|
+| CORPUS-001 PuTTY | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
+| CORPUS-002 Plink | program | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-003 jq | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
+| CORPUS-004 7-Zip extra | program | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-005 OpenTTD | game | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-006 Dwarf Fortress classic | game | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-007 Chocolate Doom | game | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-008 OpenTTD 1.10.3 win32 | game | i386 | loaded | import_present → BPTK-010 |
+| CORPUS-009 Plink 0.74 win32 | program | i386 | entry | runtime_game_loop_absent → BPTK-010 |
+| CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | fetch_fault → BPTK-009 |
+| CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | loaded | import_present → BPTK-010 |
+| CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
+| CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | unsupported_opcode 0x0f c7 → BPTK-009 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | loaded | import_present → BPTK-010 (190/722 served; leftover is bundled DLL + msvcp140) |
+
+Reached: staged 0, classified 0, packaged 0, loaded 3, **entry 11**, interactive 0.
+Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 2**. Playability is
+not claimed. SuperTux is the SDL2/OpenGL freeware title on the BottleShip-class
+path; the next generic work is mapping package-local DLLs as real PE modules so
+those imports are not required to be HLE rows.
+
 ## Boundary statement
 
 - Every payload is DRM-free, runs offline, and is lawfully redistributable; the
