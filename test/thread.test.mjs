@@ -105,6 +105,7 @@ test("teb builder places every documented field at its documented displacement",
   assert.equal(built.teb.readUInt32LE(tebField.process_id), 0x111);
   assert.equal(built.teb.readUInt32LE(tebField.thread_id), 0x222);
   assert.equal(built.teb.readUInt32LE(tebField.tls_slot), 0, "the inline TLS slot array starts zeroed");
+  assert.equal(built.teb.readUInt32LE(tebField.thread_local_storage_pointer), 0, "PE TLS array pointer stays unset without a declared base");
   assert.equal(built.peb.readUInt32LE(pebField.image_base_address), 0x00400000);
   assert.equal(built.peb.readUInt8(pebField.being_debugged), 0);
   assert.equal(built.fs_base, 0xf0000000);
@@ -142,6 +143,13 @@ test("fs:[4] and fs:[8] carry the real stack bounds the probe runs on", (context
   assert.equal(report.register.eax >>> 0, report.thread.stack_base >>> 0);
   assert.equal(report.register.ebx >>> 0, report.thread.stack_limit >>> 0);
   assert.ok((report.register.eax >>> 0) > (report.register.ebx >>> 0), "the stack base is above the stack limit");
+});
+
+test("fs:[0x2c] is a live PE TLS array whose slot 0 points at a mapped block", (context) => {
+  // mov eax, fs:[0x2C]; mov eax, [eax]; ret — ThreadLocalStoragePointer, then slot 0.
+  const report = readRun(context, [...fsLoadEax(tebField.thread_local_storage_pointer), 0x8b, 0x00, 0xc3], { import_value: true });
+  assert.equal(report.stop_reason, "entry_return", JSON.stringify(report.exception));
+  assert.notEqual(report.register.eax >>> 0, 0, "slot 0 must be a mapped TLS block, not a null deref");
 });
 
 test("a TLS slot written through fs reads back through fs", (context) => {

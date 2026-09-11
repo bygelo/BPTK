@@ -457,6 +457,22 @@ function invoke(guest, library, symbol, argument) {
   return guest.invokeExport(guest.lookupExport(library, symbol), argument);
 }
 
+test("GetConsoleMode writes the mode dword and returns BOOL", () => {
+  const { guest, memory } = createConformanceMachine();
+  const handle = invoke(guest, "kernel32.dll", "GetStdHandle", [-11]);
+  const dest = guest.layout.arena_base + 0x40;
+  assert.equal(invoke(guest, "kernel32.dll", "GetConsoleMode", [handle, dest]), 1);
+  assert.equal(memory.readMemory(dest, 4), 3);
+});
+
+test("GetModuleFileNameW(NULL) writes the current executable path", () => {
+  const { guest } = createConformanceMachine();
+  const dest = guest.layout.arena_base + 0x40;
+  assert.equal(invoke(guest, "kernel32.dll", "GetModuleFileNameW", [0, dest, 260]), "C:\\game\\game.exe".length);
+  assert.equal(guest.readWideString(dest), "C:\\game\\game.exe");
+  assert.equal(guest.getLastError(), 0);
+});
+
 test("BPTK-101: interlocked atomics read-modify-write the guest dword and honor the return contract", () => {
   const { guest, memory } = createConformanceMachine();
   const cell = guest.layout.arena_base + 0x40;

@@ -112,8 +112,8 @@ archive to i386.
 | CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | fetch_fault → BPTK-009 |
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
-| CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | read_fault at address 0 after 20999 instruction → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | unsupported_opcode x87 FSTENV (D9 /6) after 643190 instruction → BPTK-009 (722/722 served; 21 sidecar module; 1043 HLE calls; DllMain, locale, and OpenAL CRT math ran) |
+| CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | read_fault at 0x6FFFF000 (stack probe below mapped stack) after 214704 instruction → BPTK-009 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | instruction_budget_exhausted in openal32 table init after 10000000 instruction → BPTK-009 (722/722 served; 21 sidecar module; 1045 HLE calls; DllMain, locale, FSTENV, and OpenAL CRT math ran) |
 
 Reached: staged 0, classified 0, packaged 0, loaded 2, **entry 12**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 3**. Playability is
@@ -123,9 +123,11 @@ old NX-stack fetch at 1498 was `_initterm` RET after a stdcall-popped cdecl
 frame. The 4261-insn `0xe06d7363` was `std::bad_alloc` from `HeapAlloc(NULL)`
 while `__acrt_heap` was still zero, not a missing EH dispatcher. The 32245-insn
 locale `read_fault` was `WideCharToMultiByte(CP_ACP=0)` refused as invalid.
-The stop is now x87 `FSTENV` in ucrt after OpenAL CRT math. Ripgrep still
-faults on a null read after 20999 instruction. The next generic SuperTux work
-is the x87 environment save/restore (BPTK-009), not locale.
+The SuperTux stop is now the 10M instruction cap inside a finite OpenAL
+power-series table init, not FSTENV. Ripgrep reached `WriteConsoleW` and then
+faults on a stack probe one page below the mapped stack after 214704
+instruction. The next generic SuperTux work is interpreter throughput through
+that OpenAL series (BPTK-009), not another missing x87 form.
 
 ## Boundary statement
 

@@ -131,14 +131,34 @@ Measured on the staged corpus (payloads still out of git):
 - CORPUS-013 ripgrep: `read_fault` at address 0 after **20999** instruction
   (185 HLE calls).
 
+## Cycle 9 — FSTENV, PE TLS, SHUFPS, GetConsoleMode ABI (2026-09-12)
+
+i386 `D9 /6` `/4` is FSTENV/FLDENV (32-bit protected-mode environment).
+`GetModuleFileName(NULL)` is the current image. `fs:[0x2C]` is a live PE TLS
+array whose slots point at one bounded block (template-copied when the PE
+declares TLS). `0F C6` is SHUFPS/SHUFPD. `GetConsoleMode` takes two arguments,
+writes the mode, and returns BOOL — the old one-argument stdcall pop left the
+pointer on the stack so the next RET fetched it as code.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux: **722/722** served, 21 sidecar module, reaches `entry`,
+  runs past ucrt `FSTENV`, then `instruction_budget_exhausted` at **10000000**
+  (1045 HLE) and **25000000** (1047 HLE) inside a finite OpenAL table-init
+  series at `openal32` `0x280ab69f` / `0x280abeb1`. `glDrawArrays` is still
+  not a playable frame.
+- CORPUS-013 ripgrep: `read_fault` at `0x6FFFF000` after **214704** instruction
+  (889 HLE calls). `WriteConsoleW` fired. The fault is a stack probe below
+  the mapped stack, not a null TLS table.
+
 ## Remaining
 
 `passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux
-now reaches `entry` through sidecar DllMain, locale, and OpenAL CRT math; the
-next named gap is x87 `FSTENV`/`FLDENV` (BPTK-009), not locale. OpenTTD 1.10.3
-and PuTTYgen stay at `loaded` on unserved imports. Ripgrep's next named gap is
-the null read after 20999 instruction. More lawful i386 game binaries can
-now be admitted without piling up on bundled-DLL imports.
+now reaches `entry` through sidecar DllMain, locale, FSTENV, and OpenAL CRT
+math; the next named gap is interpreter throughput through OpenAL table init
+(BPTK-009), not FSTENV. OpenTTD 1.10.3 and PuTTYgen stay at `loaded` on
+unserved imports. Ripgrep's next named gap is the stack probe after 214704
+instruction. More lawful i386 game binaries can now be admitted without
+piling up on bundled-DLL imports.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
