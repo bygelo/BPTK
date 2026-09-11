@@ -354,6 +354,30 @@ test("microprogram: FSTENV writes the 32-bit environment and FLDENV restores the
   assertReferenceState(restore, { register: { eax: 0x037f } });
 });
 
+test("microprogram: FSTP ST(i) copies ST(0) then pops", (context) => {
+  // fld1; fstp st(0) (dd d8) is a pop; fld1; fistp leaves 1 in eax.
+  const report = runMicro(context, [
+    0xd9, 0xe8,
+    0xdd, 0xd8,
+    0xd9, 0xe8,
+    0xdb, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 1 } });
+});
+
+test("microprogram: FLD1 pushes 1.0 onto an empty x87 stack", (context) => {
+  // d9 e8 is FLD1 (form 0x28). It must not require a live ST(0).
+  const report = runMicro(context, [
+    0xd9, 0xe8,
+    0xdb, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 1 } });
+});
+
 test("microprogram: FRNDINT rounds ST(0) to the nearest even integer", (context) => {
   // fld qword 2.5; frndint (d9 fc); fistp dword — nearest-even of 2.5 is 2.
   const report = runMicro(context, [

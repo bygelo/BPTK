@@ -243,6 +243,26 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). No title is interactive. SuperTux is
 still not a playable frame.
 
+## Cycle 14 — CRT data imports, _initterm walk, jq 1:1 (2026-09-12)
+
+msvcrt `_iob` (and `_tzname` / `__mb_cur_max` / `_environ` / `__winitenv`)
+bind to the live FILE table, not a code thunk. i386 `_initterm` walks each
+guest constructor so mingw CRT can call `__wgetmainargs`. FLD1 is the real
+`D9 E8` (the old form `0x08` was FXCH ST(0)); `FSTP ST(i)` copies then pops.
+`hle_inspect` now also reports `output_latin1` because fputc is ANSI.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-010 jq `--version`: **process_exit 0**, **4648** instruction, 110 HLE, output `jq-1.7.1\n`.
+- CORPUS-010 jq `-n 1`: **process_exit 0**, **4361398** instruction, 22842 HLE, colored `1` (UTF-16 console). Needs a probe budget above the package 2M default.
+- CORPUS-010 jq no-arg: **process_exit 2**, **26971** instruction, real usage banner. argv[0] prints as `C:\game\jq-windows-i386.exe` plus a trailing wide-garbage glitch.
+- CORPUS-013 ripgrep `--version`: unchanged **process_exit 0**, **181697** instruction.
+- CORPUS-014 SuperTux: unchanged 10M OpenAL budget stop.
+
+`passing` stays 1 (BPTK-001 only). Ripgrep and jq `--version` are measured
+1:1 console completions. jq `-n 1` is a measured filter completion, not an
+interactive session. SuperTux is still not a playable frame; the next named
+gap is interpreter throughput through OpenAL table init.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

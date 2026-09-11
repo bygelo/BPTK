@@ -109,7 +109,7 @@ archive to i386.
 | CORPUS-007 Chocolate Doom | game | x86-64 | entry | runtime_game_loop_absent → BPTK-010 |
 | CORPUS-008 OpenTTD 1.10.3 win32 | game | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-009 Plink 0.74 win32 | program | i386 | entry | runtime_game_loop_absent → BPTK-010 |
-| CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | process_exit 2 after 23258 instruction; fputc("help.") EOF because _iob is a code thunk → BPTK-010 |
+| CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | process_exit 0 on --version (4648 instruction, `jq-1.7.1`) and on `-n 1` (4361398 instruction, colored `1`) → BPTK-010 |
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
@@ -127,7 +127,9 @@ The SuperTux stop is now the 10M instruction cap inside a finite OpenAL
 power-series table init, not FSTENV. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
-(1701493 instruction). The next generic SuperTux work is interpreter
+(1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
+4648 instruction); `jq -n 1` is `process_exit` 0 after 4361398 instruction
+with the colored `1`. The next generic SuperTux work is interpreter
 throughput through that OpenAL series (BPTK-009), not another missing x87 form.
 
 ## Boundary statement

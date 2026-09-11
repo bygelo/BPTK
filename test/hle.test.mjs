@@ -15,7 +15,7 @@ import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
-import { buildConformanceCaseTable, createConformanceImplementation, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
+import { buildConformanceCaseTable, computeImportService, createConformanceImplementation, createHleLayout, hleCrtDataLayout, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
 
 // A bounded machine with a read-only host-file store and an initial
 // environment, for the file-read + WAD-search path (the corpus-007 lane). The
@@ -473,6 +473,70 @@ test("i386 CRT argv is a 4-byte pointer vector so argv[1] is the first argument"
   const argcCell = guest.layout.arena_base;
   invoke(guest, "msvcrt.dll", "__getmainargs", [argcCell, argcCell + 4, argcCell + 8, 0, 0]);
   assert.equal(memory.readMemory(argcCell, 4), 2);
+});
+
+test("CRT data imports bind to the FILE table, not a code thunk", () => {
+  const layout = createHleLayout({ load_base: 0x400000, image_size_byte: 0x10000, stack_base: 0x70000000, stack_end: 0x70100000 });
+  assert.ok(layout);
+  const placed = hleCrtDataLayout(layout);
+  const service = computeImportService({
+    import: [
+      { library: "msvcrt.dll", symbol: "_iob" },
+      { library: "msvcrt.dll", symbol: "_tzname" },
+      { library: "msvcrt.dll", symbol: "__mb_cur_max" },
+      { library: "msvcrt.dll", symbol: "_environ" },
+      { library: "msvcrt.dll", symbol: "fputc" },
+    ],
+  }, layout);
+  assert.equal(service.import_catalog.find((row) => row.symbol === "_iob").address, placed.iob_base);
+  assert.equal(service.import_catalog.find((row) => row.symbol === "_tzname").address, placed.tzname_base);
+  assert.equal(service.import_catalog.find((row) => row.symbol === "__mb_cur_max").address, placed.mb_cur_max_cell);
+  assert.equal(service.import_catalog.find((row) => row.symbol === "_environ").address, placed.environ_cell);
+  const fputc = service.import_catalog.find((row) => row.symbol === "fputc").address;
+  assert.ok(fputc >= layout.thunk_base && fputc < layout.thunk_base + layout.thunk_page_byte);
+  assert.notEqual(placed.iob_base, fputc);
+  const { guest } = createConformanceMachine("jq.exe", { pointer_size_byte: 4 });
+  const stdout = guest.crtRuntime.iobBase + 32;
+  assert.equal(invoke(guest, "msvcrt.dll", "fputc", [0x41, stdout]), 0x41);
+  assert.deepEqual([...guest.takeOutput()], [0x41]);
+});
+
+test("i386 _initterm walks each guest constructor before returning", (context) => {
+  const imports = [
+    { library: "msvcrt.dll", symbol: "_initterm" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ];
+  const plan = planImports(imports);
+  const iat = Object.fromEntries(imports.map((entry) => [entry.symbol, plan.addressOf(entry.library, entry.symbol)]));
+  const marker = dataAddress(0);
+  const table = dataAddress(0x10);
+  const ctor = imageBase + 0x1100;
+  const data = Buffer.alloc(0x200);
+  data.writeUInt32LE(ctor, 0x10);
+  data.writeUInt32LE(0, 0x14);
+  const code = Buffer.alloc(0x200);
+  // ctor: mov dword [marker], 1; ret
+  code[0x100] = 0xc7;
+  code[0x101] = 0x05;
+  code.writeUInt32LE(marker, 0x102);
+  code.writeUInt32LE(1, 0x106);
+  code[0x10a] = 0xc3;
+  // entry: push table+8; push table; call [_initterm]; cmp [marker], 1; jne fail; push 0; call [ExitProcess]
+  let at = 0;
+  code[at++] = 0x68; code.writeUInt32LE(table + 8, at); at += 4;
+  code[at++] = 0x68; code.writeUInt32LE(table, at); at += 4;
+  code[at++] = 0xff; code[at++] = 0x15; code.writeUInt32LE(iat._initterm, at); at += 4;
+  code[at++] = 0x83; code[at++] = 0x3d; code.writeUInt32LE(marker, at); at += 4; code[at++] = 1;
+  code[at++] = 0x75; code[at++] = 0x08; // jne fail (skip push 0 + call ExitProcess)
+  code[at++] = 0x6a; code[at++] = 0x00;
+  code[at++] = 0xff; code[at++] = 0x15; code.writeUInt32LE(iat.ExitProcess, at); at += 4;
+  code[at++] = 0x6a; code[at++] = 0x02; // fail: ExitProcess(2)
+  code[at++] = 0xff; code[at++] = 0x15; code.writeUInt32LE(iat.ExitProcess, at);
+  const packagePath = createHlePackage(context, "initterm.exe", createImportPe32(imports, code, { data, import_layout: plan }));
+  const report = readRun(packagePath);
+  assert.equal(report.state, "probe_executed", JSON.stringify(report.exception));
+  assert.equal(report.stop_reason, "process_exit");
+  assert.equal(report.exit_code, 0, "the constructor must store 1 before _initterm returns");
 });
 
 test("WriteConsoleW writes the character count, not the byte count", () => {
