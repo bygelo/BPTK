@@ -1499,6 +1499,26 @@ test("BPTK-010 sync breadth: the address wait times out on an unchanged value an
   assert.equal(invoke(guest, "kernel32.dll", "WakeByAddressSingle", [target]), 1);
 });
 
+test("BPTK-010: DisableThreadLibraryCalls succeeds so a sidecar DllMain IAT is bound", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "DisableThreadLibraryCalls", [0x00400000]), 1);
+});
+
+test("BPTK-010: EnterCriticalSection adopts a zeroed CRITICAL_SECTION on first use", () => {
+  const { guest, memory } = createConformanceMachine();
+  const cell = guest.layout.arena_base + 0x200;
+  memory.writeBlock(cell, Buffer.alloc(24));
+  assert.equal(invoke(guest, "kernel32.dll", "EnterCriticalSection", [cell]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "LeaveCriticalSection", [cell]), 0);
+});
+
+test("BPTK-010: EnterCriticalSection still refuses a non-zero uninitialized cell", () => {
+  const { guest, memory } = createConformanceMachine();
+  const cell = guest.layout.arena_base + 0x240;
+  memory.writeMemory(cell, 4, 0x12345678);
+  assert.throws(() => invoke(guest, "kernel32.dll", "EnterCriticalSection", [cell]), /not initialized/);
+});
+
 test("BPTK-010 sync breadth: SignalObjectAndWait releases then waits, and the thread exit rows answer", () => {
   const { guest, memory } = createConformanceMachine();
   const scratch = guest.layout.arena_base + 0x40;

@@ -75,14 +75,32 @@ Measured on the staged corpus (payloads still out of git):
 - CORPUS-013 ripgrep: unchanged `read_fault` at address 0 after **20467**
   instruction (181 HLE calls).
 
+## Cycle 6 — cdecl, HMODULE, sidecar DllMain (2026-09-12)
+
+The 1498-insn NX-stack fetch was cdecl ABI: HLE `_crt_atexit` popped the
+caller frame, so `_initterm` RET fetched the leftover stack slot. CRT and
+SDL rows are now cdecl. `GetModuleHandle(NULL)` returns the mapped load
+base. Package-local exports win over HLE so ucrt `_initterm` is the real
+walker. Sidecar TLS then DllMain(DLL_PROCESS_ATTACH) run dependency-first.
+`DisableThreadLibraryCalls` binds the IAT that was jumping to RVA 0x22588.
+EnterCriticalSection adopts a zeroed CRITICAL_SECTION on first use.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux: **722/722** served, 21 sidecar module, reaches `entry`,
+  executes **4261** instruction and 99 HLE calls through DllMain, then
+  `guest_exception` 0xe06d7363 (MSVC C++ EH) at vcruntime140. `glDrawArrays`
+  is still not a playable frame.
+- CORPUS-013 ripgrep: unchanged `read_fault` at address 0 after **20467**
+  instruction (181 HLE calls).
+
 ## Remaining
 
 `passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux
-now reaches `entry`; the next named gap is the NX-stack fetch after CRT
-`_crt_atexit` (DllMain/CRT residency or a bad return), not another IAT row.
-OpenTTD 1.10.3 and PuTTYgen stay at `loaded` on unserved imports. Ripgrep's
-next named gap is the null read after 20467 instruction. More lawful i386
-game binaries can now be admitted without piling up on bundled-DLL imports.
+now reaches `entry` through sidecar DllMain; the next named gap is C++ EH
+(BPTK-053), not another IAT row. OpenTTD 1.10.3 and PuTTYgen stay at
+`loaded` on unserved imports. Ripgrep's next named gap is the null read
+after 20467 instruction. More lawful i386 game binaries can now be admitted
+without piling up on bundled-DLL imports.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 

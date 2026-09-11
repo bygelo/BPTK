@@ -113,17 +113,16 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | read_fault at address 0 after 20467 instruction → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | fetch_fault NX stack after 1498 instruction → BPTK-009 (722/722 served; 21 sidecar module; 9 HLE CRT calls) |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | guest_exception 0xe06d7363 after 4261 instruction → BPTK-053 (722/722 served; 21 sidecar module; 99 HLE calls; DllMain ran) |
 
 Reached: staged 0, classified 0, packaged 0, loaded 2, **entry 12**, interactive 0.
-Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 3**. Playability is
+Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**, **BPTK-053 × 1**. Playability is
 not claimed. SuperTux's IAT is fully served (sidecar + OpenGL HLE + leftover
-kernel32/shell32/dbghelp). It now executes from CRT entry through
-`GetSystemTimeAsFileTime` / `_set_app_type` / `_crt_atexit` and then fetches
-from the stack, which the probe refuses as non-executable. Ripgrep still
-faults on a null read after 20467 instruction. The next generic SuperTux work
-is CRT/DllMain residency and an executable-stack-or-bad-return diagnosis —
-not more IAT rows.
+kernel32/shell32/dbghelp). Sidecar DllMain and cdecl CRT ABI now run: the
+old NX-stack fetch at 1498 was `_initterm` RET after a stdcall-popped cdecl
+frame. The stop is an unhandled MSVC C++ exception inside vcruntime140.
+Ripgrep still faults on a null read after 20467 instruction. The next
+generic SuperTux work is C++ EH / SEH (BPTK-053), not another IAT row.
 
 ## Boundary statement
 

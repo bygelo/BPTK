@@ -297,12 +297,21 @@ test("regression risk: a served import binds to the HLE thunk page and a TLS cal
   assert.equal(tlsReport.instruction_count, 2);
 });
 
+test("regression risk: GetModuleHandle(NULL) returns the mapped image base", (context) => {
+  // push 0; call [GetModuleHandleW]; ret. On Win32 the HMODULE is the load
+  // address, so a CRT that adds an RVA to GetModuleHandle(NULL) fetches the
+  // real image, not a synthetic handle window.
+  const code = [0x6a, 0x00, 0xff, 0x15, 0x50, 0x11, 0x40, 0x00, 0xc3];
+  const report = readRun(createPackage(context, code, { import_value: true, import_symbol: "GetModuleHandleW" }).packagePath);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.exception, null);
+  assert.equal(report.register.eax, 0x00400000);
+});
+
 test("regression risk: the main module handle dereferences to the mapped image header", (context) => {
   // push 0; call [GetModuleHandleW]; movzx eax, word ptr [eax]; ret. On Win32 the
   // handle GetModuleHandle(NULL) returns is the base the image is mapped at, so
   // the CRT validates it by reading the "MZ" magic straight through the handle.
-  // The bounded probe now serves that read from the already-mapped image, so eax
-  // lands on 0x5a4d instead of faulting on the synthetic HLE handle address.
   const code = [0x6a, 0x00, 0xff, 0x15, 0x50, 0x11, 0x40, 0x00, 0x0f, 0xb7, 0x00, 0xc3];
   const report = readRun(createPackage(context, code, { import_value: true, import_symbol: "GetModuleHandleW" }).packagePath);
   assert.equal(report.stop_reason, "entry_return");
@@ -310,14 +319,14 @@ test("regression risk: the main module handle dereferences to the mapped image h
   assert.equal(report.register.eax, 0x5a4d);
 });
 
-test("regression risk: a write through the module handle stays a structured read-only fault", (context) => {
-  // push 0; call [GetModuleHandleW]; mov word ptr [eax], 0 — the image is read-only
-  // through its handle, so the store faults with structured write_fault rather
-  // than mutating the aliased image bytes.
+test("regression risk: a write through the DOS header stays a structured fault", (context) => {
+  // push 0; call [GetModuleHandleW]; mov word ptr [eax], 0 — the PE header sits
+  // before the first section, so a store through the HMODULE (the load base)
+  // is an unmapped-image write, not a mutation of executable bytes.
   const code = [0x6a, 0x00, 0xff, 0x15, 0x50, 0x11, 0x40, 0x00, 0x66, 0xc7, 0x00, 0x00, 0x00, 0xc3];
   const report = readRun(createPackage(context, code, { import_value: true, import_symbol: "GetModuleHandleW" }).packagePath);
   assert.equal(report.stop_reason, "write_fault");
-  assert.equal(report.exception.fault_address, 0x00020001);
+  assert.equal(report.exception.fault_address, 0x00400000);
 });
 
 test("regression risk: the fs moffs load resolves against the TEB base, not a zero segment", (context) => {
