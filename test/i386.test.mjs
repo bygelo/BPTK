@@ -701,6 +701,44 @@ test("microprogram: STMXCSR stores the declared MXCSR and LDMXCSR records a writ
   assertReferenceState(reload, { register: { eax: 0x1f80 } });
 });
 
+test("microprogram: the register-only SSE/integer loop keeps INC carry and Jcc fallthrough", (context) => {
+  // stc; mov eax,0; mov ecx,8; inc eax; dec ecx; jnz -4; ret. Eight cache
+  // hits of INC/DEC/Jcc. INC and DEC restore carry, so CF stays 1; the last
+  // DEC writes ZF and PF.
+  const counted = runMicro(context, [0xf9, 0xb8, 0x00, 0x00, 0x00, 0x00, 0xb9, 0x08, 0x00, 0x00, 0x00, 0x40, 0x49, 0x75, 0xfc, 0xc3], { instruction_budget_count: 64 });
+  assertReferenceState(counted, {
+    register: { eax: 8, ecx: 0 },
+    flag: { carry: true, parity: true, adjust: false, zero: true, sign: false, overflow: false },
+    eflags: 0x47,
+  });
+});
+
+test("microprogram: the OpenAL-shaped scalar series exits on an unchanged accumulator", (context) => {
+  // mov eax,1; cvtsi2sd xmm4,eax; xorps xmm2,xmm2; xorps xmm3,xmm3; mov ecx,1;
+  // then the register-only OpenAL table-init body with a zero term so the
+  // accumulator stays 0.0, TEST AH,0x44 sees ZF from UCOMISD-equal, and JP
+  // falls through. Every opcode in that body is a fast-path register form.
+  const body = [
+    0xb8, 0x01, 0x00, 0x00, 0x00, 0xf2, 0x0f, 0x2a, 0xe0, 0x0f, 0x57, 0xd2, 0x0f, 0x57, 0xdb, 0xb9, 0x01, 0x00, 0x00, 0x00,
+    0x66, 0x0f, 0x6e, 0xc1, 0x0f, 0x28, 0xcc, 0xf3, 0x0f, 0xe6, 0xc0, 0x41, 0xf2, 0x0f, 0x5e, 0xc8, 0x0f, 0x28, 0xc2,
+    0xf2, 0x0f, 0x59, 0xc9, 0xf2, 0x0f, 0x59, 0xd9, 0xf2, 0x0f, 0x58, 0xd3, 0x66, 0x0f, 0x2e, 0xd0, 0x9f, 0xf6, 0xc4, 0x44,
+    0x7a, 0xd7, 0xc3,
+  ];
+  const report = runMicro(context, body, { instruction_budget_count: 64 });
+  assertReferenceState(report, {
+    register: { eax: 0x4201, ecx: 2 },
+    flag: { carry: false, parity: false, adjust: false, zero: false, sign: false, overflow: false },
+    eflags: 2,
+    xmm: {
+      0: xmmDouble(0, 0),
+      1: xmmDouble(1, 0),
+      2: xmmDouble(0, 0),
+      3: xmmDouble(0, 0),
+      4: xmmDouble(1, 0),
+    },
+  });
+});
+
 test("microprogram: CVTDQ2PD widens two packed dwords to doubles", (context) => {
   // mov eax,5; movd xmm0,eax; cvtdq2pd xmm0,xmm0 (f3 0f e6 c0) -> 5.0 and 0.0.
   const packed = runMicro(context, [0xb8, 0x05, 0x00, 0x00, 0x00, 0x66, 0x0f, 0x6e, 0xc0, 0xf3, 0x0f, 0xe6, 0xc0, 0xc3]);

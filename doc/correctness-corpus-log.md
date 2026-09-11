@@ -282,6 +282,25 @@ Measured on the staged corpus (payloads still out of git):
 The next named SuperTux gap is still throughput through OpenAL table init
 (or an i386 SSE tier), not a missing opcode at these sites.
 
+## Cycle 16 — register-only decode cache (2026-09-12)
+
+A direct-mapped 64k decode cache replays register-only INC/DEC, Jcc rel8,
+LAHF, TEST AH,imm8, MOVAPS/MOVAPD, MOVD xmm,r32, CVTDQ2PD, and scalar
+ADD/MUL/SUB/DIV SS/SD plus UCOMISD. Memory operands and 67/64/65/F0 still
+fall through to `executeInstruction`. Hits copy the cached bytes into the
+trace scratch so `trace_sha256` stays bit-exact. This is generic, not an
+OpenAL stub.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 10M: budget exhausted at `0x280ab69f`, **1045** HLE, **9.46 s / 1.06M insn/s** (was 14.2 s / 705k).
+- CORPUS-014 SuperTux 25M: budget exhausted at `0x280abeb1`, **1047** HLE, **20.1 s / 1.25M insn/s** (was 33.0 s / 758k).
+- CORPUS-009 Plink `--version`: unchanged **process_exit 0**, **766759** instruction.
+- CORPUS-010 jq `--version`: unchanged **process_exit 0**, **4648** instruction.
+
+`passing` stays 1 (BPTK-001 only). SuperTux is still not a playable frame.
+The next named SuperTux gap is still throughput through OpenAL table init
+(or an i386 SSE/WASM tier), not a missing opcode at these sites.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
