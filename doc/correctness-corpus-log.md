@@ -160,6 +160,29 @@ unserved imports. Ripgrep's next named gap is the stack probe after 214704
 instruction. More lawful i386 game binaries can now be admitted without
 piling up on bundled-DLL imports.
 
+## Cycle 10 — WriteConsoleW character count + command_line (2026-09-12)
+
+`WriteConsoleW` stored the UTF-16 byte count in `lpNumberOfCharsWritten`.
+Rust treated `100 !== 50` as a short write and re-panicked (`thread 'panicked
+at` ×110) until the 1MB stack probe at `0x6FFFF000`. The out pointer now
+receives the character count. The i386 probe forwards `command_line`.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-013 ripgrep `--version`: prints `ripgrep 14.1.1 (rev 4649aa9700)` and
+  `PCRE2 10.43 is available (JIT is unavailable)`, **181688** instruction,
+  454 HLE, then `read_fault` at eip `0x6f83d6` (`mov eax,[eax+8]` with eax 0)
+  during CRT teardown. No-arg prints `rg: ripgrep requires at least one
+  pattern to execute a search` (176640 instruction) and stops at the same
+  teardown fault. Not `process_exit`.
+- CORPUS-014 SuperTux: unchanged 10M OpenAL budget stop.
+
+## Remaining
+
+`passing` stays 1 (BPTK-001 only). No corpus entry is interactive. Ripgrep
+prints its real `--version` text; the next named gap is the null `[eax+8]`
+during CRT teardown, not the stack probe. SuperTux's next named gap is
+interpreter throughput through OpenAL table init.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

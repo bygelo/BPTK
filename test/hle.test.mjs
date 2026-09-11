@@ -457,6 +457,22 @@ function invoke(guest, library, symbol, argument) {
   return guest.invokeExport(guest.lookupExport(library, symbol), argument);
 }
 
+test("GetCommandLineW includes the declared command_line tail", () => {
+  const { guest } = createConformanceMachine("rg.exe", { command_line: ["--version"] });
+  const pointer = invoke(guest, "kernel32.dll", "GetCommandLineW", []);
+  assert.match(guest.readWideString(pointer), /--version/);
+});
+
+test("WriteConsoleW writes the character count, not the byte count", () => {
+  const { guest, memory } = createConformanceMachine();
+  const handle = invoke(guest, "kernel32.dll", "GetStdHandle", [-11]);
+  const text = guest.layout.arena_base + 0x40;
+  const written = guest.layout.arena_base + 0x80;
+  guest.writeWideString(text, "HELLO", 16);
+  assert.equal(invoke(guest, "kernel32.dll", "WriteConsoleW", [handle, text, 5, written, 0]), 1);
+  assert.equal(memory.readMemory(written, 4), 5);
+});
+
 test("GetConsoleMode writes the mode dword and returns BOOL", () => {
   const { guest, memory } = createConformanceMachine();
   const handle = invoke(guest, "kernel32.dll", "GetStdHandle", [-11]);
