@@ -688,6 +688,38 @@ test("microprogram: PEXTRW zero-extends the selected xmm word into a GPR", (cont
   assertReferenceState(report, { register: { eax: 0x0302 } });
 });
 
+test("microprogram: PINSRW inserts a GPR word into the selected xmm lane", (context) => {
+  // xorps xmm0,xmm0; mov eax,0xaabbccdd; pinsrw xmm0,eax,1 (66 0f c4 c0 01)
+  // writes 0xccdd into word 1 and leaves the other seven words zero.
+  // pinsrw xmm0,eax,8 wraps the selector (8 & 7 = 0) into word 0.
+  const inserted = runMicro(context, [
+    0x0f, 0x57, 0xc0, 0xb8, 0xdd, 0xcc, 0xbb, 0xaa, 0x66, 0x0f, 0xc4, 0xc0, 0x01, 0xc3,
+  ]);
+  assertReferenceState(inserted, { xmm: { 0: "0x0000ddcc000000000000000000000000" } });
+  const wrapped = runMicro(context, [
+    0x0f, 0x57, 0xc0, 0xb8, 0xdd, 0xcc, 0xbb, 0xaa, 0x66, 0x0f, 0xc4, 0xc0, 0x08, 0xc3,
+  ]);
+  assertReferenceState(wrapped, { xmm: { 0: "0xddcc0000000000000000000000000000" } });
+});
+
+test("microprogram: PINSRW from memory and the MMX form keep the other lanes", (context) => {
+  // mov word [0x401800],0xbeef; xorps xmm0,xmm0; pinsrw xmm0,[0x401800],3
+  // writes 0xbeef into word 3.
+  const fromMemory = runMicro(context, [
+    0x66, 0xc7, 0x05, 0x00, 0x18, 0x40, 0x00, 0xef, 0xbe,
+    0x0f, 0x57, 0xc0,
+    0x66, 0x0f, 0xc4, 0x05, 0x00, 0x18, 0x40, 0x00, 0x03,
+    0xc3,
+  ]);
+  assertReferenceState(fromMemory, { xmm: { 0: "0x000000000000efbe0000000000000000" } });
+  // mov eax,0xaabbccdd; pinsrw mm0,eax,1 (0f c4 c0 01) inserts 0xccdd into
+  // word 1 of a zero mm0. pxor mm0,mm0 is 0f ef c0.
+  const mmx = runMicro(context, [
+    0x0f, 0xef, 0xc0, 0xb8, 0xdd, 0xcc, 0xbb, 0xaa, 0x0f, 0xc4, 0xc0, 0x01, 0xc3,
+  ]);
+  assertReferenceState(mmx, { mm: { 0: 0xccdd0000n } });
+});
+
 test("microprogram: STMXCSR stores the declared MXCSR and LDMXCSR records a write", (context) => {
   // stmxcsr [0x401800] (0f ae /3); mov eax,[0x401800] reads the power-on 0x1f80.
   const store = runMicro(context, [0x0f, 0xae, 0x1d, 0x00, 0x18, 0x40, 0x00, 0xa1, 0x00, 0x18, 0x40, 0x00, 0xc3]);

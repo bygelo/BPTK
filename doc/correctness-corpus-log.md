@@ -323,6 +323,27 @@ Measured on the staged corpus (payloads still out of git):
 
 `passing` stays 1 (BPTK-001 only). No corpus entry is interactive.
 
+## Cycle 18 — PINSRW, SuperTux leaves OpenAL (2026-09-12)
+
+`0F C4` / `66 0F C4` PINSRW inserts the low 16 bits of a GPR or memory word
+into the selected MMX or XMM lane. Other lanes stay put. The selector wraps
+(`imm8 & 7` on xmm, `imm8 & 3` on mm). The `F2`/`F3` encodings stay a
+structured refusal. Generic, not an OpenAL or ucrt stub.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 10M: unchanged OpenAL budget stop at `0x280ab69f`.
+- CORPUS-014 SuperTux 50M: leaves OpenAL at **30017849** (`ucrtbase`
+  `0x35090719` was the first PINSRW). Then CRT argv. Then **fetch_fault**
+  at `0x1397bc` after **31124264** instruction, **3061** HLE, **32.0 s**.
+  `0x1397bc` is the image RVA of `.text` `0x5397bc` (`1f 44 00 00 …`), not
+  a mapped VA.
+- CORPUS-011 PuTTYgen / CORPUS-009 Plink / CORPUS-010 jq: not remesured
+  this cycle; prior numbers stand.
+
+`passing` stays 1 (BPTK-001 only). SuperTux is still not a playable frame.
+The next named SuperTux gap is the post-OpenAL fetch at `0x1397bc`, not
+another missing SSE form at the OpenAL site.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 8.8 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | instruction_budget_exhausted in openal32 table init after 10000000 instruction (9.46 s / 1.06M insn/s at `0x280ab69f`; 25M is 20.1 s / 1.25M insn/s at `0x280abeb1`) → BPTK-009 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init (`0x280ab69f`, 9.46 s / 1.06M insn/s); 50M remesure leaves OpenAL, serves `ucrtbase` PINSRW, then fetch_fault at `0x1397bc` after 31124264 instruction (3061 HLE, 32.0 s) → BPTK-009 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 2**. Playability is
@@ -123,10 +123,12 @@ old NX-stack fetch at 1498 was `_initterm` RET after a stdcall-popped cdecl
 frame. The 4261-insn `0xe06d7363` was `std::bad_alloc` from `HeapAlloc(NULL)`
 while `__acrt_heap` was still zero, not a missing EH dispatcher. The 32245-insn
 locale `read_fault` was `WideCharToMultiByte(CP_ACP=0)` refused as invalid.
-The SuperTux stop is now the 10M instruction cap inside a finite OpenAL
-power-series table init, not FSTENV. The register-only decode cache retires
-that series at **9.46 s / 1.06M insn/s** (25M at 20.1 s / 1.25M insn/s) and
-does not leave OpenAL. Ripgrep `--version` is `process_exit` 0
+The SuperTux 10M product-cap stop is still the finite OpenAL power-series
+table init at **9.46 s / 1.06M insn/s**. A 50M remesure leaves OpenAL at
+30017849 instruction, serves `ucrtbase` PINSRW (`0x0F C4`), reaches CRT
+argv (`GetCommandLineW` / `CommandLineToArgvW`), and stops `fetch_fault` at
+`0x1397bc` (31124264 instruction, 3061 HLE) — the image RVA of `.text`
+`0x5397bc`, not a mapped VA. That is not a frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
 (1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
@@ -135,8 +137,8 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` 34, `MapDialogRect` 35, `AppendMenuA` 36).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is still interpreter throughput through that OpenAL series
-(BPTK-009), not another missing x87 form. OpenTTD 1.10.3 stays 161/302.
+SuperTux work after OpenAL is the `0x1397bc` fetch (BPTK-009), not another
+SSE alias. OpenTTD 1.10.3 stays 161/302.
 
 ## Boundary statement
 
