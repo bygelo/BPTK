@@ -35,9 +35,54 @@ Tests: added `test/report.test.mjs` (16 tests) + trace tests in `test/corpus.tes
 
 The archive-vs-chunk bound split, inspect/security file-size alignment to the 512 MiB download bound, and api-set/ntdll name-forward in `computeImportService` are generic (they change every title, not one).
 
+## Cycle 4 — sidecar PE mapping + CMPXCHG8B (2026-09-12)
+
+Package-local DLLs now map as real PE modules (`lib/sidecar.mjs`): parse the
+export directory, place each image at a non-overlapping base starting
+`0x28000000`, bind the guest IAT to `load_base + export.rva`, and recurse that
+DLL's own non-system imports. System libraries stay on the Win32 HLE. Api-set
+CRT names that the HLE does not serve forward to a shipped `ucrtbase.dll`.
+DllMain and sidecar TLS are not run. `createImportCatalog` allows two IAT slots
+to share one export VA so api-set forwards and duplicate imports do not refuse
+as `duplicate_import_address`. The probe maps sidecar bytes with the same
+section permissions as the main image, so a `call [IAT]` into a sidecar is
+real code, not an HLE thunk.
+
+i386 `0x0F C7 /1` is CMPXCHG8B m64: equality writes ECX:EBX and sets ZF,
+mismatch loads EDX:EAX and clears ZF, register form is `#UD`, `/6` rdrand and
+`/7` rdseed stay refusals.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-013 ripgrep: still `entry`, but the stop moved from unsupported
+  `0x0f c7` to `read_fault` at address 0 after **20467** instruction.
+- CORPUS-014 SuperTux: still `loaded`, served **190/722 → 668/722** with
+  **21** sidecar module. Leftover: opengl32 (29), kernel32 (17), dbghelp (7),
+  shell32!ShellExecuteA (1).
+
+## Cycle 5 — SuperTux IAT close + MOVLPS (2026-09-12)
+
+Bounded OpenGL 1.1 HLE (`lib/gl.mjs`) plus leftover kernel32 file/locale,
+shell32, and dbghelp rows close SuperTux's main IAT. GL identity strings intern
+on first `glGetString` so they do not slide GetCommandLine off the pinned
+conformance addresses. `GetTickCount64` writes EDX. i386 `0x0F 12/13/16/17`
+is the MOVLPS/MOVHPS family the MSVC CRT used at instruction 19.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux: **722/722** served, 21 sidecar module, reaches `entry`,
+  executes **1498** instruction and 9 HLE CRT calls, then `fetch_fault`
+  ("Stack memory is not executable"). `glDrawArrays` is still not a playable
+  frame. DllMain is still not run.
+- CORPUS-013 ripgrep: unchanged `read_fault` at address 0 after **20467**
+  instruction (181 HLE calls).
+
 ## Remaining
 
-`passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux and OpenTTD 1.10.3 stay at `loaded` on unserved imports. Ripgrep's next named gap is `0x0f 0xc7` on the i386 probe. Grow more lawful i386 **game** binaries only after sidecar DLL mapping exists, otherwise they pile up at the same bundled-DLL frontier.
+`passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux
+now reaches `entry`; the next named gap is the NX-stack fetch after CRT
+`_crt_atexit` (DllMain/CRT residency or a bad return), not another IAT row.
+OpenTTD 1.10.3 and PuTTYgen stay at `loaded` on unserved imports. Ripgrep's
+next named gap is the null read after 20467 instruction. More lawful i386
+game binaries can now be admitted without piling up on bundled-DLL imports.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 

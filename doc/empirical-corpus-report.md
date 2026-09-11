@@ -112,14 +112,18 @@ archive to i386.
 | CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | fetch_fault → BPTK-009 |
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
-| CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | unsupported_opcode 0x0f c7 → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | loaded | import_present → BPTK-010 (190/722 served; leftover is bundled DLL + msvcp140) |
+| CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | read_fault at address 0 after 20467 instruction → BPTK-009 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | fetch_fault NX stack after 1498 instruction → BPTK-009 (722/722 served; 21 sidecar module; 9 HLE CRT calls) |
 
-Reached: staged 0, classified 0, packaged 0, loaded 3, **entry 11**, interactive 0.
-Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 2**. Playability is
-not claimed. SuperTux is the SDL2/OpenGL freeware title on the BottleShip-class
-path; the next generic work is mapping package-local DLLs as real PE modules so
-those imports are not required to be HLE rows.
+Reached: staged 0, classified 0, packaged 0, loaded 2, **entry 12**, interactive 0.
+Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 3**. Playability is
+not claimed. SuperTux's IAT is fully served (sidecar + OpenGL HLE + leftover
+kernel32/shell32/dbghelp). It now executes from CRT entry through
+`GetSystemTimeAsFileTime` / `_set_app_type` / `_crt_atexit` and then fetches
+from the stack, which the probe refuses as non-executable. Ripgrep still
+faults on a null read after 20467 instruction. The next generic SuperTux work
+is CRT/DllMain residency and an executable-stack-or-bad-return diagnosis —
+not more IAT rows.
 
 ## Boundary statement
 
