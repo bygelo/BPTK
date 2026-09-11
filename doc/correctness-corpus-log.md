@@ -369,6 +369,30 @@ Measured on the staged corpus (payloads still out of git):
 C++ throw after pref-path init, not another hint-RVA fetch at these two
 slots.
 
+## Cycle 20 — relative CreateFile, directory open, GetFullPathName (2026-09-12)
+
+The post-OpenProcessToken throw was CreateFileW of a path our
+`normalizeDrivePath` refused as 87 (relative / empty / no
+BACKUP_SEMANTICS directory). Win32 CreateFile("") is PATH_NOT_FOUND, not
+INVALID_PARAMETER. `.` / `..` resolve inside `c:\` and refuse escape past
+the root. OPEN_EXISTING + `FILE_FLAG_BACKUP_SEMANTICS` opens `c:`,
+`c:\game`, a `virtualDir`, or a host-file prefix as a directory handle;
+`GetFileInformationByHandle` reports `0x10`. GetFullPathName("") writes
+the current directory.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 10M: unchanged OpenAL budget stop.
+- CORPUS-014 SuperTux 50M: console.out/console.err create under the
+  virtual profile, then **guest_exception `0xe06d7363`** after
+  **31359471** instruction, **3944** HLE. The failing CreateFileW path is
+  empty (32 zero bytes); last_error is now 3. `--datadir C:\game\data`
+  plus 5134 real portable host files does not change that empty
+  CreateFile (msvcp140 `canonical` does not call GetFullPathNameW). Not a
+  frame.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is why
+msvcp140 CreateFileW's an empty path during datadir canonicalization.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
