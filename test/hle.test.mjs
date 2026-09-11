@@ -1499,6 +1499,37 @@ test("BPTK-010 sync breadth: the address wait times out on an unchanged value an
   assert.equal(invoke(guest, "kernel32.dll", "WakeByAddressSingle", [target]), 1);
 });
 
+test("BPTK-010: HeapAlloc returns an 8-byte-aligned block", () => {
+  const { guest } = createConformanceMachine();
+  const block = invoke(guest, "kernel32.dll", "HeapAlloc", [0, 0, 1]);
+  assert.equal(block & 7, 0);
+  assert.equal(invoke(guest, "kernel32.dll", "HeapFree", [0, 0, block]), 1);
+});
+
+test("BPTK-103: CP_ACP is the declared 1252 page for conversion and GetCPInfo", () => {
+  const { guest, memory } = createConformanceMachine();
+  const ansi = guest.layout.arena_base + 0x80;
+  const wide = guest.layout.arena_base + 0x100;
+  const info = guest.layout.arena_base + 0x200;
+  guest.writeAnsiString(ansi, "Hello", 32);
+  assert.equal(invoke(guest, "kernel32.dll", "MultiByteToWideChar", [0, 0, ansi, 5, wide, 32]), 5);
+  guest.writeWideString(wide, "Hello", 32);
+  assert.equal(invoke(guest, "kernel32.dll", "WideCharToMultiByte", [0, 0, wide, 5, ansi, 64, 0, 0]), 5);
+  assert.equal(invoke(guest, "kernel32.dll", "GetCPInfo", [0, info]), 1);
+  assert.equal(memory.readMemory(info, 4), 1);
+  assert.equal(invoke(guest, "kernel32.dll", "IsValidCodePage", [0]), 0);
+});
+
+test("BPTK-103: GetUserDefaultLocaleName and LCIDToLocaleName write en-US", () => {
+  const { guest } = createConformanceMachine();
+  const dest = guest.layout.arena_base + 0x80;
+  assert.equal(invoke(guest, "kernel32.dll", "GetUserDefaultLocaleName", [dest, 16]), 6);
+  assert.equal(guest.readWideString(dest), "en-US");
+  assert.equal(invoke(guest, "kernel32.dll", "LCIDToLocaleName", [0x0409, dest, 16, 0]), 6);
+  assert.equal(invoke(guest, "kernel32.dll", "AppPolicyGetProcessTerminationMethod", [0, dest]), 0);
+  assert.equal(guest.memory.readMemory(dest, 4), 1);
+});
+
 test("BPTK-010: VerSetConditionMask packs a 3-bit condition and VerifyVersionInfoW compares the profile", () => {
   const { guest, memory } = createConformanceMachine();
   assert.equal(invoke(guest, "kernel32.dll", "VerSetConditionMask", [0, 0, 2, 3]), 24);

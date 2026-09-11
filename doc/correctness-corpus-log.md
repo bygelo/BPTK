@@ -115,13 +115,29 @@ Measured on the staged corpus (payloads still out of git):
 - CORPUS-013 ripgrep: `read_fault` at address 0 after **20790** instruction
   (181 HLE calls).
 
+## Cycle 8 — CP_ACP, heap align, SSE convert/unpack, FRNDINT (2026-09-12)
+
+The 32245-insn locale `read_fault` was `WideCharToMultiByte(CP_ACP=0)`:
+conversion and `GetCPInfo` now resolve 0/1/3 to the declared 1252 page.
+`HeapAlloc` size is 8-byte aligned. Vista locale-name / AppPolicy /
+`FlsGetValue2` bind. i386 CVTDQ2PD, STMXCSR/LDMXCSR, PEXTRW, UNPCKLP*/HP*,
+and x87 FRNDINT let OpenAL and ucrt libm run.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux: **722/722** served, 21 sidecar module, reaches `entry`,
+  executes **643190** instruction and 1043 HLE calls through DllMain, locale,
+  and OpenAL CRT math, then `unsupported_opcode` x87 `FSTENV` (`D9 /6`) at
+  eip `0x3505054e`. `glDrawArrays` is still not a playable frame.
+- CORPUS-013 ripgrep: `read_fault` at address 0 after **20999** instruction
+  (185 HLE calls).
+
 ## Remaining
 
 `passing` stays 1 (BPTK-001 only). No corpus entry is interactive. SuperTux
-now reaches `entry` through sidecar DllMain and locale init; the next named
-gap is locale/codepage state (BPTK-103), not C++ EH. OpenTTD 1.10.3 and
-PuTTYgen stay at `loaded` on unserved imports. Ripgrep's next named gap is
-the null read after 20790 instruction. More lawful i386 game binaries can
+now reaches `entry` through sidecar DllMain, locale, and OpenAL CRT math; the
+next named gap is x87 `FSTENV`/`FLDENV` (BPTK-009), not locale. OpenTTD 1.10.3
+and PuTTYgen stay at `loaded` on unserved imports. Ripgrep's next named gap is
+the null read after 20999 instruction. More lawful i386 game binaries can
 now be admitted without piling up on bundled-DLL imports.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
