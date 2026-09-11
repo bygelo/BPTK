@@ -463,6 +463,18 @@ test("GetCommandLineW includes the declared command_line tail", () => {
   assert.match(guest.readWideString(pointer), /--version/);
 });
 
+test("i386 CRT argv is a 4-byte pointer vector so argv[1] is the first argument", () => {
+  const { guest, memory } = createConformanceMachine("jq.exe", { command_line: ["--version"], pointer_size_byte: 4 });
+  const argvCell = invoke(guest, "msvcrt.dll", "__p___argv", []);
+  const argvArray = memory.readMemory(argvCell, 4);
+  const argv1 = memory.readMemory(argvArray + 4, 4);
+  assert.notEqual(argv1, 0, "argv[1] must not be the high dword of argv[0]");
+  assert.equal(guest.readAnsiString(argv1), "--version");
+  const argcCell = guest.layout.arena_base;
+  invoke(guest, "msvcrt.dll", "__getmainargs", [argcCell, argcCell + 4, argcCell + 8, 0, 0]);
+  assert.equal(memory.readMemory(argcCell, 4), 2);
+});
+
 test("WriteConsoleW writes the character count, not the byte count", () => {
   const { guest, memory } = createConformanceMachine();
   const handle = invoke(guest, "kernel32.dll", "GetStdHandle", [-11]);

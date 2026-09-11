@@ -224,6 +224,25 @@ search are measured 1:1 console completions. They are not an interactive
 session. SuperTux is still not a playable frame; the next named gap is
 interpreter throughput through OpenAL table init.
 
+## Cycle 13 — i386 interpreter cache, thunk writes, CRT argv (2026-09-12)
+
+The probe reuses the per-instruction undo/trace scratch and caches the last
+mapped PE section. SuperTux 10M in OpenAL is **33.4 s** at `0x280ab69f`
+(1045 HLE) — still the named throughput gap, not a missing opcode. The HLE
+thunk page is a writable 1 MiB backing (fetch still refused). i386 CRT argv
+uses 4-byte slots; `__getmainargs` / `__wgetmainargs` write the real argc.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-013 ripgrep `--version`: **process_exit 0**, **181697** instruction.
+- CORPUS-014 SuperTux: 10M OpenAL budget stop, 33.4 s.
+- CORPUS-010 jq: **process_exit 2**, **23258** instruction, 753 HLE. fputc
+  of `help.\n` returns EOF because `_iob` is bound as a code thunk
+  (`FILE*` `0xfe000b64`). Next generic gap is data-import binding for
+  `_iob`, not another CPU opcode.
+
+`passing` stays 1 (BPTK-001 only). No title is interactive. SuperTux is
+still not a playable frame.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
