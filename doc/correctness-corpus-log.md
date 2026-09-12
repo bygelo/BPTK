@@ -873,6 +873,33 @@ GetProcAddress of those WGL symbols is 127), not another module-table
 row. Present path still unbound (`ChoosePixelFormat` / `SetPixelFormat` /
 `SwapBuffers` / `wglGetProcAddress`).
 
+## Cycle 41 — WGL GetProcAddress (2026-09-12)
+
+The SuperTux stop after Cycle 40 was SDL2 GetProcAddress of
+`wglGetProcAddress` / `wglCreateContext` / `wglMakeCurrent` /
+`wglDeleteContext` / `wglShareLists` returning 0 / last_error 127. The
+slice is generic: those WGL names (plus `wglGetCurrentDC` /
+`wglGetCurrentContext`) are opengl32 exports over one HGLRC table. A live
+DC issues a context handle; make-current binds it; GetProcAddress of a
+served `gl*` / `wgl*` name returns the thunk. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `gdi32!ChoosePixelFormat`** after **39497908**
+  instruction, **7947** HLE. `LoadLibraryW("OPENGL32.DLL")` returned
+  `0x2000c`. GetProcAddress of the five SDL WGL names succeeded. Last
+  `CreateWindowExW` `0x10018`. `GetDC` `0x40024`. Previous EIP `sdl2`
+  `0x2c0d1def` (`call [0x2c0f803c]`). A shown HWND is not a presented
+  frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`ChoosePixelFormat` (SDL `GetDC` then unbound `gdi32!ChoosePixelFormat`
+IAT), not another WGL row. Present path still unbound (`ChoosePixelFormat`
+/ `SetPixelFormat` / `SwapBuffers`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

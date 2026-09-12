@@ -43,3 +43,24 @@ test("glGetString names the bounded BPTK renderer and glGenTextures issues a rea
   assert.equal(invoke(guest, "glGetError", []), 0);
   assert.equal(guest.gl.describe().texture_count, 1);
 });
+
+test("wglCreateContext issues a handle GetProcAddress can resolve after LoadLibrary", () => {
+  const { guest } = createConformanceMachine();
+  const name = 0x00150020;
+  const symbol = 0x00150080;
+  guest.writeWideString(name, "OPENGL32.DLL", 32);
+  const module = guest.invokeExport(guest.lookupExport("kernel32.dll", "LoadLibraryW"), [name]);
+  assert.equal(module, 0x0002000c);
+  guest.writeAnsiString(symbol, "wglCreateContext", 20);
+  const thunk = guest.invokeExport(guest.lookupExport("kernel32.dll", "GetProcAddress"), [module, symbol]);
+  assert.notEqual(thunk, 0);
+  const dc = guest.invokeExport(guest.lookupExport("user32.dll", "GetDC"), [0]);
+  const context = guest.invokeExport(guest.exportAt(thunk), [dc]);
+  assert.equal(context, 0x00050000);
+  assert.equal(invoke(guest, "wglMakeCurrent", [dc, context]), 1);
+  assert.equal(invoke(guest, "wglGetCurrentDC", []), dc);
+  assert.equal(invoke(guest, "wglGetCurrentContext", []), context);
+  assert.equal(invoke(guest, "wglShareLists", [context, context]), 1);
+  assert.equal(invoke(guest, "wglMakeCurrent", [0, 0]), 1);
+  assert.equal(invoke(guest, "wglDeleteContext", [context]), 1);
+});

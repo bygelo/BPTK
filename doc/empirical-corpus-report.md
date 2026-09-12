@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW last 0x1001c, SetPropW 1, ClientToScreen 1, GetICMProfileW 1, SetWindowTextW 1, DragAcceptFiles 0, ShowWindow 1, GetClassInfoExW 1, LoadLibraryW("OPENGL32.DLL") 0x2000c, then process_exit 1 after GetProcAddress wglGetProcAddress/wglCreateContext 127 (41500008 instruction, 19608 HLE) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW last 0x10018, LoadLibraryW("OPENGL32.DLL") 0x2000c, GetProcAddress wglGetProcAddress/wglCreateContext hit, GetDC 0x40024, then fetch_fault gdi32!ChoosePixelFormat (39497908 instruction, 7947 HLE) → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 1**. Playability is
@@ -138,11 +138,12 @@ handles / `SetThreadExecutionState` (`ES_CONTINUOUS` `0x80000000`) /
 `GetWindowLongW` `GWL_HINSTANCE` `0x400000` / `SetPropW` 1 /
 `ClientToScreen` 1 / `GetICMProfileW` 1 / `SetWindowTextW` 1 /
 `DragAcceptFiles` 0 / `ShowWindow` 1 (was visible; last `CreateWindowExW`
-`0x1001c`) / `GetClassInfoExW` 1 / `LoadLibraryW("OPENGL32.DLL")` `0x2000c`,
-and stops **process_exit 1** at **41500008**
-instruction / **19608** HLE. SDL `GetProcAddress` of `wglGetProcAddress` /
-`wglCreateContext` / `wglMakeCurrent` / `wglDeleteContext` / `wglShareLists`
-returns 0 (last_error 127); `ChoosePixelFormat` is never reached. A shown HWND is not a presented frame. Ripgrep `--version` is `process_exit` 0
+`0x10018`) / `LoadLibraryW("OPENGL32.DLL")` `0x2000c` / GetProcAddress of
+`wglGetProcAddress` / `wglCreateContext` / `wglMakeCurrent` /
+`wglDeleteContext` / `wglShareLists` hit,
+and stops **fetch_fault `gdi32!ChoosePixelFormat`** at **39497908**
+instruction / **7947** HLE. Previous EIP `sdl2` `0x2c0d1def`
+(`call [0x2c0f803c]`). A shown HWND is not a presented frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
 (1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
@@ -151,11 +152,10 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is `wglGetProcAddress` / `wglCreateContext` / `wglMakeCurrent`
-(LoadLibrary of `opengl32.dll` now succeeds; GetProcAddress of those WGL
-symbols is 127), not another module-table row.
+SuperTux work is `ChoosePixelFormat` (SDL `GetDC` then `call [IAT]` of
+unbound `gdi32!ChoosePixelFormat`), not another WGL GetProcAddress row.
 Present path still unbound
-(`ChoosePixelFormat` / `SetPixelFormat` / `SwapBuffers` / `wglGetProcAddress`).
+(`ChoosePixelFormat` / `SetPixelFormat` / `SwapBuffers`).
 The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
