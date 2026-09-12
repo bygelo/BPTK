@@ -2098,6 +2098,19 @@ test("BPTK-010: LoadLibraryExW appends .dll and honors LOAD_LIBRARY_SEARCH_SYSTE
   assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryA", [guest.layout.arena_base + 0x80]), 0x00020002);
 });
 
+test("LoadLibraryW of OPENGL32.DLL returns a handle GetProcAddress can resolve", () => {
+  const { guest } = createConformanceMachine();
+  const name = guest.layout.arena_base + 0x80;
+  const symbol = guest.layout.arena_base + 0x100;
+  guest.writeWideString(name, "OPENGL32.DLL", 32);
+  const module = invoke(guest, "kernel32.dll", "LoadLibraryW", [name]);
+  assert.equal(module, 0x0002000c);
+  guest.writeAnsiString(symbol, "glGetError", 16);
+  const thunk = invoke(guest, "kernel32.dll", "GetProcAddress", [module, symbol]);
+  assert.notEqual(thunk, 0);
+  assert.equal(guest.invokeExport(guest.exportAt(thunk), []), 0);
+});
+
 test("BPTK-010: VirtualProtect succeeds on a mapped PE image range", () => {
   const memory = createIsolatedWin32Memory();
   let guestMs = 0;

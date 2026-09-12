@@ -847,6 +847,32 @@ LoadLibrary module table), not another class-info API. Present path
 still unbound (`ChoosePixelFormat` / `SetPixelFormat` / `SwapBuffers` /
 `wglGetProcAddress`).
 
+## Cycle 40 — LoadLibrary opengl32 (2026-09-12)
+
+The SuperTux stop after Cycle 39 was SDL2 `LoadLibraryW("OPENGL32.DLL")`
+returning 0 / last_error 126. The slice is generic: `opengl32.dll` joins
+the LoadLibrary module table (handle `0x2000c`) the same way `ws2_32.dll`
+and `comctl32.dll` already do, so GetProcAddress can resolve the existing
+OpenGL HLE exports. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **process_exit 1** after **41500008** instruction, **19608** HLE.
+  `LoadLibraryW("OPENGL32.DLL")` returned `0x2000c`. `GetProcAddress` of
+  `wglGetProcAddress` / `wglCreateContext` / `wglMakeCurrent` /
+  `wglDeleteContext` / `wglShareLists` is 0 / last_error 127, then
+  `ExitProcess(1)`. `ChoosePixelFormat` is never reached. A shown HWND is
+  not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`wglGetProcAddress` / `wglCreateContext` / `wglMakeCurrent` (SDL
+GetProcAddress of those WGL symbols is 127), not another module-table
+row. Present path still unbound (`ChoosePixelFormat` / `SetPixelFormat` /
+`SwapBuffers` / `wglGetProcAddress`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
