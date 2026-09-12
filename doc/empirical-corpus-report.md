@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW last 0x10024, ChoosePixelFormat 1, SetPixelFormat 1, wglCreateContext 0x5000c, SetFilePointerEx 1, CreateIconFromResource 0x8208, InitOnceBeginInitialize 1, SHGetKnownFolderPath S_OK, CPUID 0x80000000 max-extended, SleepConditionVariableSRW 1, RaiseException 0x406d1388 continues, WaitOnAddress store-wake + CreateEventExW served, then instruction_budget_exhausted at vcruntime140+0xef28 (50000000 instruction, 8967 HLE; WaitOnAddress INFINITE; SwapBuffers 0); raised 80M wakes (glTexImage2D / FindNextFileW) then zlib1+0x1303 (80000000 / 20442 HLE); 150M still zlib1+0x1350 (150000000 / 25459 HLE; SwapBuffers 0) → BPTK-009 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW last 0x10024, ChoosePixelFormat 1, SetPixelFormat 1, wglCreateContext 0x5000c, SetFilePointerEx 1, CreateIconFromResource 0x8208, InitOnceBeginInitialize 1, SHGetKnownFolderPath S_OK, CPUID 0x80000000 max-extended, SleepConditionVariableSRW 1, RaiseException 0x406d1388 continues, WaitOnAddress store-wake + CreateEventExW served, then instruction_budget_exhausted at vcruntime140+0xef28 (50000000 instruction, 8967 HLE; WaitOnAddress INFINITE; SwapBuffers 0); raised 80M/150M zlib1 inflate; 1B past zlib at ucrtbase+0x2c5e7 (1000000000 / 158496 HLE; glTexImage2D 110; glClearColor; SwapBuffers 0) → BPTK-009 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
@@ -150,7 +150,11 @@ Raised 80M: the worker finishes `HeapAlloc`, `WakeAllConditionVariable` runs,
 and main loads textures (`glTexImage2D` / `glTexSubImage2D` / `FindNextFileW`)
 then **instruction_budget_exhausted** at `zlib1+0x1303` (**80000000** /
 **20442** HLE). 150M is the same scalar inflate at `zlib1+0x1350`
-(**150000000** / **25459** HLE, ~410 s).
+(**150000000** / **25459** HLE, ~410 s). 1B is past zlib:
+**instruction_budget_exhausted** at `ucrtbase+0x2c5e7` (**1000000000** /
+**158496** HLE, ~47.9 min); `glTexImage2D`/`glTexSubImage2D` 110,
+`FindNextFileW` 543, `ReadFile` 3915, `glClearColor` ran, profile written.
+No new IAT or opcode miss.
 CPUID leaf `0x80000000` answers itself as the
 highest extended function. `CreateIconFromResource` returned `0x8208`;
 `InitOnceBeginInitialize` 1; `SHGetKnownFolderPath` S_OK; `CoTaskMemFree` ran.
@@ -165,9 +169,9 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is the zlib inflate of loaded PNG assets (`zlib1+0x1350` at
-150M; no new IAT or opcode miss; `SwapBuffers` 0). Present is served
-but SuperTux never calls it.
+SuperTux work is still guest progress toward `SwapBuffers` (1B stop is
+`ucrtbase+0x2c5e7` CRT after texture load; no new IAT or opcode miss;
+`SwapBuffers` 0). Present is served but SuperTux never calls it.
 The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,

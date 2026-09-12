@@ -1286,14 +1286,16 @@ Measured on the staged corpus (payloads still out of git):
   Raised 80M: **80000000** / **20442** HLE at `zlib1+0x1303` after
   `WakeAllConditionVariable` / `glTexImage2D` / `FindNextFileW`. 150M:
   **150000000** / **25459** HLE (~410 s) at `zlib1+0x1350` (same inflate).
+  1B: **1000000000** / **158496** HLE (~47.9 min) at `ucrtbase+0x2c5e7`
+  (past zlib; 110 texture upload; `glClearColor`; `SwapBuffers` 0).
   A store-wake is not a presented frame.
 - CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
   inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
   **7.4 s**, IAT 174/174). Not a shown window.
 
-`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is zlib
-inflate of PNG assets (`zlib1+0x1350` at 150M; no new IAT); `gdi32!SwapBuffers`
-is served but SuperTux never reaches it.
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is guest
+progress toward `gdi32!SwapBuffers` (1B is `ucrtbase+0x2c5e7` after texture
+load; no new IAT or opcode); SwapBuffers is served but SuperTux never reaches it.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
