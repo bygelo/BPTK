@@ -732,6 +732,22 @@ test("MonitorFromPoint and MonitorFromWindow return the one virtual display", ()
   assert.equal(invoke(guest, "winmm.dll", "waveOutOpen", [0, 0, 0, 0, 0, 0]), 6);
   assert.equal(invoke(guest, "gdi32.dll", "GetDeviceGammaRamp", [0, 0]), 0);
   assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "GetSystemPowerStatus", [0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "GlobalLock", [0]), 0);
+  assert.equal(guest.getLastError(), 6);
+  assert.equal(invoke(guest, "gdi32.dll", "CreateFontIndirectW", [0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "GetMenu", [0]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "user32.dll", "DialogBoxIndirectParamW", [0, 0, 0, 0, 0]), 0xffffffff);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "ole32.dll", "PropVariantClear", [0]), 0x80070057);
+  assert.equal(invoke(guest, "oleaut32.dll", "#6", [0]), 0);
+  assert.equal(invoke(guest, "version.dll", "GetFileVersionInfoSizeA", [0, 0]), 0);
+  assert.equal(guest.getLastError(), 1813);
+  assert.equal(invoke(guest, "setupapi.dll", "CM_Locate_DevNodeA", [0, 0, 0]), 13);
+  assert.equal(invoke(guest, "shell32.dll", "DragQueryFileW", [0, 0xffffffff, 0, 0]), 0);
 });
 
 test("GetMonitorInfoW writes the one virtual desktop and EnumDisplayMonitors queues its callback", () => {
@@ -1383,20 +1399,20 @@ test("FIX-003: repeated exerciser run keeps the call trace, output, and memory h
 });
 
 test("unserved import: the refusal names the exact unserved surface instead of executing", (context) => {
-  // GetSystemPowerStatus is a kernel32 export outside the served HLE surface.
-  const imports = [{ library: "kernel32.dll", symbol: "GetSystemPowerStatus" }];
+  // CreateThreadpoolWork is a kernel32 export outside the served HLE surface.
+  const imports = [{ library: "kernel32.dll", symbol: "CreateThreadpoolWork" }];
   const packagePath = createHlePackage(context, "unserved.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
   assert.equal(report.is_executed, false);
   assert.equal(report.stop_reason, "import_present");
   assert.equal(report.hle ?? null, null);
-  assert.match(report.exception.message, /GetSystemPowerStatus|kernel32\.dll/);
+  assert.match(report.exception.message, /CreateThreadpoolWork|kernel32\.dll/);
 });
 
 test("unserved import: a partially served surface reports the served fraction", (context) => {
   const imports = [
     { library: "kernel32.dll", symbol: "GetLastError" },
-    { library: "kernel32.dll", symbol: "GetSystemPowerStatus" },
+    { library: "kernel32.dll", symbol: "CreateThreadpoolWork" },
   ];
   const packagePath = createHlePackage(context, "partial.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
