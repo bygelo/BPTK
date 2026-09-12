@@ -75,6 +75,31 @@ test("CreateWindowEx for an unregistered class fails with cannot-find-class", ()
   assert.equal(user.getLastError(), 0x57f);
 });
 
+test("CreateWindowEx finds a predefined control class regardless of case", () => {
+  const user = createUserSubsystem();
+  user.registerClass("Button", defaultProc);
+  const handle = user.createWindowEx({ class_name: "BUTTON" });
+  assert.notEqual(handle, 0);
+  assert.equal(user.getLastError(), 0);
+  assert.equal(user.registerClass("BUTTON", defaultProc), 0);
+  assert.equal(user.getLastError(), 0x582);
+});
+
+test("CreateWindowEx serves msctls_progress32 without a prior RegisterClass", () => {
+  const user = createUserSubsystem();
+  const handle = user.createWindowEx({ class_name: "msctls_progress32" });
+  assert.notEqual(handle, 0);
+});
+
+test("CreateWindowEx serves stock BUTTON without a prior RegisterClass", () => {
+  const user = createUserSubsystem();
+  user.registerClass("AppClass", defaultProc);
+  const parent = user.createWindowEx({ class_name: "AppClass" });
+  const handle = user.createWindowEx({ class_name: "BUTTON", style: 0x50000000, parent, control_id: 123 });
+  assert.notEqual(handle, 0);
+  assert.equal(user.getDlgItem(parent, 123), handle);
+});
+
 test("acceptDropFiles records whether a live window accepts dropped files", () => {
   const user = createUserSubsystem();
   user.registerClass("AppClass", defaultProc);
@@ -527,6 +552,51 @@ function applyUserOp(user, symbol, argument) {
       }
       if ((argument[1] >>> 0) !== 0) return 0;
       return 1;
+    case "AdjustWindowRectExForDpi":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 1;
+    case "SetProcessDPIAware":
+      return user.setProcessDpiAware();
+    case "SetProcessDpiAwarenessContext":
+      return user.setProcessDpiAwarenessContext(argument[0]);
+    case "SetThreadDpiAwarenessContext":
+      return user.setThreadDpiAwarenessContext(argument[0]);
+    case "GetThreadDpiAwarenessContext":
+      return user.getDpiContext();
+    case "GetAwarenessFromDpiAwarenessContext":
+      return user.awarenessFromDpiContext(argument[0]);
+    case "AreDpiAwarenessContextsEqual":
+      return (argument[0] | 0) === (argument[1] | 0) ? 1 : 0;
+    case "IsValidDpiAwarenessContext":
+      return user.isValidDpiContext(argument[0]) ? 1 : 0;
+    case "EnableNonClientDpiScaling":
+    case "GetDpiForWindow":
+      if (!user.isWindow(argument[0])) {
+        user.setLastError(0x578);
+        return 0;
+      }
+      return symbol === "GetDpiForWindow" ? 96 : 1;
+    case "GetDisplayConfigBufferSizes":
+      if ((argument[1] >>> 0) === 0 || (argument[2] >>> 0) === 0) {
+        user.setLastError(87);
+        return 87;
+      }
+      return 0;
+    case "QueryDisplayConfig":
+      if ((argument[1] >>> 0) === 0 || (argument[2] >>> 0) === 0 || (argument[3] >>> 0) === 0 || (argument[4] >>> 0) === 0) {
+        user.setLastError(87);
+        return 87;
+      }
+      return 0;
+    case "DisplayConfigGetDeviceInfo":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 87;
+      }
+      return 0;
     case "FindWindowA":
     case "GetCapture":
     case "GetClipboardOwner":
@@ -820,6 +890,28 @@ function buildUserConformanceCase() {
   define("EnumDisplayDevicesW", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
   define("EnumDisplayDevicesW", { argument: [0, 0, 1, 0] }, { return_value: 1, last_error: 0 });
   define("EnumDisplayDevicesA", { argument: [0, 1, 1, 0] }, { return_value: 0, last_error: 0 });
+  define("AdjustWindowRectExForDpi", { argument: [0, 0, 0, 0, 96] }, { return_value: 0, last_error: 87 });
+  define("AdjustWindowRectExForDpi", { argument: [1, 0, 0, 0, 96] }, { return_value: 1, last_error: 0 });
+  define("SetProcessDPIAware", { argument: [] }, { return_value: 1, last_error: 0 });
+  define("SetProcessDpiAwarenessContext", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("SetProcessDpiAwarenessContext", { argument: [-4] }, { return_value: 1, last_error: 0 });
+  define("SetThreadDpiAwarenessContext", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("SetThreadDpiAwarenessContext", { argument: [-4] }, { return_value: 0xffffffff, last_error: 0 });
+  define("GetThreadDpiAwarenessContext", { argument: [] }, { return_value: 0xffffffff, last_error: 0 });
+  define("GetAwarenessFromDpiAwarenessContext", { argument: [-4] }, { return_value: 2, last_error: 0 });
+  define("GetAwarenessFromDpiAwarenessContext", { argument: [-1] }, { return_value: 0, last_error: 0 });
+  define("AreDpiAwarenessContextsEqual", { argument: [-4, -4] }, { return_value: 1, last_error: 0 });
+  define("AreDpiAwarenessContextsEqual", { argument: [-4, -1] }, { return_value: 0, last_error: 0 });
+  define("IsValidDpiAwarenessContext", { argument: [-4] }, { return_value: 1, last_error: 0 });
+  define("IsValidDpiAwarenessContext", { argument: [0] }, { return_value: 0, last_error: 0 });
+  define("EnableNonClientDpiScaling", { argument: [0] }, { return_value: 0, last_error: 0x578 });
+  define("GetDpiForWindow", { argument: [0] }, { return_value: 0, last_error: 0x578 });
+  define("GetDisplayConfigBufferSizes", { argument: [2, 0, 0] }, { return_value: 87, last_error: 87 });
+  define("GetDisplayConfigBufferSizes", { argument: [2, 1, 1] }, { return_value: 0, last_error: 0 });
+  define("QueryDisplayConfig", { argument: [2, 0, 0, 0, 0, 0] }, { return_value: 87, last_error: 87 });
+  define("QueryDisplayConfig", { argument: [2, 1, 1, 1, 1, 0] }, { return_value: 0, last_error: 0 });
+  define("DisplayConfigGetDeviceInfo", { argument: [0] }, { return_value: 87, last_error: 87 });
+  define("DisplayConfigGetDeviceInfo", { argument: [1] }, { return_value: 0, last_error: 0 });
 
   // Plink import-surface widening (BPTK-146): the window, input, and message
   // queries the startup path probes. With no window and no host input device

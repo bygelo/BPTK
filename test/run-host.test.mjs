@@ -59,3 +59,95 @@ test("run.mjs host mounts are not title-branched", () => {
   const source = readFileSync(new URL("../lib/run.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(source, /supertux|SuperTux|puttygen|openttd/i);
 });
+
+test("FileStandardInfo.Directory is set on a host-dir prefix", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-host-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "data"));
+  writeFileSync(join(root, "data", "config"), "ok\n");
+  const hostFile = mapHostDirectory(root, [{ guest: "C:\\game\\data", host: "data" }]);
+  const memory = createIsolatedWin32Memory();
+  const guest = createWin32Hle(memory, memory.layout, {
+    executable_name: "game.exe",
+    clock: createGuestClock(),
+    host_file: hostFile,
+  });
+  const pathPtr = guest.layout.arena_base + 0x80;
+  const infoPtr = guest.layout.arena_base + 0x180;
+  guest.writeWideString(pathPtr, "C:\\game\\data", 64);
+  const handle = invoke(guest, "kernel32.dll", "CreateFileW", [pathPtr, 0x80000000, 1, 0, 3, 0x02000000, 0]);
+  assert.notEqual(handle, 0xffffffff);
+  const ok = invoke(guest, "kernel32.dll", "GetFileInformationByHandleEx", [handle, 1, infoPtr, 24]);
+  assert.equal(ok, 1);
+  assert.equal(memory.readMemory(infoPtr + 8, 4), 0);
+  assert.equal(memory.readMemory(infoPtr + 21, 1), 1);
+});
+
+test("FileStandardInfo reports host file size and FileNameInfo writes the path", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-host-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "data"));
+  writeFileSync(join(root, "data", "config"), "hello\n");
+  const hostFile = mapHostDirectory(root, [{ guest: "C:\\game\\data", host: "data" }]);
+  const memory = createIsolatedWin32Memory();
+  const guest = createWin32Hle(memory, memory.layout, {
+    executable_name: "game.exe",
+    clock: createGuestClock(),
+    host_file: hostFile,
+  });
+  const pathPtr = guest.layout.arena_base + 0x80;
+  const infoPtr = guest.layout.arena_base + 0x180;
+  guest.writeWideString(pathPtr, "C:\\game\\data\\config", 64);
+  const handle = invoke(guest, "kernel32.dll", "CreateFileW", [pathPtr, 0x80000000, 1, 0, 3, 0, 0]);
+  assert.notEqual(handle, 0xffffffff);
+  assert.equal(invoke(guest, "kernel32.dll", "GetFileInformationByHandleEx", [handle, 1, infoPtr, 24]), 1);
+  assert.equal(memory.readMemory(infoPtr + 8, 4), Buffer.byteLength("hello\n"));
+  assert.equal(memory.readMemory(infoPtr + 21, 1), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "GetFileInformationByHandleEx", [handle, 2, infoPtr, 128]), 1);
+  const nameByte = memory.readMemory(infoPtr, 4);
+  assert.ok(nameByte > 0);
+});
+
+test("wine_get_version stays unbound while SetThreadDescription resolves", () => {
+  const memory = createIsolatedWin32Memory();
+  const guest = createWin32Hle(memory, memory.layout, {
+    executable_name: "game.exe",
+    clock: createGuestClock(),
+  });
+  const namePtr = guest.layout.arena_base + 0x80;
+  guest.writeAnsiString(namePtr, "ntdll.dll", 16);
+  const ntdll = invoke(guest, "kernel32.dll", "GetModuleHandleA", [namePtr]);
+  guest.writeAnsiString(namePtr, "wine_get_version", 32);
+  assert.equal(invoke(guest, "kernel32.dll", "GetProcAddress", [ntdll, namePtr]), 0);
+  assert.equal(guest.getLastError(), 127);
+  assert.ok(guest.procedure_miss.some((row) => row.library === "ntdll.dll" && row.symbol === "wine_get_version"));
+  guest.writeAnsiString(namePtr, "RtlVerifyVersionInfo", 32);
+  assert.notEqual(invoke(guest, "kernel32.dll", "GetProcAddress", [ntdll, namePtr]), 0);
+  guest.writeAnsiString(namePtr, "kernel32.dll", 16);
+  const kernel32 = invoke(guest, "kernel32.dll", "GetModuleHandleA", [namePtr]);
+  guest.writeAnsiString(namePtr, "SetThreadDescription", 32);
+  assert.notEqual(invoke(guest, "kernel32.dll", "GetProcAddress", [kernel32, namePtr]), 0);
+  guest.writeAnsiString(namePtr, "user32.dll", 16);
+  const user32 = invoke(guest, "kernel32.dll", "GetModuleHandleA", [namePtr]);
+  guest.writeAnsiString(namePtr, "SetProcessDPIAware", 32);
+  assert.notEqual(invoke(guest, "kernel32.dll", "GetProcAddress", [user32, namePtr]), 0);
+  guest.writeAnsiString(namePtr, "GetDisplayConfigBufferSizes", 32);
+  assert.notEqual(invoke(guest, "kernel32.dll", "GetProcAddress", [user32, namePtr]), 0);
+});
+
+test("GetProcAddress of an unknown export is recorded as a procedure miss", () => {
+  const memory = createIsolatedWin32Memory();
+  const guest = createWin32Hle(memory, memory.layout, {
+    executable_name: "game.exe",
+    clock: createGuestClock(),
+  });
+  const namePtr = guest.layout.arena_base + 0x80;
+  guest.writeAnsiString(namePtr, "kernel32.dll", 16);
+  const moduleHandle = invoke(guest, "kernel32.dll", "GetModuleHandleA", [namePtr]);
+  assert.notEqual(moduleHandle, 0);
+  guest.writeAnsiString(namePtr, "NoSuchExportForMissList", 32);
+  const value = invoke(guest, "kernel32.dll", "GetProcAddress", [moduleHandle, namePtr]);
+  assert.equal(value, 0);
+  assert.equal(guest.getLastError(), 127);
+  assert.ok(guest.procedure_miss.some((row) => row.symbol === "NoSuchExportForMissList"));
+});

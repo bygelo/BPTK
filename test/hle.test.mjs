@@ -736,6 +736,26 @@ test("ToUnicode writes a US-layout character from the key table", () => {
   assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0xff, 0, key_state, dest, 16, 0]), 0);
 });
 
+test("GetDisplayConfigBufferSizes and QueryDisplayConfig describe one 1920x1080 path", () => {
+  const { guest, memory } = createConformanceMachine();
+  const numPath = guest.layout.arena_base + 0x40;
+  const numMode = guest.layout.arena_base + 0x44;
+  const pathArray = guest.layout.arena_base + 0x150040;
+  const modeArray = pathArray + 72;
+  assert.equal(invoke(guest, "user32.dll", "GetDisplayConfigBufferSizes", [2, 0, 0]), 87);
+  assert.equal(invoke(guest, "user32.dll", "GetDisplayConfigBufferSizes", [2, numPath, numMode]), 0);
+  assert.equal(memory.readMemory(numPath, 4), 1);
+  assert.equal(memory.readMemory(numMode, 4), 2);
+  memory.writeMemory(numPath, 4, 1);
+  memory.writeMemory(numMode, 4, 2);
+  assert.equal(invoke(guest, "user32.dll", "QueryDisplayConfig", [2, numPath, pathArray, numMode, modeArray, 0]), 0);
+  assert.equal(memory.readMemory(modeArray + 16, 4), 1920);
+  assert.equal(memory.readMemory(modeArray + 20, 4), 1080);
+  assert.equal(invoke(guest, "user32.dll", "SetProcessDPIAware", []), 1);
+  assert.equal(invoke(guest, "user32.dll", "GetDpiForWindow", [0]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+});
+
 test("AdjustWindowRectEx leaves the rect unchanged when there is no nonclient frame", () => {
   const { guest, memory } = createConformanceMachine();
   const rect = guest.layout.arena_base + 0x40;
@@ -2153,6 +2173,10 @@ test("BPTK-010: VerSetConditionMask packs a 3-bit condition and VerifyVersionInf
   assert.equal(invoke(guest, "kernel32.dll", "VerifyVersionInfoW", [info, 2, 8, 0]), 0);
   assert.equal(guest.getLastError(), 1150);
   assert.equal(invoke(guest, "kernel32.dll", "IsThreadAFiber", []), 0);
+  assert.equal(invoke(guest, "ntdll.dll", "RtlVerifyVersionInfo", [info, 2, 24, 0]), 0xc0000059);
+  memory.writeMemory(info + 4, 4, 5);
+  assert.equal(invoke(guest, "ntdll.dll", "RtlVerifyVersionInfo", [info, 2, 24, 0]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadDescription", [0xfffffffe, 0]), 0);
 });
 
 test("BPTK-010: LoadLibraryExW appends .dll and honors LOAD_LIBRARY_SEARCH_SYSTEM32", () => {
