@@ -629,6 +629,114 @@ test("WaitOnAddress parks until the other thread WakeByAddressSingle", (context)
   assert.equal(probe.exception?.exit_code, 0);
 });
 
+test("WaitOnAddress consumes a WakeByAddress credited before the waiter parks", (context) => {
+  // Worker wakes the cell without changing it, then returns. CreateThread
+  // hands off so that wake lands before main WaitOnAddress. Without credit
+  // the infinite wait never returns.
+  const symbols = ["CreateThread", "WaitOnAddress", "WakeByAddressSingle", "ExitProcess"];
+  const callIat = (slotVa) => [0xff, 0x15, slotVa & 0xff, (slotVa >>> 8) & 0xff, (slotVa >>> 16) & 0xff, (slotVa >>> 24) & 0xff];
+  const iatVa = 0x00401140 + (symbols.length + 1) * 4;
+  const slot = (index) => iatVa + index * 4;
+  const worker = 0x00401080;
+  const cell = 0x004010e0;
+  const zero = 0x004010e4;
+  const code = [
+    0xc7, 0x05, cell & 0xff, (cell >>> 8) & 0xff, (cell >>> 16) & 0xff, (cell >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0xc7, 0x05, zero & 0xff, (zero >>> 8) & 0xff, (zero >>> 16) & 0xff, (zero >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0x6a, 0x00, 0x6a, 0x00, 0x6a, 0x00,
+    0x68, worker & 0xff, (worker >>> 8) & 0xff, (worker >>> 16) & 0xff, (worker >>> 24) & 0xff,
+    0x6a, 0x00, 0x6a, 0x00,
+    ...callIat(slot(0)),
+    0x85, 0xc0, 0x74, 0x1c,
+    0x6a, 0xff,
+    0x6a, 0x04,
+    0x68, zero & 0xff, (zero >>> 8) & 0xff, (zero >>> 16) & 0xff, (zero >>> 24) & 0xff,
+    0x68, cell & 0xff, (cell >>> 8) & 0xff, (cell >>> 16) & 0xff, (cell >>> 24) & 0xff,
+    ...callIat(slot(1)),
+    0x83, 0xf8, 0x01, 0x74, 0x04, 0x6a, 0x03, 0xeb, 0x02, 0x6a, 0x00,
+    ...callIat(slot(3)),
+    0x6a, 0x02,
+    ...callIat(slot(3)),
+  ];
+  while (code.length < 0x80) code.push(0x90);
+  code.push(
+    0x68, cell & 0xff, (cell >>> 8) & 0xff, (cell >>> 16) & 0xff, (cell >>> 24) & 0xff,
+    ...callIat(slot(2)),
+    0xc2, 0x04, 0x00,
+  );
+  const { file } = createPe32WithImports(code, symbols);
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-wait-address-credit-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const exe = join(rootPath, "game.exe");
+  writeFileSync(exe, file);
+  const mapped = mapPe32ForRuntime(exe, null, null);
+  const stackSizeByte = normalizeStackSize(mapped.report.stack_reserve_byte);
+  const stackBase = chooseStackBase(mapped.report.load_base, mapped.report.load_base + mapped.report.image_size_byte, stackSizeByte);
+  const layout = createHleLayout({ ...mapped.report, stack_base: stackBase, stack_end: stackBase + stackSizeByte });
+  const service = computeImportService(mapped.report, layout);
+  assert.equal(service.unserved_count, 0, JSON.stringify(service.unserved));
+  const remapped = mapPe32ForRuntime(exe, null, service.import_catalog);
+  const probe = executeProbe(remapped, 100000, { hle_layout: layout, executable_name: "game.exe" });
+  assert.equal(probe.stop_reason, "process_exit", JSON.stringify(probe.exception));
+  assert.equal(probe.exception?.exit_code, 0);
+});
+
+test("WaitOnAddress INFINITE is not a budget stop while a sibling can run", (context) => {
+  // Worker Sleep(1) yields so main can park, then burns ~6k dec/jnz and stores 1.
+  // Budget 8k would exhaust if the parked INFINITE waiter ate the product cap.
+  const symbols = ["CreateThread", "WaitOnAddress", "ExitProcess", "Sleep"];
+  const callIat = (slotVa) => [0xff, 0x15, slotVa & 0xff, (slotVa >>> 8) & 0xff, (slotVa >>> 16) & 0xff, (slotVa >>> 24) & 0xff];
+  const iatVa = 0x00401140 + (symbols.length + 1) * 4;
+  const slot = (index) => iatVa + index * 4;
+  const worker = 0x00401080;
+  const cell = 0x004010e0;
+  const zero = 0x004010e4;
+  const code = [
+    0xc7, 0x05, cell & 0xff, (cell >>> 8) & 0xff, (cell >>> 16) & 0xff, (cell >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0xc7, 0x05, zero & 0xff, (zero >>> 8) & 0xff, (zero >>> 16) & 0xff, (zero >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0x6a, 0x00, 0x6a, 0x00, 0x6a, 0x00,
+    0x68, worker & 0xff, (worker >>> 8) & 0xff, (worker >>> 16) & 0xff, (worker >>> 24) & 0xff,
+    0x6a, 0x00, 0x6a, 0x00,
+    ...callIat(slot(0)),
+    0x85, 0xc0, 0x74, 0x1c,
+    0x6a, 0xff,
+    0x6a, 0x04,
+    0x68, zero & 0xff, (zero >>> 8) & 0xff, (zero >>> 16) & 0xff, (zero >>> 24) & 0xff,
+    0x68, cell & 0xff, (cell >>> 8) & 0xff, (cell >>> 16) & 0xff, (cell >>> 24) & 0xff,
+    ...callIat(slot(1)),
+    0x83, 0xf8, 0x01, 0x74, 0x04, 0x6a, 0x03, 0xeb, 0x02, 0x6a, 0x00,
+    ...callIat(slot(2)),
+    0x6a, 0x02,
+    ...callIat(slot(2)),
+  ];
+  while (code.length < 0x80) code.push(0x90);
+  code.push(
+    0x6a, 0x01,
+    ...callIat(slot(3)),
+    0xb9, 0x70, 0x17, 0x00, 0x00,
+    0x49,
+    0x75, 0xfd,
+    0xc7, 0x05, cell & 0xff, (cell >>> 8) & 0xff, (cell >>> 16) & 0xff, (cell >>> 24) & 0xff, 0x01, 0x00, 0x00, 0x00,
+    0xc2, 0x04, 0x00,
+  );
+  const { file } = createPe32WithImports(code, symbols);
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-wait-address-budget-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const exe = join(rootPath, "game.exe");
+  writeFileSync(exe, file);
+  const mapped = mapPe32ForRuntime(exe, null, null);
+  const stackSizeByte = normalizeStackSize(mapped.report.stack_reserve_byte);
+  const stackBase = chooseStackBase(mapped.report.load_base, mapped.report.load_base + mapped.report.image_size_byte, stackSizeByte);
+  const layout = createHleLayout({ ...mapped.report, stack_base: stackBase, stack_end: stackBase + stackSizeByte });
+  const service = computeImportService(mapped.report, layout);
+  assert.equal(service.unserved_count, 0, JSON.stringify(service.unserved));
+  const remapped = mapPe32ForRuntime(exe, null, service.import_catalog);
+  const probe = executeProbe(remapped, 8000, { hle_layout: layout, executable_name: "game.exe" });
+  assert.equal(probe.stop_reason, "process_exit", JSON.stringify(probe.exception));
+  assert.equal(probe.exception?.exit_code, 0);
+  assert.ok(probe.instruction_count > 8000);
+});
+
 test("WaitOnAddress wakes when the other thread stores a new value without WakeByAddress", (context) => {
   // Worker: mov dword [cell], 1; ret 4. No WakeByAddress.
   const symbols = ["CreateThread", "WaitOnAddress", "ExitProcess"];
