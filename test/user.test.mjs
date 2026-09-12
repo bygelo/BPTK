@@ -364,6 +364,18 @@ function applyUserOp(user, symbol, argument) {
       return user.clientRect(argument[0]) === null ? 0 : 1;
     case "GetWindowRect":
       return user.windowRect(argument[0]) === null ? 0 : 1;
+    case "ClientToScreen":
+      if ((argument[1] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return user.clientToScreen(argument[0], 0, 0) === null ? 0 : 1;
+    case "ScreenToClient":
+      if ((argument[1] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return user.screenToClient(argument[0], 0, 0) === null ? 0 : 1;
     case "MoveWindow":
       return user.moveWindow(argument[0], argument[1], argument[2], argument[3], argument[4]);
     case "AdjustWindowRect":
@@ -658,6 +670,10 @@ function buildUserConformanceCase() {
   define("GetClientRect", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
   define("GetWindowRect", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
   define("GetClientRect", { argument: [0xdeadbeef] }, { return_value: 0, last_error: 0 });
+  define("ClientToScreen", { argument: [FIRST_HANDLE, 0] }, { return_value: 0, last_error: 87 });
+  define("ClientToScreen", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, 1] }, { return_value: 1, last_error: 0 });
+  define("ClientToScreen", { argument: [0xdeadbeef, 1] }, { return_value: 0, last_error: 0 });
+  define("ScreenToClient", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, 1] }, { return_value: 1, last_error: 0 });
   define("MoveWindow", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, 10, 20, 100, 200, 1] }, { return_value: 1, last_error: 0 });
   define("AdjustWindowRect", { argument: [0, 0, 0] }, { return_value: 1, last_error: 0 });
   define("AdjustWindowRectEx", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });

@@ -1108,6 +1108,16 @@ test("BPTK-011: the message loop and geometry exports marshal MSG and RECT throu
   assert.equal(invoke(guest, "user32.dll", "MoveWindow", [window, 10, 20, 100, 200, 1]), 1);
   invoke(guest, "user32.dll", "GetWindowRect", [window, rectBuffer]);
   assert.deepEqual([0, 1, 2, 3].map((i) => memory.readMemory(rectBuffer + i * 4, 4)), [10, 20, 110, 220]);
+  // No nonclient frame: ClientToScreen adds the window origin; ScreenToClient inverts it.
+  const pointBuffer = base + 0x1c0;
+  memory.writeMemory(pointBuffer, 4, 5);
+  memory.writeMemory(pointBuffer + 4, 4, 7);
+  assert.equal(invoke(guest, "user32.dll", "ClientToScreen", [0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "ClientToScreen", [window, pointBuffer]), 1);
+  assert.deepEqual([memory.readMemory(pointBuffer, 4), memory.readMemory(pointBuffer + 4, 4)], [15, 27]);
+  assert.equal(invoke(guest, "user32.dll", "ScreenToClient", [window, pointBuffer]), 1);
+  assert.deepEqual([memory.readMemory(pointBuffer, 4), memory.readMemory(pointBuffer + 4, 4)], [5, 7]);
   assert.equal(invoke(guest, "user32.dll", "GetSystemMetrics", [0]), 1920);
 });
 
