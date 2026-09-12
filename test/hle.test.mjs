@@ -694,6 +694,15 @@ test("MonitorFromPoint and MonitorFromWindow return the one virtual display", ()
   assert.equal(invoke(guest, "user32.dll", "SetCursor", [0x8001]), 0);
   assert.equal(invoke(guest, "user32.dll", "SetCursor", [0]), 0x8001);
   assert.equal(invoke(guest, "user32.dll", "GetKeyboardLayout", [0]), 0x04090409);
+  assert.equal(invoke(guest, "user32.dll", "CallWindowProcW", [0, 0, 0, 0, 0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "CallWindowProcW", [0, 0, 0x81, 0, 0]), 1);
+  assert.equal(invoke(guest, "user32.dll", "ChangeDisplaySettingsExW", [0, 0, 0, 0, 0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "SetCapture", [0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "SetCapture", [1]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "user32.dll", "ReleaseCapture", []), 0);
+  assert.equal(invoke(guest, "user32.dll", "TrackMouseEvent", [0]), 0);
+  assert.equal(guest.getLastError(), 87);
 });
 
 test("GetMonitorInfoW writes the one virtual desktop and EnumDisplayMonitors queues its callback", () => {
