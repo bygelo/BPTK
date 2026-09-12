@@ -1239,3 +1239,57 @@ test("microprogram: the decode sweep classifies a synthetic section byte for byt
   assert.equal(sweep.unsupported_histogram[0].opcode, 0x0f0b);
   assert.equal(sweep.unsupported_histogram[1].opcode, 0xf4);
 });
+test("fast plan: sub/cmp imm, jmp rel32, and jmp [index*4+disp] are bit-exact", (context) => {
+  const switchBody = (index) => {
+    const code = [
+      0xb8, index, 0x00, 0x00, 0x00,
+      0x83, 0xf8, 0x01,
+      0x77, 0x13,
+      0xff, 0x24, 0x85, 0x28, 0x10, 0x40, 0x00,
+      0xbb, 0xa0, 0x00, 0x00, 0x00, 0xc3,
+      0xbb, 0xb0, 0x00, 0x00, 0x00, 0xc3,
+      0xbb, 0xc0, 0x00, 0x00, 0x00, 0xc3,
+      0x90, 0x90, 0x90, 0x90, 0x90,
+    ];
+    while (code.length < 0x28) code.push(0x90);
+    code.push(0x11, 0x10, 0x40, 0x00, 0x17, 0x10, 0x40, 0x00);
+    return code;
+  };
+  const switchFlag = [
+    { carry: true, parity: true, adjust: true, zero: false, sign: true, overflow: false },
+    { carry: false, parity: true, adjust: false, zero: true, sign: false, overflow: false },
+    { carry: false, parity: false, adjust: false, zero: false, sign: false, overflow: false },
+  ];
+  assertReferenceState(runMicro(context, switchBody(0)), { register: { eax: 0, ebx: 0xa0 }, flag: switchFlag[0] });
+  assertReferenceState(runMicro(context, switchBody(1)), { register: { eax: 1, ebx: 0xb0 }, flag: switchFlag[1] });
+  assertReferenceState(runMicro(context, switchBody(2)), { register: { eax: 2, ebx: 0xc0 }, flag: switchFlag[2] });
+
+  const loop = [
+    0xb9, 0x03, 0x00, 0x00, 0x00,
+    0xb8, 0x48, 0x3f, 0x00, 0x00,
+    0x2d, 0x34, 0x3f, 0x00, 0x00,
+    0x49,
+    0x75, 0xf8,
+    0xc3,
+  ];
+  const spun = runMicro(context, loop, { instruction_budget_count: 32 });
+  assert.equal(spun.state, "probe_executed", JSON.stringify(spun.exception));
+  assert.equal(spun.stop_reason, "entry_return");
+  assert.equal(spun.register.eax, (0x3f48 - 0x3f34 * 3) >>> 0);
+  assert.equal(spun.register.ecx, 0);
+
+  const rel32 = [
+    0xb9, 0x03, 0x00, 0x00, 0x00,
+    0xb8, 0x48, 0x3f, 0x00, 0x00,
+    0x2d, 0x34, 0x3f, 0x00, 0x00,
+    0x49,
+    0x74, 0x05,
+    0xe9, 0xf3, 0xff, 0xff, 0xff,
+    0xc3,
+  ];
+  const rel32Run = runMicro(context, rel32, { instruction_budget_count: 32 });
+  assert.equal(rel32Run.state, "probe_executed", JSON.stringify(rel32Run.exception));
+  assert.equal(rel32Run.stop_reason, "entry_return");
+  assert.equal(rel32Run.register.eax, (0x3f48 - 0x3f34 * 3) >>> 0);
+  assert.equal(rel32Run.register.ecx, 0);
+});
