@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 8.8 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init (`0x280ab69f`, 9.46 s / 1.06M insn/s); 50M remesure leaves OpenAL, then guest_exception `0xe06d7363` after SHGetFolderPathW / OpenProcessToken (31359471 instruction, 3944 HLE) on CreateFileW("") PATH_NOT_FOUND → BPTK-009 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init (`0x280ab69f`, 9.46 s / 1.06M insn/s); 50M + `--datadir` + 5134 host files mounts `C:\game\data` (physfs 0 unserved) then guest_exception `0xe06d7363` (31435057 instruction, 4362 HLE) on missing first-run `config` — SuperTux catches that on real Windows; our RaiseException does not → BPTK-053 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 2**. Playability is
@@ -129,9 +129,12 @@ table init at **9.46 s / 1.06M insn/s**. A 50M remesure leaves OpenAL at
 argv (`GetCommandLineW` / `CommandLineToArgvW`). The `0x1397bc` fetch was
 SDL2 `call [IAT]` through unbound `SHGetFolderPathW` (hint RVA). That import
 now writes `C:\Users\Guest\AppData\Roaming`. physfs `OpenProcessToken` is
-served. A 50M remesure then stops `guest_exception` `0xe06d7363` at
-31359471 instruction / 3944 HLE (`vcruntime140`) after CreateFileW("")
-returns PATH_NOT_FOUND. That is not a frame. Ripgrep `--version` is `process_exit` 0
+served. A 50M remesure with `--datadir C:\game\data` and the real portable tree
+then stops `guest_exception` `0xe06d7363` at 31435057 instruction /
+4362 HLE (`vcruntime140`) after CreateFile2 FILE_NOT_FOUND on
+`…\supertux2\config` and `C:\game\data\config`. SuperTux
+`ConfigSubsystem` catches that `runtime_error`; our RaiseException has
+no guest C++ catch frame. That is not a frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
 (1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
@@ -140,10 +143,11 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` 34, `MapDialogRect` 35, `AppendMenuA` 36).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work after OpenAL is the `0xe06d7363` throw from MSVC
-`canonical` CreateFileW of an empty datadir (BPTK-009), not another SSE
-alias. Relative CreateFile, directory BACKUP_SEMANTICS, and
-GetFullPathName("") → cwd are served; SuperTux/msvcp140 still opens `""`. SDL2 still has 156 unserved imports;
+SuperTux work after the data mount is MSVC C++ catch of `0xe06d7363`
+(BPTK-053), not inventing a `config` file or another SSE alias.
+Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
+CreateFile2, FileTimeToSystemTime, and GetFullPathName("") → cwd are
+served. SDL2 still has 154 unserved imports;
 unbound sidecar IAT slots still hold hint RVAs. OpenTTD 1.10.3 stays 161/302.
 
 ## Boundary statement

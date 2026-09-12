@@ -393,6 +393,31 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is why
 msvcp140 CreateFileW's an empty path during datadir canonicalization.
 
+## Cycle 21 — counted MB2WC, CreateFile2, FileTime, physfs bind (2026-09-12)
+
+The empty CreateFile during `canonical` was counted `MultiByteToWideChar`
+returning the character count but writing nothing (`writeWideString`
+refused because it always appends a NUL). Counted Win32 MB2WC does not
+null-terminate. After that write, `CreateFileW("C:\game\data")` succeeds
+when the real portable tree is seeded and `--datadir` is passed.
+
+physfs then `call [IAT]` of unbound `FileTimeToSystemTime` (hint RVA
+`0x1d484`). That converter, `SystemTimeToTzSpecificLocalTime`,
+`DeleteFileW`, and `RemoveDirectoryW` are now served. physfs unserved
+dropped **4 → 0**.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **guest_exception
+  `0xe06d7363`** after **31435057** instruction, **4362** HLE. Canonical
+  of `c:\game\data` succeeded. The throw is `ReaderDocument::from_file("config")`
+  after CreateFile2 FILE_NOT_FOUND on the userdir then datadir `config`.
+  SuperTux `ConfigSubsystem` catches `std::exception` and continues with
+  defaults; our `RaiseException` has no guest `__CxxFrameHandler` catch
+  (BPTK-053). Not a frame. Do not invent a config file.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is MSVC
+C++ catch of `0xe06d7363`, not another file alias.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
