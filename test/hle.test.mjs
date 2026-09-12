@@ -700,6 +700,23 @@ test("GetKeyboardState writes 256 zero bytes when no key is down", () => {
   assert.equal(memory.readMemory(dest + 255, 1), 0);
 });
 
+test("ToUnicode writes a US-layout character from the key table", () => {
+  const { guest, memory } = createConformanceMachine();
+  const key_state = guest.layout.arena_base + 0x40;
+  const dest = key_state + 256;
+  for (let index = 0; index < 256; index += 4) memory.writeMemory(key_state + index, 4, 0);
+  assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0x20, 0x39, 0, 0, 16, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0x20, 0x39, key_state, dest, 16, 0]), 1);
+  assert.equal(memory.readMemory(dest, 2), 0x20);
+  assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0x41, 0x1e, key_state, dest, 16, 0]), 1);
+  assert.equal(memory.readMemory(dest, 2), 0x61);
+  memory.writeMemory(key_state + 0x10, 1, 0x80);
+  assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0x41, 0x1e, key_state, dest, 16, 0]), 1);
+  assert.equal(memory.readMemory(dest, 2), 0x41);
+  assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0xff, 0, key_state, dest, 16, 0]), 0);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;

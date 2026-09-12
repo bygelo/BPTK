@@ -22,6 +22,7 @@ import {
   dialogRectToPixel,
   defaultDialogBaseUnit,
   mapVirtualKey,
+  toUnicode,
 } from "../lib/user.mjs";
 
 const FIRST_ATOM = 0xc000;
@@ -38,6 +39,20 @@ test("mapVirtualKey translates US set-1 scan codes and refuses an unknown code",
   assert.equal(mapVirtualKey(0x41, 0), 0x1e);
   assert.equal(mapVirtualKey(0x41, 2), 0x41);
   assert.equal(mapVirtualKey(0xff, 1), 0);
+});
+
+test("toUnicode translates a US virtual key under shift and caps", () => {
+  const up = new Uint8Array(256);
+  assert.equal(toUnicode(0x20, 0x39, up), 0x20);
+  assert.equal(toUnicode(0x41, 0x1e, up), 0x61);
+  assert.equal(toUnicode(0xff, 0, up), 0);
+  const shift = new Uint8Array(256);
+  shift[0x10] = 0x80;
+  assert.equal(toUnicode(0x41, 0x1e, shift), 0x41);
+  assert.equal(toUnicode(0x31, 0x02, shift), 0x21);
+  const caps = new Uint8Array(256);
+  caps[0x14] = 0x01;
+  assert.equal(toUnicode(0x41, 0x1e, caps), 0x41);
 });
 
 test("RegisterClass then CreateWindowEx delivers the exact WM_NCCREATE, WM_CREATE creation pair", () => {
@@ -360,6 +375,12 @@ function applyUserOp(user, symbol, argument) {
     case "MapVirtualKeyW":
     case "MapVirtualKeyA":
       return mapVirtualKey(argument[0], argument[1]);
+    case "ToUnicode":
+      if ((argument[3] >>> 0) === 0 || (argument[4] | 0) <= 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return toUnicode(argument[0], argument[1], null) === 0 ? 0 : 1;
     case "EnumDisplayMonitors":
       if ((argument[2] >>> 0) === 0) {
         user.setLastError(87);
@@ -623,6 +644,9 @@ function buildUserConformanceCase() {
   define("MapVirtualKeyW", { argument: [0x1e, 1] }, { return_value: 0x41, last_error: 0 });
   define("MapVirtualKeyW", { argument: [0x41, 2] }, { return_value: 0x41, last_error: 0 });
   define("MapVirtualKeyA", { argument: [0xff, 1] }, { return_value: 0, last_error: 0 });
+  define("ToUnicode", { argument: [0x20, 0x39, 0, 0, 16, 0] }, { return_value: 0, last_error: 87 });
+  define("ToUnicode", { argument: [0x20, 0x39, 1, 1, 16, 0] }, { return_value: 1, last_error: 0 });
+  define("ToUnicode", { argument: [0xff, 0, 1, 1, 16, 0] }, { return_value: 0, last_error: 0 });
   define("EnumDisplayMonitors", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
   define("EnumDisplayMonitors", { argument: [0, 0, 0x00401000, 0] }, { return_value: 1, last_error: 0 });
   define("GetMonitorInfoW", { argument: [0x00020000, 0] }, { return_value: 0, last_error: 87 });

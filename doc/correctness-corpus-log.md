@@ -631,6 +631,27 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
 `ToUnicode` (US layout, key-state modifiers), not another key-table dump.
 
+## Cycle 30 — ToUnicode (2026-09-12)
+
+The SuperTux stop after Cycle 29 was SDL2 translating virtual keys through
+unbound `user32!ToUnicode`. The row is generic: US 101 layout, Shift and
+Caps Lock, Ctrl/Alt produce no character, no dead-key state. A NULL dest
+or a non-positive count refuses 87.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!AdjustWindowRectEx`** after **39445309**
+  instruction, **7822** HLE. Previous EIP `sdl2` `0x2c0d4136`.
+  `ToUnicode` returned 1. `GetMonitorInfoW` and `MulDiv` (1280, 800)
+  ran. Not a frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`AdjustWindowRectEx` (identity twin of `AdjustWindowRect`; this HLE
+has no nonclient frame), not another keyboard translator.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
