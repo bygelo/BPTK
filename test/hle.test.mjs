@@ -825,6 +825,35 @@ test("DragAcceptFiles records drop acceptance on a live HWND and refuses HWND 0"
   assert.equal(guest.user.isDropAccepted(window), false);
 });
 
+test("GetClassInfoExW writes the registered class and refuses a missing name", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  const missingPtr = base + 0x140;
+  const dest = base + 0x180;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  guest.writeWideString(missingPtr, "NoClass", 16);
+  memory.writeMemory(classStruct + 0, 4, 48);
+  memory.writeMemory(classStruct + 4, 4, 0x0003);
+  memory.writeMemory(classStruct + 8, 4, 0x00401000);
+  memory.writeMemory(classStruct + 20, 4, 0x00400000);
+  memory.writeMemory(classStruct + 28, 4, 0x8200);
+  memory.writeMemory(classStruct + 40, 4, classNamePtr);
+  invoke(guest, "user32.dll", "RegisterClassExW", [classStruct]);
+  assert.equal(invoke(guest, "user32.dll", "GetClassInfoExW", [0, 0, dest]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "GetClassInfoExW", [0, missingPtr, dest]), 0);
+  assert.equal(guest.getLastError(), 0x583);
+  assert.equal(invoke(guest, "user32.dll", "GetClassInfoExW", [0, classNamePtr, dest]), 1);
+  assert.equal(memory.readMemory(dest + 0, 4), 48);
+  assert.equal(memory.readMemory(dest + 4, 4), 0x0003);
+  assert.equal(memory.readMemory(dest + 8, 4), 0x00401000);
+  assert.equal(memory.readMemory(dest + 20, 4), 0x00400000);
+  assert.equal(memory.readMemory(dest + 28, 4), 0x8200);
+  assert.equal(memory.readMemory(dest + 40, 4), classNamePtr);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;

@@ -822,6 +822,31 @@ Measured on the staged corpus (payloads still out of git):
 Present path still unbound (`ChoosePixelFormat` / `SetPixelFormat` /
 `SwapBuffers` / `wglGetProcAddress`).
 
+## Cycle 39 — GetClassInfoExW (2026-09-12)
+
+The SuperTux stop after Cycle 38 was SDL2 querying a registered class through
+unbound `user32!GetClassInfoExW`. The slice is generic: write the stored
+`WNDCLASSEX`/`WNDCLASS` fields (style, WndProc, extras, instance, icon,
+cursor, brush) for a registered name. A NULL dest refuses 87; an unknown
+name refuses 1411. `GetClassInfoW`/`A` and `GetClassInfoExA` are the twins.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **process_exit 1** after **41435616** instruction, **19524** HLE.
+  `GetClassInfoExW` returned 1. `ShowWindow` returned 1 (was visible).
+  Last `CreateWindowExW` `0x1001c`. SDL `LoadLibraryW("OPENGL32.DLL")`
+  is 0 / last_error 126, then `ExitProcess(1)`. A shown HWND is not a
+  presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`LoadLibraryW("OPENGL32.DLL")` (OpenGL HLE is IAT-bound but not in the
+LoadLibrary module table), not another class-info API. Present path
+still unbound (`ChoosePixelFormat` / `SetPixelFormat` / `SwapBuffers` /
+`wglGetProcAddress`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

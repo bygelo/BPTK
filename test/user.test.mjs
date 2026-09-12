@@ -85,6 +85,18 @@ test("acceptDropFiles records whether a live window accepts dropped files", () =
   assert.equal(user.isDropAccepted(handle), false);
 });
 
+test("getClassInfo reports a registered class and refuses an unknown name", () => {
+  const user = createUserSubsystem();
+  user.registerClass("AppClass", defaultProc, 0x00000003);
+  assert.equal(user.getClassInfo(""), null);
+  assert.equal(user.getLastError(), 87);
+  assert.equal(user.getClassInfo("Missing"), null);
+  assert.equal(user.getLastError(), 0x583);
+  const klass = user.getClassInfo("AppClass");
+  assert.equal(klass.name, "AppClass");
+  assert.equal(klass.style, 0x00000003);
+});
+
 test("a WM_NCCREATE that returns FALSE aborts creation and yields NULL", () => {
   const user = createUserSubsystem();
   user.registerClass("Reject", (handle, message) => (message === windowMessage.WM_NCCREATE ? 0 : 1));
@@ -335,6 +347,15 @@ function applyUserOp(user, symbol, argument) {
     case "RegisterClassExW":
     case "RegisterClassExA":
       return user.registerClass(argument[0], null, argument[1] ?? 0);
+    case "GetClassInfoExW":
+    case "GetClassInfoExA":
+    case "GetClassInfoW":
+    case "GetClassInfoA":
+      if ((argument[1] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return user.getClassInfo(argument[0]) === null ? 0 : 1;
     case "UnregisterClassW":
     case "UnregisterClassA":
       return user.unregisterClass(argument[0]);
@@ -661,6 +682,12 @@ function buildUserConformanceCase() {
   define("RegisterClassW", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
   define("RegisterClassExW", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
   define("RegisterClassExA", { argument: ["AppClass", 0] }, { return_value: FIRST_ATOM, last_error: 0 });
+  define("GetClassInfoExW", { argument: ["AppClass", 0] }, { return_value: 0, last_error: 87 });
+  define("GetClassInfoExW", { argument: ["Missing", 1] }, { return_value: 0, last_error: 0x583 });
+  define("GetClassInfoExW", { scenario: [registerStep], argument: ["AppClass", 1] }, { return_value: 1, last_error: 0 });
+  define("GetClassInfoExA", { scenario: [registerStep], argument: ["AppClass", 1] }, { return_value: 1, last_error: 0 });
+  define("GetClassInfoW", { scenario: [registerStep], argument: ["AppClass", 1] }, { return_value: 1, last_error: 0 });
+  define("GetClassInfoA", { scenario: [registerStep], argument: ["AppClass", 1] }, { return_value: 1, last_error: 0 });
   define("UnregisterClassW", { scenario: [registerStep], argument: ["AppClass"] }, { return_value: 1, last_error: 0 });
   define("UnregisterClassA", { scenario: [registerStep], argument: ["AppClass"] }, { return_value: 1, last_error: 0 });
   define("CreateWindowExW", { scenario: [registerStep], argument: ["AppClass", 0] }, { return_value: FIRST_HANDLE, last_error: 0 });
