@@ -712,6 +712,26 @@ test("MonitorFromPoint and MonitorFromWindow return the one virtual display", ()
   assert.equal(guest.getLastError(), 1444);
   assert.equal(invoke(guest, "user32.dll", "GetWindowThreadProcessId", [0, 0]), 0);
   assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "user32.dll", "CloseClipboard", []), 0);
+  assert.equal(guest.getLastError(), 1418);
+  assert.equal(invoke(guest, "user32.dll", "OpenClipboard", [0]), 1);
+  assert.equal(invoke(guest, "user32.dll", "EmptyClipboard", []), 1);
+  assert.equal(invoke(guest, "user32.dll", "IsClipboardFormatAvailable", [1]), 0);
+  assert.equal(invoke(guest, "user32.dll", "SetWindowsHookExW", [7, 0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  const hook = invoke(guest, "user32.dll", "SetWindowsHookExW", [7, 0x401000, 0, 0]);
+  assert.equal(hook, 0x00030010);
+  assert.equal(invoke(guest, "user32.dll", "CallNextHookEx", [hook, 0, 0, 0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "UnhookWindowsHookEx", [hook]), 1);
+  assert.equal(invoke(guest, "user32.dll", "RegisterRawInputDevices", [0, 0, 0]), 1);
+  assert.equal(invoke(guest, "user32.dll", "GetRawInputDeviceList", [0, 0, 0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "DrawTextW", [0, 0, 0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "imm32.dll", "ImmGetContext", [0]), 0);
+  assert.equal(invoke(guest, "winmm.dll", "waveOutGetNumDevs", []), 0);
+  assert.equal(invoke(guest, "winmm.dll", "waveOutOpen", [0, 0, 0, 0, 0, 0]), 6);
+  assert.equal(invoke(guest, "gdi32.dll", "GetDeviceGammaRamp", [0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
 });
 
 test("GetMonitorInfoW writes the one virtual desktop and EnumDisplayMonitors queues its callback", () => {
