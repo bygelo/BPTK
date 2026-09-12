@@ -652,6 +652,26 @@ Measured on the staged corpus (payloads still out of git):
 `AdjustWindowRectEx` (identity twin of `AdjustWindowRect`; this HLE
 has no nonclient frame), not another keyboard translator.
 
+## Cycle 31 — AdjustWindowRectEx (2026-09-12)
+
+The SuperTux stop after Cycle 30 was SDL2 converting a client rect through
+unbound `user32!AdjustWindowRectEx`. The row is generic: the same
+no-nonclient-frame contract as `AdjustWindowRect`; a NULL dest refuses 87.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!GetWindowLongW`** after **39445578**
+  instruction, **7829** HLE. Previous EIP `sdl2` `0x2c0d3b5a`.
+  `AdjustWindowRectEx` returned 1. `RegisterClassExW` `0xC001`.
+  `CreateWindowExW` `0x10014`. `GetDC` `0x4001c`. A HWND is not a
+  presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`GetWindowLongW` (A-twin plus `GWL_HINSTANCE`), not another rect helper.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

@@ -368,6 +368,12 @@ function applyUserOp(user, symbol, argument) {
       return user.moveWindow(argument[0], argument[1], argument[2], argument[3], argument[4]);
     case "AdjustWindowRect":
       return 1;
+    case "AdjustWindowRectEx":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 1;
     case "GetSystemMetrics":
       return systemMetric[argument[0]] ?? 0;
     case "GetDoubleClickTime":
@@ -637,6 +643,8 @@ function buildUserConformanceCase() {
   define("GetClientRect", { argument: [0xdeadbeef] }, { return_value: 0, last_error: 0 });
   define("MoveWindow", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, 10, 20, 100, 200, 1] }, { return_value: 1, last_error: 0 });
   define("AdjustWindowRect", { argument: [0, 0, 0] }, { return_value: 1, last_error: 0 });
+  define("AdjustWindowRectEx", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("AdjustWindowRectEx", { argument: [1, 0, 0, 0] }, { return_value: 1, last_error: 0 });
   define("GetSystemMetrics", { argument: [0] }, { return_value: 1920, last_error: 0 });
   define("GetSystemMetrics", { argument: [1] }, { return_value: 1080, last_error: 0 });
   define("GetSystemMetrics", { argument: [99] }, { return_value: 0, last_error: 0 });

@@ -717,6 +717,21 @@ test("ToUnicode writes a US-layout character from the key table", () => {
   assert.equal(invoke(guest, "user32.dll", "ToUnicode", [0xff, 0, key_state, dest, 16, 0]), 0);
 });
 
+test("AdjustWindowRectEx leaves the rect unchanged when there is no nonclient frame", () => {
+  const { guest, memory } = createConformanceMachine();
+  const rect = guest.layout.arena_base + 0x40;
+  memory.writeMemory(rect, 4, 0);
+  memory.writeMemory(rect + 4, 4, 0);
+  memory.writeMemory(rect + 8, 4, 1280);
+  memory.writeMemory(rect + 12, 4, 800);
+  assert.equal(invoke(guest, "user32.dll", "AdjustWindowRectEx", [0, 0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "AdjustWindowRectEx", [rect, 0x00cf0000, 0, 0]), 1);
+  assert.equal(memory.readMemory(rect, 4), 0);
+  assert.equal(memory.readMemory(rect + 8, 4), 1280);
+  assert.equal(memory.readMemory(rect + 12, 4), 800);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;
