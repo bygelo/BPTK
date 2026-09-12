@@ -197,6 +197,12 @@ test("regression risk: deterministic infinite branch consumes the exact budget",
   assert.equal(report.is_executed, true);
 });
 
+test("probe continue: a lone spin without an INFINITE waiter still stops at the product budget", (context) => {
+  const report = readRun(createPackage(context, [0xeb, 0xfe], { instruction_budget_count: 11 }).packagePath);
+  assert.equal(report.stop_reason, "instruction_budget_exhausted");
+  assert.equal(report.instruction_count, 11);
+});
+
 test("regression risk: x87 outside the bounded subset is a structured unsupported stop", (context) => {
   const report = readRun(createPackage(context, [0xd9, 0xf0]).packagePath); // F2XM1
   assert.equal(report.stop_reason, "unsupported_opcode");
