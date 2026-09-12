@@ -442,6 +442,26 @@ test("api-set and ntdll names resolve to the same kernel32 or msvcrt row", () =>
   assert.equal(resolveHleExport("sspicli.dll", "InitSecurityInterfaceW")?.library, "secur32.dll");
 });
 
+test("WSACreateEvent is a manual-reset event; EnumNetworkEvents reports no FD bits", () => {
+  const { guest, memory } = createConformanceMachine();
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAStartup", [0x0202, 0]), 0);
+  const socket = invoke(guest, "ws2_32.dll", "socket", [2, 1, 6]);
+  assert.equal(socket, 1);
+  const event = invoke(guest, "ws2_32.dll", "WSACreateEvent", []);
+  assert.notEqual(event, 0);
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAWaitForMultipleEvents", [1, 0, 0, 0, 0]), 0xffffffff);
+  const list = 0x00150040;
+  memory.writeMemory(list, 4, event);
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAWaitForMultipleEvents", [1, list, 0, 0, 0]), 0x102, "unset event times out");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSASetEvent", [event]), 1);
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAWaitForMultipleEvents", [1, list, 0, 0, 0]), 0, "set event is signaled");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAEventSelect", [socket, event, 0x2b]), 0);
+  const report = 0x00150180;
+  assert.equal(invoke(guest, "ws2_32.dll", "WSAEnumNetworkEvents", [socket, event, report]), 0);
+  assert.equal(memory.readMemory(report, 4), 0, "lNetworkEvents stays 0: no traffic");
+  assert.equal(invoke(guest, "ws2_32.dll", "WSACloseEvent", [event]), 1);
+});
+
 test("ws2_32 ordinal imports bind to the same HLE thunk as the named export", () => {
   const layout = createHleLayout({ load_base: 0x400000, image_size_byte: 0x10000, stack_base: 0x70000000, stack_end: 0x70100000 });
   assert.ok(layout);

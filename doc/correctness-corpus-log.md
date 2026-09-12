@@ -467,6 +467,32 @@ Measured on the staged corpus (payloads still out of git):
 WSA event family (`WSACreateEvent` / `WSAEventSelect`), not another
 SSPI alias.
 
+## Cycle 24 — WSA events, x87 log, SuperTux writes config (2026-09-12)
+
+`WSACreateEvent` / `WSACloseEvent` / `WSASetEvent` / `WSAResetEvent` /
+`WSAWaitForMultipleEvents` are the existing kernel event machine under
+the Winsock names (manual-reset, initially unset). `WSAEventSelect`
+records a socket→event mask on the guest; `WSAEnumNetworkEvents` writes
+a 44-byte zero `WSANETWORKEVENTS` and resets the event. Offline guest:
+no FD_* bits. Failures set both `last_error` and `WSAGetLastError`.
+
+ucrt `log()` then encoded the D9 constant family plus `FXCH ST(i)` and
+`FYL2X`. The bounded x87 subset still stores 64-bit values, not 80-bit.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **process_exit 1** after
+  **33273860** instruction, **15672** HLE. First-run `config` is written
+  under Roaming. `RegisterClassW` / `CreateWindowExW` return a class atom
+  and HWND. `console.err` is the SuperTux fatal at
+  `src/supertux/main.cpp:833`:
+  `Couldn't initialize SDL: Not enough resources to create thread`.
+  That is `CreateThread` / `_beginthreadex` refused (ERROR_MAX_THRDS_REACHED
+  164). Not a frame. Do not return a handle that never runs.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is a
+guest thread scheduler so SDL_Init can create its thread, not another
+Winsock alias or a fake `config`.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

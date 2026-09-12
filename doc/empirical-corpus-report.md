@@ -113,10 +113,10 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 8.8 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init (`0x280ab69f`, 9.46 s / 1.06M insn/s); 50M + `--datadir` + 5134 host files mounts data, catches missing `config`, inits SSPI + WSAStartup, then fetch_fault `ws2_32.dll!WSACreateEvent` (31592894 instruction, 4946 HLE) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init (`0x280ab69f`, 9.46 s / 1.06M insn/s); 50M + `--datadir` + 5134 host files mounts data, catches missing `config`, inits SSPI + WSA, writes first-run `config`, CreateWindowExW HWND, then process_exit 1 (33273860 instruction, 15672 HLE) — console.err: SDL_Init "Not enough resources to create thread" → BPTK-025 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
-Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 2**. Playability is
+Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 1**, **BPTK-025 × 1**. Playability is
 not claimed. SuperTux's IAT is fully served (sidecar + OpenGL HLE + leftover
 kernel32/shell32/dbghelp). Sidecar DllMain and cdecl CRT ABI now run: the
 old NX-stack fetch at 1498 was `_initterm` RET after a stdcall-popped cdecl
@@ -132,8 +132,10 @@ now writes `C:\Users\Guest\AppData\Roaming`. physfs `OpenProcessToken` is
 served. A 50M remesure with `--datadir C:\game\data` and the real portable tree
 then catches the missing-`config` `0xe06d7363`, runs
 `InitSecurityInterfaceW` (empty SSPI table) and ordinal `WSAStartup`,
-and stops **fetch_fault** `ws2_32.dll!WSACreateEvent` at **31592894**
-instruction / **4946** HLE (hint RVA `0x8083e`). That is not a
+and stops **process_exit 1** at **33273860** instruction / **15672** HLE
+after writing the first-run `config` and creating a window. `console.err`
+is SuperTux's own fatal: SDL_Init failed because `CreateThread` is the
+honest single-thread refusal (ERROR_MAX_THRDS_REACHED). That is not a
 frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
@@ -143,9 +145,10 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` 34, `MapDialogRect` 35, `AppendMenuA` 36).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work after SSPI is libcurl's unbound `WSACreateEvent` (the
-existing event machine under the Winsock name), not inventing
-a `config` file or another SSE alias.
+SuperTux work is a guest thread scheduler so SDL_Init can create a thread,
+not inventing a `config` file or signaling a fake network event. The
+written `config` uses 64-bit x87 stores — some float literals are not
+80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
 CreateFile2, FileTimeToSystemTime, and GetFullPathName("") → cwd are
 served. SDL2 still has 154 unserved imports;

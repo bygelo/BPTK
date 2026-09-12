@@ -378,6 +378,48 @@ test("microprogram: FLD1 pushes 1.0 onto an empty x87 stack", (context) => {
   assertReferenceState(report, { register: { eax: 1 } });
 });
 
+test("microprogram: FLDLN2 pushes Math.LN2 onto an empty x87 stack", (context) => {
+  // d9 ec is FLDLN2 (form 0x2c). ucrtbase log() encodes this after SuperTux
+  // leaves curl. fstp qword then mov eax of the low dword matches IEEE LN2.
+  const report = runMicro(context, [
+    0xd9, 0xec,
+    0xdd, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 0xfefa39ef } });
+});
+
+test("microprogram: FXCH ST(1) swaps the top two x87 slots", (context) => {
+  // fld1; fldz; fxch st(1) (d9 c9); fistp dword — ST(0) is 1 after the swap.
+  const report = runMicro(context, [
+    0xd9, 0xe8,
+    0xd9, 0xee,
+    0xd9, 0xc9,
+    0xdb, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 1 } });
+});
+
+test("microprogram: FYL2X multiplies ST(1) by log2(ST(0)) and pops", (context) => {
+  // fild 8; fld1; fld1; faddp; fyl2x (d9 f1); fistp — 8 * log2(2) is 8.
+  const report = runMicro(context, [
+    0xb8, 0x08, 0x00, 0x00, 0x00,
+    0xa3, 0x00, 0x18, 0x40, 0x00,
+    0xdb, 0x05, 0x00, 0x18, 0x40, 0x00,
+    0xd9, 0xe8,
+    0xd9, 0xe8,
+    0xde, 0xc1,
+    0xd9, 0xf1,
+    0xdb, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 8 } });
+});
+
 test("microprogram: FRNDINT rounds ST(0) to the nearest even integer", (context) => {
   // fld qword 2.5; frndint (d9 fc); fistp dword — nearest-even of 2.5 is 2.
   const report = runMicro(context, [
