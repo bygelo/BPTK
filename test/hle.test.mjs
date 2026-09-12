@@ -1302,6 +1302,109 @@ test("RaiseException: an unhandled guest exception is a structured stop with the
   assert.equal(report.exception.exception_code, 0xe000beef);
 });
 
+test("RaiseException: a guest FS:[0] handler that continues execution resumes the caller", (context) => {
+  const plan = planImports([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ]);
+  const o = createEmitter();
+  o.jmp("main");
+  o.mark("handler");
+  o.emit(0xb8); o.emitDword(0); // ExceptionContinueExecution
+  o.emit(0xc3);
+  o.mark("main");
+  o.emit(0x68); o.emitDword(imageBase + 0x1000 + 5);
+  o.emit(0x64, 0xff, 0x35, 0, 0, 0, 0);
+  o.emit(0x64, 0x89, 0x25, 0, 0, 0, 0);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x68); o.emitDword(0xe0000001);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "RaiseException"));
+  o.emit(0x6a, 0x2a);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "ExitProcess"));
+  const packagePath = createHlePackage(context, "sehcont.exe", createImportPe32([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ], o.resolve(), { import_layout: plan }));
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "process_exit");
+  assert.equal(report.exit_code, 42);
+});
+
+test("RaiseException: ExceptionContinueSearch walks to the next FS:[0] frame", (context) => {
+  const plan = planImports([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ]);
+  const o = createEmitter();
+  o.jmp("main");
+  o.mark("search");
+  o.emit(0xb8); o.emitDword(1); // ExceptionContinueSearch
+  o.emit(0xc3);
+  o.mark("resume");
+  o.emit(0xb8); o.emitDword(0); // ExceptionContinueExecution
+  o.emit(0xc3);
+  o.mark("main");
+  o.emit(0x68); o.emitDword(imageBase + 0x1000 + 11);
+  o.emit(0x64, 0xff, 0x35, 0, 0, 0, 0);
+  o.emit(0x64, 0x89, 0x25, 0, 0, 0, 0);
+  o.emit(0x68); o.emitDword(imageBase + 0x1000 + 5);
+  o.emit(0x64, 0xff, 0x35, 0, 0, 0, 0);
+  o.emit(0x64, 0x89, 0x25, 0, 0, 0, 0);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x68); o.emitDword(0xe0000001);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "RaiseException"));
+  o.emit(0x6a, 0x2a);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "ExitProcess"));
+  const packagePath = createHlePackage(context, "sehwalk.exe", createImportPe32([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ], o.resolve(), { import_layout: plan }));
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "process_exit");
+  assert.equal(report.exit_code, 42);
+});
+
+test("RtlUnwind: TargetIp records a seh_transfer and returns the unwind value", () => {
+  const { guest } = createConformanceMachine();
+  const value = invoke(guest, "kernel32.dll", "RtlUnwind", [0, 0x403000, 0, 7]);
+  assert.equal(value, 7);
+  assert.deepEqual(guest.seh_transfer, { eip: 0x403000, eax: 7 });
+});
+
+test("RaiseException: a ContinueSearch-only chain is still an unhandled guest exception", (context) => {
+  const plan = planImports([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ]);
+  const o = createEmitter();
+  o.jmp("main");
+  o.mark("search");
+  o.emit(0xb8); o.emitDword(1);
+  o.emit(0xc3);
+  o.mark("main");
+  o.emit(0x68); o.emitDword(imageBase + 0x1000 + 5);
+  o.emit(0x64, 0xff, 0x35, 0, 0, 0, 0);
+  o.emit(0x64, 0x89, 0x25, 0, 0, 0, 0);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x68); o.emitDword(0xe000beef);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "RaiseException"));
+  o.emit(0x6a, 0x2a);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "ExitProcess"));
+  const packagePath = createHlePackage(context, "sehmiss.exe", createImportPe32([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ], o.resolve(), { import_layout: plan }));
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "guest_exception");
+  assert.equal(report.exception.exception_code, 0xe000beef);
+});
+
 // --- msvcrt.dll C runtime (BPTK-010 i386 CLI corpus) ------------------------
 // The conformance oracle pins the return value; these prove the real memory
 // side effect the oracle does not inspect, so a served CRT function is a real

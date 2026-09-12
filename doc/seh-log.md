@@ -147,6 +147,20 @@ properly:
 Test count 181 → 182 (+1). Gate 0. This is the last in-lane item; the vectored
 surface for structured exceptions is complete.
 
+## Cycle 6 — live FS:[0] guest handlers (2026-09-12)
+
+The host `SehThread` chain stays empty. Guests push real
+`EXCEPTION_REGISTRATION_RECORD`s to `FS:[0]`. `RaiseException` now walks
+that live list, builds an `EXCEPTION_RECORD` + `CONTEXT`, and re-enters
+the handler through `pending_guest_call`. Disposition 1 is
+`ExceptionContinueSearch` (next frame). `RtlUnwind` with a non-zero
+`TargetIp` is a transfer, not a return.
+
+Pinned by `test/hle.test.mjs`: continue-execution, ContinueSearch walk,
+ContinueSearch-only → `guest_exception`, and `RtlUnwind` `seh_transfer`.
+SuperTux's missing-`config` `0xe06d7363` now reaches `RtlUnwind` and
+continues; BPTK-053 stays red (no CPU-fault → guest handler, no exnref).
+
 ## Close-out state
 
 Every acceptance item is implemented, pinned, and — where it crosses the HLE

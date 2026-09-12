@@ -418,6 +418,32 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is MSVC
 C++ catch of `0xe06d7363`, not another file alias.
 
+## Cycle 22 — guest FS:[0] C++ catch (2026-09-12)
+
+`RaiseException` now walks the live `FS:[0]` chain (TEB+0) and re-enters
+each frame handler as guest code. Frame handlers return
+`EXCEPTION_DISPOSITION` (0 continue, 1 search), not `__except` filter
+codes. `RtlUnwind(TargetFrame, TargetIp, …)` cuts the live chain and
+transfers to `TargetIp` without returning.
+
+The first SuperTux frame is a GS-checked `__CxxFrameHandler3` thunk at
+`0x89a511`. Treating disposition 1 as resume had returned into
+`_CxxThrowException`'s `ret 8` and fetched INT3 padding at `0x64be05`.
+`RtlUnwind` closed over a module-level `layout` that does not exist;
+it now uses `guest.layout` / `guest.memory`.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **fetch_fault `0x807de`**
+  after **31590080** instruction, **4924** HLE. `RtlUnwind` ran. The
+  missing-`config` `0xe06d7363` was caught and init continued
+  (`GetSystemTimeAsFileTime`, `VerifyVersionInfoW`, `GetProcAddress`).
+  The fault is libcurl `call [IAT]` of unbound
+  `secur32.dll!InitSecurityInterfaceW` (hint RVA `0x807de`, previous
+  `0x2e012d89`). Not a frame. Do not stub SSPI.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is the
+libcurl SSPI import, not another C++ EH alias.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
