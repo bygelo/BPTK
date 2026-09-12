@@ -1075,6 +1075,33 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
 `user32!CreateIconFromResource`; `gdi32!SwapBuffers` is still unbound on sdl2.
 
+## Cycle 49 — CreateIconFromResource (2026-09-12)
+
+The SuperTux stop after Cycle 48 was `fetch_fault user32!CreateIconFromResource`
+after SDL decoded the window-icon PNG. `CreateIconFromResource` and
+`CreateIconFromResourceEx` allocate from the same `0x8200+4n` pool as
+`CreateIconIndirect`: RT_ICON DIB bits become a live `HICON` (documented
+version `0x30000`) without decoding pixels. NULL bits, zero size, or a wrong
+version refuse 87. `DestroyIcon` already frees that pool. No title-specific
+branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `kernel32!InitOnceBeginInitialize`** after
+  **49661659** instruction, **8383** HLE. `CreateIconFromResource` `0x8208`;
+  two `SendMessageW` (WM_SETICON). Previous EIP `openal32+0x5fbb2`
+  (`call [0x280e60d4]`; IAT still held hint RVA `0x1647ec`). `SetFilePointerEx` 1.
+  console.err empty. Last `CreateWindowExW` `0x10024`. Last
+  `wglCreateContext` `0x5000c`. `SwapBuffers` is never reached. A window icon
+  handle is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`kernel32!InitOnceBeginInitialize` (same slice `InitOnceComplete`);
+`gdi32!SwapBuffers` is still unbound on sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
