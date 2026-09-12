@@ -16,7 +16,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
 import { icmProfilePath } from "../lib/gdi.mjs";
-import { buildConformanceCaseTable, computeImportService, createConformanceImplementation, createHleLayout, hleCrtDataLayout, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
+import { buildConformanceCaseTable, computeImportService, createConformanceImplementation, createHleLayout, hleCrtDataLayout, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory, hleBound } from "../lib/hle.mjs";
 
 // A bounded machine with a read-only host-file store and an initial
 // environment, for the file-read + WAD-search path (the corpus-007 lane). The
@@ -2033,6 +2033,14 @@ test("BPTK-010: CreateEventExW maps flags onto CreateEvent and refuses unknown b
   assert.equal(invoke(guest, "kernel32.dll", "WaitForSingleObject", [signaled, 0]), 0);
   assert.equal(invoke(guest, "kernel32.dll", "CreateEventExW", [0, 0, 4, 0x1f0003]), 0);
   assert.equal(guest.getLastError(), 87);
+});
+
+test("BPTK-010: the HLE call trace keeps a bounded tail so a long load is not a 1M-entry stop", () => {
+  const { guest } = createConformanceMachine();
+  for (let index = 0; index < 20000; index += 1) invoke(guest, "kernel32.dll", "GetLastError", []);
+  assert.equal(guest.call_count, 20000);
+  assert.ok(guest.trace_record.length <= hleBound.trace_keep * 2);
+  assert.ok(guest.trace_record.length >= hleBound.trace_keep);
 });
 
 test("BPTK-010 sync breadth: the named-object open family finds its own creates and misses honestly", () => {
