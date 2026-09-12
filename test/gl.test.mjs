@@ -34,6 +34,10 @@ test("glGetString names the bounded BPTK renderer and glGenTextures issues a rea
   const { guest } = createConformanceMachine();
   const vendor = invoke(guest, "glGetString", [glEnum.VENDOR]);
   assert.equal(guest.readAnsiString(vendor), "BPTK");
+  const version = invoke(guest, "glGetString", [glEnum.VERSION]);
+  assert.equal(guest.readAnsiString(version), "2.1 BPTK");
+  const extension = invoke(guest, "glGetString", [glEnum.EXTENSIONS]);
+  assert.match(guest.readAnsiString(extension), /GL_ARB_texture_non_power_of_two/);
   const out = 0x00150040;
   invoke(guest, "glGenTextures", [1, out]);
   const id = guest.memory.readMemory(out, 4);

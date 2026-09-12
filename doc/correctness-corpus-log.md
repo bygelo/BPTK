@@ -980,6 +980,34 @@ Measured on the staged corpus (payloads still out of git):
 `GL_EXTENSIONS` before present; `gdi32!SwapBuffers` is still unbound on
 sdl2. Not another WGL GetProcAddress name.
 
+## Cycle 45 — GL 2.1 version + SetFilePointer BOOL (2026-09-12)
+
+The SuperTux stop after Cycle 44 was `ExitProcess(1)`. Guest
+`console.err` named two stacked causes: `glGetString(GL_VERSION)` `"1.1
+BPTK"` makes SuperTux auto-GL `sscanf` the major and throw `"OpenGL 2.0 or
+higher is unsupported"` (SDL fallback), then SDL_image `IMG_Load` of the
+window icon fails `"Can't seek in this data source"`. The slice is generic:
+the declared GL version string is `"2.1 BPTK"` (compatibility, not GLSL) and
+`GL_EXTENSIONS` includes `GL_ARB_texture_non_power_of_two` (NPOT already
+stores). `SetFilePointerEx` returns BOOL 1 on success (it had been
+forwarding `seekFile`'s 0-on-success, so every guest treat-as-BOOL seek
+failed); `SetFilePointer` is the 32-bit twin. FIX-008 now checks EAX==1.
+No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **unsupported_opcode `0x0f 0xc8` BSWAP** at `zlib1+0x81c4` after
+  **40690494** instruction, **8282** HLE. `SetFilePointerEx` 1.
+  console.err empty. Last `CreateWindowExW` `0x10024`. `SwapBuffers` is
+  never reached. Inflating a PNG is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is i386
+`BSWAP` (`0F C8`–`CF`) in zlib; `gdi32!SwapBuffers` is still unbound on
+sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

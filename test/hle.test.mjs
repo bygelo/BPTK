@@ -1405,7 +1405,7 @@ test("FIX-008 slice: the storage exerciser creates, writes, seeks, reads, trunca
   // SetFilePointerEx(edi, 0, NULL, FILE_BEGIN) — handle, distLow, distHigh, ptr, origin
   pushImm(0); pushImm(0); pushImm(0); pushImm(0); e(0x57);
   call(iat.SetFilePointerEx);
-  testEax();
+  cmpEaxImm(1);
   o.jne("fail");
   orMask(0x4);
   // ReadFile(edi, readBack, 4, &written, 0)
