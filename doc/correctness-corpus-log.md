@@ -549,6 +549,44 @@ Measured on the staged corpus (payloads still out of git):
 `CreateDIBSection` (guest-visible bits pointer), not another display
 query.
 
+## Cycle 27 — DIB bits, cursor handles, mouse SPI, CVTPS2DQ (2026-09-12)
+
+The SuperTux stop after Cycle 26 was the SDL cursor-create path, then
+one SSE convert in the same SDL2 mouse helper. Each named hole is a
+generic Win32 or i386 row with a conformance / microprogram case.
+
+- `gdi32!CreateDIBSection` reads `BITMAPINFOHEADER`, serves BI_RGB and
+  BI_BITFIELDS at 24/32 bpp, and `VirtualAlloc`s guest bits. `hSection`
+  ≠ 0 is 50. Guest BGRA syncs into the host RGBA cache on GetPixel /
+  BitBlt / GetDIBits. `DeleteObject` `VirtualFree`s the bits.
+- `gdi32!CreateBitmap` serves planes=1 and bitCount 1/24/32. NULL bits
+  is a zeroed surface. Other depths refuse 87.
+- `user32!CreateIconIndirect` allocates `0x8200+4n` when `hbmMask` is
+  set. `DestroyIcon` frees a created handle and no-ops a stock
+  LoadCursor/LoadIcon handle. `CopyImage` copies a bitmap 1:1 or
+  allocates a new icon/cursor handle, including a requested size
+  (SDL passes the cursor dimensions). Resize of a bitmap is 50.
+- `user32!SystemParametersInfoW`/`A` writes `SPI_GETMOUSESPEED` (10),
+  `SPI_GETMOUSE` (6, 10, 1), `SPI_GETWORKAREA` (0,0,1920,1080),
+  `SPI_GETWHEELSCROLLLINES` (3), and `SPI_GETDOUBLECLICKTIME` (500).
+  NULL `pvParam` or an unknown action is 87.
+- `user32!RegisterWindowMessageA`/`W` maps a name to `0xC000+`.
+  Empty/NULL is 87. The same name returns the same id.
+- i386 `0F 5B` is `CVTPS2DQ` (np), `CVTPD2DQ` (66), `CVTTPS2DQ` (f3).
+  `F2 0F 5B` stays `#UD`.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **fetch_fault
+  `kernel32!SetThreadExecutionState`** after **31878842** instruction,
+  **5994** HLE. Previous EIP `sdl2` `0x2c0d3752`. `CreateDIBSection`
+  `0x4000c`, `CreateBitmap` `0x40010`, `CreateIconIndirect` `0x8200`,
+  `CopyImage` `0x8204`, both `SystemParametersInfoW` returned 1,
+  `RegisterWindowMessageA` `0xC000`. Not a frame. Do not invent a
+  display-required sleep state.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`SetThreadExecutionState`, not another cursor query.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

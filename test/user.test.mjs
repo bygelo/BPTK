@@ -470,6 +470,49 @@ function applyUserOp(user, symbol, argument) {
     case "LoadIconA":
     case "LoadIconW":
       return (0x00008100 | (argument[1] & 0xffff)) >>> 0;
+    case "CreateIconIndirect":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 0x00008200;
+    case "DestroyIcon":
+      return 1;
+    case "RegisterWindowMessageA":
+    case "RegisterWindowMessageW":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 0x0000c000;
+    case "SystemParametersInfoA":
+    case "SystemParametersInfoW": {
+      const action = argument[0] >>> 0;
+      if (action === 3 || action === 0x20 || action === 0x30 || action === 0x68 || action === 0x70) {
+        if ((argument[2] >>> 0) === 0) {
+          user.setLastError(87);
+          return 0;
+        }
+        return 1;
+      }
+      user.setLastError(87);
+      return 0;
+    }
+    case "CopyImage": {
+      const handle = argument[0] >>> 0;
+      const type = argument[1] >>> 0;
+      const flags = argument[4] >>> 0;
+      if (handle === 0 || (type !== 0 && type !== 1 && type !== 2)) {
+        user.setLastError(87);
+        return 0;
+      }
+      if (handle < 0x00008000) {
+        user.setLastError(6);
+        return 0;
+      }
+      if ((flags & 4) !== 0) return handle;
+      return 0x00008200;
+    }
     case "CreateMenu":
       return user.createMenu();
     case "AppendMenuA":
@@ -631,6 +674,22 @@ function buildUserConformanceCase() {
   define("LoadCursorW", { argument: [0, 32512] }, { return_value: 0x00008000 | 32512, last_error: 0 });
   define("LoadIconA", { argument: [0, 32512] }, { return_value: 0x00008100 | 32512, last_error: 0 });
   define("LoadIconW", { argument: [0, 32512] }, { return_value: 0x00008100 | 32512, last_error: 0 });
+  define("CreateIconIndirect", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("CreateIconIndirect", { argument: [1] }, { return_value: 0x00008200, last_error: 0 });
+  define("DestroyIcon", { argument: [0x00008200] }, { return_value: 1, last_error: 0 });
+  define("CopyImage", { argument: [0, 2, 0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("CopyImage", { argument: [0x00008000 | 32512, 2, 0, 0, 4] }, { return_value: 0x00008000 | 32512, last_error: 0 });
+  define("CopyImage", { argument: [0x00008000 | 32512, 2, 0, 0, 0] }, { return_value: 0x00008200, last_error: 0 });
+  define("CopyImage", { argument: [0x00008000 | 32512, 2, 32, 32, 0] }, { return_value: 0x00008200, last_error: 0 });
+  define("CopyImage", { argument: [0x1234, 2, 0, 0, 0] }, { return_value: 0, last_error: 6 });
+  define("SystemParametersInfoW", { argument: [0x70, 0, 1, 0] }, { return_value: 1, last_error: 0 });
+  define("SystemParametersInfoW", { argument: [3, 0, 1, 0] }, { return_value: 1, last_error: 0 });
+  define("SystemParametersInfoW", { argument: [0x70, 0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("SystemParametersInfoW", { argument: [0x9999, 0, 1, 0] }, { return_value: 0, last_error: 87 });
+  define("SystemParametersInfoA", { argument: [0x70, 0, 1, 0] }, { return_value: 1, last_error: 0 });
+  define("RegisterWindowMessageA", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("RegisterWindowMessageA", { argument: [1] }, { return_value: 0x0000c000, last_error: 0 });
+  define("RegisterWindowMessageW", { argument: [1] }, { return_value: 0x0000c000, last_error: 0 });
   define("CreateMenu", { argument: [] }, { return_value: 0x00030000, last_error: 0 });
   define("AppendMenuA", { scenario: [["CreateMenu", []]], argument: [0x00030000, 0, 1, ""] }, { return_value: 1, last_error: 0 });
   define("SetMenu", { scenario: [registerAnsiStep, createAnsiStep, ["CreateMenu", []]], argument: [FIRST_HANDLE, 0x00030000] }, { return_value: 1, last_error: 0 });

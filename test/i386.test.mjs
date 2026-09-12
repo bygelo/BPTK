@@ -821,6 +821,20 @@ test("microprogram: the OpenAL-shaped scalar series exits on an unchanged accumu
   });
 });
 
+test("microprogram: CVTPS2DQ converts packed singles and CVTTPS2DQ truncates", (context) => {
+  // cvtsi2ss xmm0,5; cvtps2dq xmm1,xmm0 (np 0f 5b c8) -> dword 5 in lane0.
+  const converted = runMicro(context, [0xb8, 0x05, 0x00, 0x00, 0x00, 0xf3, 0x0f, 0x2a, 0xc0, 0x0f, 0x5b, 0xc8, 0xc3]);
+  const dword = Buffer.alloc(16);
+  dword.writeInt32LE(5, 0);
+  assertReferenceState(converted, { xmm: { 1: `0x${dword.toString("hex")}` } });
+  // 5/2 = 2.5f; cvttps2dq xmm0,xmm0 (f3 0f 5b c0) -> 2; cvtps2dq of the
+  // same 2.5f -> 2 (nearest even).
+  const truncated = runMicro(context, [0xb8, 0x05, 0x00, 0x00, 0x00, 0xf3, 0x0f, 0x2a, 0xc0, 0xb8, 0x02, 0x00, 0x00, 0x00, 0xf3, 0x0f, 0x2a, 0xc8, 0xf3, 0x0f, 0x5e, 0xc1, 0xf3, 0x0f, 0x5b, 0xc0, 0xc3]);
+  const two = Buffer.alloc(16);
+  two.writeInt32LE(2, 0);
+  assertReferenceState(truncated, { xmm: { 0: `0x${two.toString("hex")}` } });
+});
+
 test("microprogram: CVTDQ2PD widens two packed dwords to doubles", (context) => {
   // mov eax,5; movd xmm0,eax; cvtdq2pd xmm0,xmm0 (f3 0f e6 c0) -> 5.0 and 0.0.
   const packed = runMicro(context, [0xb8, 0x05, 0x00, 0x00, 0x00, 0x66, 0x0f, 0x6e, 0xc0, 0xf3, 0x0f, 0xe6, 0xc0, 0xc3]);

@@ -592,6 +592,29 @@ test("GetConsoleMode writes the mode dword and returns BOOL", () => {
   assert.equal(memory.readMemory(dest, 4), 3);
 });
 
+test("CreateDIBSection writes a guest-visible bits pointer that GetPixel can read", () => {
+  const { guest, memory } = createConformanceMachine();
+  const info = guest.layout.arena_base + 0x150040;
+  const bitsOut = guest.layout.arena_base + 0x150080;
+  memory.writeMemory(info + 0, 4, 40);
+  memory.writeMemory(info + 4, 4, 2);
+  memory.writeMemory(info + 8, 4, 0xfffffffe);
+  memory.writeMemory(info + 12, 2, 1);
+  memory.writeMemory(info + 14, 2, 32);
+  memory.writeMemory(info + 16, 4, 0);
+  const bitmap = invoke(guest, "gdi32.dll", "CreateDIBSection", [0, info, 0, bitsOut, 0, 0]);
+  assert.notEqual(bitmap, 0);
+  const bits = memory.readMemory(bitsOut, 4);
+  assert.notEqual(bits, 0);
+  memory.writeMemory(bits + 0, 1, 9);
+  memory.writeMemory(bits + 1, 1, 8);
+  memory.writeMemory(bits + 2, 1, 7);
+  memory.writeMemory(bits + 3, 1, 0);
+  const dc = invoke(guest, "gdi32.dll", "CreateCompatibleDC", [0]);
+  invoke(guest, "gdi32.dll", "SelectObject", [dc, bitmap]);
+  assert.equal(invoke(guest, "gdi32.dll", "GetPixel", [dc, 0, 0]), 0x00090807);
+});
+
 test("EnumDisplayDevicesW writes the one virtual adapter and stops after it", () => {
   const { guest, memory } = createConformanceMachine();
   const info = guest.layout.arena_base + 0x150040;

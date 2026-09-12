@@ -165,6 +165,15 @@ test("TextOut renders a stock glyph in the text color over the background", () =
   assert.equal(gdi.getPixel(dc, 0, 0), rgb(0, 0, 0)); // corner is background in OPAQUE mode
 });
 
+test("CreateDIBSection allocates a bitmap the DC can select", () => {
+  const gdi = createGdiSubsystem();
+  const dc = gdi.createCompatibleDC(0);
+  const dib = gdi.createDibSection({ width: 2, height: 2, bits_pixel: 32, top_down: true, bits_address: 0, stride: 8 });
+  assert.equal(gdi.getObject(dib).width, 2);
+  gdi.selectObject(dc, dib);
+  assert.deepEqual(gdi.surfaceInfo(dc), { width: 2, height: 2 });
+});
+
 test("CreateDCW opens the virtual display at HORZRES x VERTRES and refuses a printer driver", () => {
   const gdi = createGdiSubsystem();
   const dc = gdi.createDisplayDC();
@@ -313,8 +322,19 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.setRop2(argument[0], argument[1]);
     case "GetROP2":
       return gdi.getRop2(argument[0]);
+    case "CreateBitmap":
+      return gdi.createBitmap(argument[0], argument[1], argument[2], argument[3], 0, null);
     case "CreateCompatibleBitmap":
       return gdi.createCompatibleBitmap(argument[0], argument[1], argument[2]);
+    case "CreateDIBSection":
+      return gdi.createDibSection({
+        width: Math.max(argument[0] | 0, 1),
+        height: Math.max(argument[1] | 0, 1),
+        bits_pixel: 32,
+        top_down: false,
+        bits_address: 0,
+        stride: ((Math.max(argument[0] | 0, 1) * 32 + 31) >> 5) << 2,
+      });
     case "GetCurrentObject":
       return gdi.getCurrentObject(argument[0], argument[1]);
     case "GetObjectA": {
@@ -391,6 +411,9 @@ function buildGdiConformanceCase() {
   define("SetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE, rasterOp2.R2_WHITE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
   define("GetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
   define("CreateCompatibleBitmap", { scenario: [dcStep], argument: [FIRST_HANDLE, 2, 2] }, { return_value: FIRST_HANDLE + 4, last_error: 0 });
+  define("CreateBitmap", { argument: [2, 2, 1, 1, 0] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("CreateBitmap", { argument: [2, 2, 1, 8, 0] }, { return_value: 0, last_error: 87 });
+  define("CreateDIBSection", { argument: [2, 2] }, { return_value: FIRST_HANDLE, last_error: 0 });
   define("GetCurrentObject", { scenario: [dcStep], argument: [FIRST_HANDLE, 7] }, { return_value: 0, last_error: 0 });
   define("GetObjectA", { scenario: [dcStep, ["CreateCompatibleBitmap", [FIRST_HANDLE, 2, 2]]], argument: [FIRST_HANDLE + 4] }, { return_value: 24, last_error: 0 });
   define("GetDIBits", { scenario: [dcStep, ["CreateCompatibleBitmap", [FIRST_HANDLE, 2, 2]]], argument: [FIRST_HANDLE, FIRST_HANDLE + 4, 0, 2, 0] }, { return_value: 2, last_error: 0 });
