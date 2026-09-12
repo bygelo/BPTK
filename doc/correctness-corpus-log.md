@@ -1031,6 +1031,27 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is i386
 `PMINSW` (`0F EA`) in libpng; `gdi32!SwapBuffers` is still unbound on sdl2.
 
+## Cycle 47 — PMINSW (2026-09-12)
+
+The SuperTux stop after Cycle 46 was `unsupported_opcode 0x0f 0xea` at
+`libpng16+0x20ad4`. PMINSW is packed signed-word minimum: the no-prefix form
+writes an mm lane and the `66` form writes an xmm lane. No title-specific
+branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **unsupported_opcode `0x0f 0xe0` PAVGB** at `libpng16+0x2080b` after
+  **42080197** instruction, **8320** HLE. `SetFilePointerEx` 1.
+  console.err empty. Last `CreateWindowExW` `0x10024`. Last
+  `wglCreateContext` `0x5000c`. `SwapBuffers` is never reached. Inflating a
+  PNG is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is i386
+`PAVGB` (`0F E0`) in libpng; `gdi32!SwapBuffers` is still unbound on sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

@@ -719,6 +719,24 @@ test("microprogram: PAND, POR, and PANDN combine the 64-bit lanes bitwise", (con
   assertReferenceState(pandn, { mm: { 0: 0x000000000000f0f0n } });
 });
 
+test("microprogram: PMINSW keeps the smaller signed word in each lane", (context) => {
+  // mm0 words (5, 3); mm1 words (4, 4) → (4, 3).
+  const report = runMicro(context, [0xb8, 0x05, 0x00, 0x03, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0x04, 0x00, 0x04, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xea, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x0000000000030004n } });
+});
+
+test("microprogram: PMINSW treats 0x8000 as less than 0x7fff", (context) => {
+  // mm0 words (-32768, 32767); mm1 words (-1, 1) → (-32768, 1).
+  const report = runMicro(context, [0xb8, 0x00, 0x80, 0xff, 0x7f, 0x0f, 0x6e, 0xc0, 0xb8, 0xff, 0xff, 0x01, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xea, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x0000000000018000n } });
+});
+
+test("microprogram: SSE2 PMINSW keeps the smaller signed word in each xmm lane", (context) => {
+  // xmm0 words (5, 3); xmm1 words (4, 4) → (4, 3).
+  const report = runMicro(context, [0xb8, 0x05, 0x00, 0x03, 0x00, 0x66, 0x0f, 0x6e, 0xc0, 0xb8, 0x04, 0x00, 0x04, 0x00, 0x66, 0x0f, 0x6e, 0xc8, 0x66, 0x0f, 0xea, 0xc1, 0xc3]);
+  assertReferenceState(report, { xmm: { 0: "0x04000300000000000000000000000000" } });
+});
+
 test("microprogram: PSHUFW selects each result word by the immediate's 2-bit field", (context) => {
   // mm0 words (0x0021,0x0043,0,0); control 0x1b = 00|01|10|11 selects source
   // words 3,2,1,0 into result words 0,1,2,3, reversing the loaded pair up.
