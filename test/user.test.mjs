@@ -75,6 +75,31 @@ test("CreateWindowEx for an unregistered class fails with cannot-find-class", ()
   assert.equal(user.getLastError(), 0x57f);
 });
 
+test("CreateWindowEx finds a predefined control class regardless of case", () => {
+  const user = createUserSubsystem();
+  user.registerClass("Button", defaultProc);
+  const handle = user.createWindowEx({ class_name: "BUTTON" });
+  assert.notEqual(handle, 0);
+  assert.equal(user.getLastError(), 0);
+  assert.equal(user.registerClass("BUTTON", defaultProc), 0);
+  assert.equal(user.getLastError(), 0x582);
+});
+
+test("CreateWindowEx serves msctls_progress32 without a prior RegisterClass", () => {
+  const user = createUserSubsystem();
+  const handle = user.createWindowEx({ class_name: "msctls_progress32" });
+  assert.notEqual(handle, 0);
+});
+
+test("CreateWindowEx serves stock BUTTON without a prior RegisterClass", () => {
+  const user = createUserSubsystem();
+  user.registerClass("AppClass", defaultProc);
+  const parent = user.createWindowEx({ class_name: "AppClass" });
+  const handle = user.createWindowEx({ class_name: "BUTTON", style: 0x50000000, parent, control_id: 123 });
+  assert.notEqual(handle, 0);
+  assert.equal(user.getDlgItem(parent, 123), handle);
+});
+
 test("acceptDropFiles records whether a live window accepts dropped files", () => {
   const user = createUserSubsystem();
   user.registerClass("AppClass", defaultProc);
