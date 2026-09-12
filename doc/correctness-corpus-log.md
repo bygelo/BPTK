@@ -757,6 +757,26 @@ Measured on the staged corpus (payloads still out of git):
 `SetWindowTextW` (with `GetWindowTextW` / `GetWindowTextLengthW`;
 `GetWindowTextA` is already served), not another GDI ICM row.
 
+## Cycle 36 — SetWindowTextW (2026-09-12)
+
+The SuperTux stop after Cycle 35 was SDL2 setting the window caption through
+unbound `user32!SetWindowTextW`. The slice is generic: store the caption
+`GetWindowText` / `GetWindowTextLength` (A and W) then report. An invalid
+HWND refuses. `SetWindowTextA` is the ANSI twin.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `shell32!DragAcceptFiles`** after **39455186**
+  instruction, **7853** HLE. Previous EIP `sdl2` `0x2c0d3f27`.
+  `SetWindowTextW` returned 1. A HWND is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`DragAcceptFiles` (record whether a HWND accepts dropped files), not
+another caption API.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

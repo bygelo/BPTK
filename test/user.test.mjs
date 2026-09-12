@@ -473,8 +473,13 @@ function applyUserOp(user, symbol, argument) {
     case "DefDlgProcA":
       return user.defWindowProc(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0);
     case "GetWindowTextA":
+    case "GetWindowTextW":
     case "GetWindowTextLengthA":
+    case "GetWindowTextLengthW":
       return user.getWindowText(argument[0]).length;
+    case "SetWindowTextW":
+    case "SetWindowTextA":
+      return user.setWindowText(argument[0], argument[1] ?? "");
     case "GetDlgItem":
       return user.getDlgItem(argument[0], argument[1]);
     case "GetDlgItemTextA":
@@ -726,6 +731,11 @@ function buildUserConformanceCase() {
   define("DefDlgProcA", { argument: [0, windowMessage.WM_NULL, 0, 0] }, { return_value: 0, last_error: 0 });
   define("GetWindowTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
   define("GetWindowTextLengthA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
+  define("SetWindowTextW", { argument: [0, "x"] }, { return_value: 0, last_error: 0x578 });
+  define("SetWindowTextW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, "SuperTux"] }, { return_value: 1, last_error: 0 });
+  define("GetWindowTextW", { scenario: [registerStep, createStep, ["SetWindowTextW", [FIRST_HANDLE, "SuperTux"]]], argument: [FIRST_HANDLE] }, { return_value: 8, last_error: 0 });
+  define("GetWindowTextLengthW", { scenario: [registerStep, createStep, ["SetWindowTextW", [FIRST_HANDLE, "SuperTux"]]], argument: [FIRST_HANDLE] }, { return_value: 8, last_error: 0 });
+  define("SetWindowTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, "SuperTux"] }, { return_value: 1, last_error: 0 });
   define("GetDlgItem", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1] }, { return_value: 0, last_error: 0 });
   define("GetDlgItemTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1] }, { return_value: 0, last_error: 0x578 });
   define("SetDlgItemTextA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, ""] }, { return_value: 0, last_error: 0x578 });

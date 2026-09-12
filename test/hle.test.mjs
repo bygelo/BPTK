@@ -785,6 +785,27 @@ test("SetPropW stores a HANDLE that GetPropW and RemovePropW round-trip", () => 
   assert.equal(invoke(guest, "user32.dll", "GetPropW", [window, propName]), 0);
 });
 
+test("SetWindowTextW stores a caption that GetWindowTextW and GetWindowTextLengthW round-trip", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  const titlePtr = base + 0x140;
+  const dest = base + 0x180;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  guest.writeWideString(titlePtr, "SuperTux", 16);
+  memory.writeMemory(classStruct + 0, 4, 0);
+  memory.writeMemory(classStruct + 4, 4, 0);
+  memory.writeMemory(classStruct + 36, 4, classNamePtr);
+  invoke(guest, "user32.dll", "RegisterClassW", [classStruct]);
+  const window = invoke(guest, "user32.dll", "CreateWindowExW", [0, classNamePtr, 0, 0, 0, 0, 320, 240, 0, 0, 0, 0]);
+  assert.equal(invoke(guest, "user32.dll", "SetWindowTextW", [0, titlePtr]), 0);
+  assert.equal(invoke(guest, "user32.dll", "SetWindowTextW", [window, titlePtr]), 1);
+  assert.equal(invoke(guest, "user32.dll", "GetWindowTextLengthW", [window]), 8);
+  assert.equal(invoke(guest, "user32.dll", "GetWindowTextW", [window, dest, 32]), 8);
+  assert.equal(guest.readWideString(dest), "SuperTux");
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;
