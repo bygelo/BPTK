@@ -441,6 +441,9 @@ test("api-set and ntdll names resolve to the same kernel32 or msvcrt row", () =>
   assert.equal(resolveHleExport("kernel32.dll", "NoSuchExport"), null);
   assert.equal(resolveHleExport("ws2_32.dll", null, 115)?.symbol, "WSAStartup");
   assert.equal(resolveHleExport("sspicli.dll", "InitSecurityInterfaceW")?.library, "secur32.dll");
+  const appPolicy = resolveHleExport("api-ms-win-appmodel-runtime-l1-1-2.dll", "AppPolicyGetProcessTerminationMethod");
+  assert.equal(appPolicy?.library, "kernel32.dll");
+  assert.equal(appPolicy?.symbol, "AppPolicyGetProcessTerminationMethod");
 });
 
 test("WSACreateEvent is a manual-reset event; EnumNetworkEvents reports no FD bits", () => {
@@ -2158,6 +2161,14 @@ test("BPTK-010: LoadLibraryExW appends .dll and honors LOAD_LIBRARY_SEARCH_SYSTE
   assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryExW", [guest.layout.arena_base + 0x80, 0, 0x800]), 0x00020002);
   guest.writeWideString(guest.layout.arena_base + 0x80, "api-ms-win-core-localization-l1-2-1", 64);
   assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryExW", [guest.layout.arena_base + 0x80, 0, 0x800]), 0x00020002);
+  guest.writeWideString(guest.layout.arena_base + 0x80, "api-ms-win-appmodel-runtime-l1-1-2", 64);
+  assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryExW", [guest.layout.arena_base + 0x80, 0, 0x800]), 0x00020002);
+  guest.writeAnsiString(guest.layout.arena_base + 0x180, "AppPolicyGetProcessTerminationMethod", 64);
+  const appThunk = invoke(guest, "kernel32.dll", "GetProcAddress", [0x00020002, guest.layout.arena_base + 0x180]);
+  assert.notEqual(appThunk, 0);
+  const dest = guest.layout.arena_base + 0x200;
+  assert.equal(guest.invokeExport(guest.exportAt(appThunk), [0, dest]), 0);
+  assert.equal(guest.memory.readMemory(dest, 4), 1);
   guest.writeAnsiString(guest.layout.arena_base + 0x80, "kernelbase", 32);
   assert.equal(invoke(guest, "kernel32.dll", "LoadLibraryA", [guest.layout.arena_base + 0x80]), 0x00020002);
 });
