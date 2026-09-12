@@ -954,6 +954,32 @@ Measured on the staged corpus (payloads still out of git):
 `wglGetExtensionsStringARB` (the only `wglGetProcAddress` miss), not
 another 1.1 name. Present path still unbound (`SwapBuffers`).
 
+## Cycle 44 — wglGetExtensionsStringARB (2026-09-12)
+
+The SuperTux stop after Cycle 43 was `wglGetProcAddress("wglGetExtensionsStringARB")`
+returning 0, then dummy-context delete. The slice is generic: a live DC
+returns one declared token (`WGL_ARB_extensions_string`); hdc 0 refuses 6.
+The string does not advertise `WGL_ARB_create_context` (that attribs entry
+is not served). No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **process_exit 1** after **41408366** instruction, **19589** HLE.
+  `wglGetExtensionsStringARB` returned a guest pointer. `wglGetProcAddress`
+  misses are empty. Four `wglCreateContext` (`0x50000`…`0x5000c`).
+  `glGetString` VERSION (`0x1f02`) / EXTENSIONS (`0x1f03`) and `glColor4ub`
+  run. Dummy context still deleted after the query. Last `CreateWindowExW`
+  `0x10024`. `SwapBuffers` is never reached. A WGL extension string is not
+  a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`ExitProcess(1)` after `glGetString` VERSION `"1.1 BPTK"` / empty
+`GL_EXTENSIONS` before present; `gdi32!SwapBuffers` is still unbound on
+sdl2. Not another WGL GetProcAddress name.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

@@ -82,3 +82,15 @@ test("wglCreateContext issues a handle GetProcAddress can resolve after LoadLibr
   assert.equal(invoke(guest, "wglMakeCurrent", [0, 0]), 1);
   assert.equal(invoke(guest, "wglDeleteContext", [context]), 1);
 });
+
+test("wglGetExtensionsStringARB returns the declared WGL ARB token", () => {
+  const { guest } = createConformanceMachine();
+  const dc = guest.invokeExport(guest.lookupExport("user32.dll", "GetDC"), [0]);
+  const pointer = invoke(guest, "wglGetExtensionsStringARB", [dc]);
+  assert.notEqual(pointer, 0);
+  assert.match(guest.readAnsiString(pointer), /WGL_ARB_extensions_string/);
+  const name = 0x00150080;
+  guest.writeAnsiString(name, "wglGetExtensionsStringARB", 32);
+  const thunk = invoke(guest, "wglGetProcAddress", [name]);
+  assert.notEqual(thunk, 0);
+});
