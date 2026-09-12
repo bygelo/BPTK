@@ -610,6 +610,27 @@ Measured on the staged corpus (payloads still out of git):
 `GetKeyboardState` (all keys up, matching `GetKeyState`), not another
 execution-state flag.
 
+## Cycle 29 — GetKeyboardState (2026-09-12)
+
+The SuperTux stop after Cycle 28 was SDL2 reading the 256-byte key table
+through unbound `user32!GetKeyboardState`. The row is generic: a NULL dest
+refuses 87; otherwise 256 zero bytes (every virtual key up, matching
+`GetKeyState` / `GetAsyncKeyState`) and return 1. No host keyboard is
+mapped.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!ToUnicode`** after **31884931**
+  instruction, **6007** HLE. Previous EIP `sdl2` `0x2c0ce031`
+  (`mov ebx, [0x2c0f8394]; call ebx`). `GetKeyboardState` returned 1.
+  `MapVirtualKeyW` returned 57. Not a frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`ToUnicode` (US layout, key-state modifiers), not another key-table dump.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

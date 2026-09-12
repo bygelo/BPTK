@@ -688,6 +688,18 @@ test("SetThreadExecutionState records ES_CONTINUOUS and never sleeps the host", 
   assert.equal(guest.getLastError(), 87);
 });
 
+test("GetKeyboardState writes 256 zero bytes when no key is down", () => {
+  const { guest, memory } = createConformanceMachine();
+  const dest = guest.layout.arena_base + 0x40;
+  memory.writeMemory(dest, 1, 0xff);
+  memory.writeMemory(dest + 255, 1, 0xff);
+  assert.equal(invoke(guest, "user32.dll", "GetKeyboardState", [0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "GetKeyboardState", [dest]), 1);
+  assert.equal(memory.readMemory(dest, 1), 0);
+  assert.equal(memory.readMemory(dest + 255, 1), 0);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;

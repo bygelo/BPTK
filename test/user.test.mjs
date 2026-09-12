@@ -395,6 +395,12 @@ function applyUserOp(user, symbol, argument) {
     case "GetKeyState":
     case "GetAsyncKeyState":
       return 0;
+    case "GetKeyboardState":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 1;
     case "GetForegroundWindow":
       return user.getActiveWindow();
     case "GetQueueStatus": {
@@ -636,6 +642,8 @@ function buildUserConformanceCase() {
   define("GetCapture", { argument: [] }, { return_value: 0, last_error: 0 });
   define("GetKeyState", { argument: [0x14] }, { return_value: 0, last_error: 0 });
   define("GetAsyncKeyState", { argument: [0x11] }, { return_value: 0, last_error: 0 });
+  define("GetKeyboardState", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("GetKeyboardState", { argument: [1] }, { return_value: 1, last_error: 0 });
   define("GetClipboardOwner", { argument: [] }, { return_value: 0, last_error: 0 });
   define("GetForegroundWindow", { argument: [] }, { return_value: 0, last_error: 0 });
   define("GetQueueStatus", { argument: [0x1ff] }, { return_value: 0, last_error: 0 });
