@@ -693,6 +693,27 @@ Measured on the staged corpus (payloads still out of git):
 `SetPropW` (per-window property table, with `GetPropW` / `RemovePropW`),
 not another GWL index.
 
+## Cycle 33 — SetPropW (2026-09-12)
+
+The SuperTux stop after Cycle 32 was SDL2 attaching window userdata through
+unbound `user32!SetPropW`. The slice is generic: one HANDLE table per
+window, keyed by a name string or an atom; `GetProp`/`RemoveProp` (A and
+W) share it. A NULL name refuses 87.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!ClientToScreen`** after **39450685**
+  instruction, **7837** HLE. Previous EIP `sdl2` `0x2c0d3d66`.
+  `SetPropW` returned 1. `GetClientRect` returned 1. A HWND is not a
+  presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`ClientToScreen` (with `ScreenToClient`; no nonclient frame), not
+another property API.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

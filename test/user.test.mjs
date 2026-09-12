@@ -487,6 +487,21 @@ function applyUserOp(user, symbol, argument) {
     case "SetWindowLongA":
     case "SetWindowLongW":
       return user.setWindowLong(argument[0], argument[1], argument[2]);
+    case "SetPropW":
+    case "SetPropA":
+      if (argument[1] === 0 || argument[1] === null || argument[1] === "") {
+        user.setLastError(87);
+        return 0;
+      }
+      return user.setProp(argument[0], argument[1], argument[2]);
+    case "GetPropW":
+    case "GetPropA":
+      if (argument[1] === 0 || argument[1] === null || argument[1] === "") return 0;
+      return user.getProp(argument[0], argument[1]);
+    case "RemovePropW":
+    case "RemovePropA":
+      if (argument[1] === 0 || argument[1] === null || argument[1] === "") return 0;
+      return user.removeProp(argument[0], argument[1]);
     case "SetWindowPos":
       return user.setWindowPos(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5], argument[6]);
     case "SetActiveWindow":
@@ -709,6 +724,14 @@ function buildUserConformanceCase() {
   define("GetWindowLongW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, -6] }, { return_value: 0, last_error: 0 });
   define("SetWindowLongA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, -21, 9] }, { return_value: 0, last_error: 0 });
   define("SetWindowLongW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, -21, 9] }, { return_value: 0, last_error: 0 });
+  define("SetPropW", { argument: [0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("SetPropW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, "SDL", 0x1234] }, { return_value: 1, last_error: 0 });
+  define("GetPropW", { scenario: [registerStep, createStep, ["SetPropW", [FIRST_HANDLE, "SDL", 0x1234]]], argument: [FIRST_HANDLE, "SDL"] }, { return_value: 0x1234, last_error: 0 });
+  define("GetPropW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, "SDL"] }, { return_value: 0, last_error: 0 });
+  define("RemovePropW", { scenario: [registerStep, createStep, ["SetPropW", [FIRST_HANDLE, "SDL", 0x1234]]], argument: [FIRST_HANDLE, "SDL"] }, { return_value: 0x1234, last_error: 0 });
+  define("SetPropA", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, "SDL", 0x55] }, { return_value: 1, last_error: 0 });
+  define("GetPropA", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, "SDL"] }, { return_value: 0, last_error: 0 });
+  define("RemovePropA", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, "SDL"] }, { return_value: 0, last_error: 0 });
   define("SetWindowPos", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0, 1, 2, 10, 20, 0] }, { return_value: 1, last_error: 0 });
   define("SetActiveWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
   define("SetForegroundWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });

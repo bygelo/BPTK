@@ -748,6 +748,27 @@ test("GetWindowLongW returns GWL_HINSTANCE stored at CreateWindowEx", () => {
   assert.equal(invoke(guest, "user32.dll", "GetWindowLongW", [0, -6]), 0);
 });
 
+test("SetPropW stores a HANDLE that GetPropW and RemovePropW round-trip", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  const propName = base + 0x140;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  guest.writeWideString(propName, "SDL", 8);
+  memory.writeMemory(classStruct + 0, 4, 0);
+  memory.writeMemory(classStruct + 4, 4, 0);
+  memory.writeMemory(classStruct + 36, 4, classNamePtr);
+  invoke(guest, "user32.dll", "RegisterClassW", [classStruct]);
+  const window = invoke(guest, "user32.dll", "CreateWindowExW", [0, classNamePtr, 0, 0, 0, 0, 320, 240, 0, 0, 0, 0]);
+  assert.equal(invoke(guest, "user32.dll", "SetPropW", [0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "SetPropW", [window, propName, 0x1234]), 1);
+  assert.equal(invoke(guest, "user32.dll", "GetPropW", [window, propName]), 0x1234);
+  assert.equal(invoke(guest, "user32.dll", "RemovePropW", [window, propName]), 0x1234);
+  assert.equal(invoke(guest, "user32.dll", "GetPropW", [window, propName]), 0);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;
