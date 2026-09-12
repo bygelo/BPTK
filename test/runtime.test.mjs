@@ -374,6 +374,17 @@ test("regression risk: CPUID serves the declared processor identity leaf table",
   ], { instruction_budget_count: 10 }).packagePath);
   assert.equal(features.stop_reason, "entry_return");
   assert.equal(features.register.eax, 0x663);
+  // Leaf 0x80000000 reports itself as the highest extended function.
+  const extended = readRun(createPackage(context, [
+    0xb8, 0, 0, 0, 0x80,
+    0x0f, 0xa2,
+    0xc3,
+  ], { instruction_budget_count: 10 }).packagePath);
+  assert.equal(extended.stop_reason, "entry_return");
+  assert.equal(extended.register.eax, 0x80000000);
+  assert.equal(extended.register.ebx, 0);
+  assert.equal(extended.register.ecx, 0);
+  assert.equal(extended.register.edx, 0);
   // An undeclared leaf is a structured unsupported stop, never host data.
   const unknown = readRun(createPackage(context, [
     0xb8, 2, 0, 0, 0,

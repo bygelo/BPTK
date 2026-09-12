@@ -513,6 +513,8 @@ test("CPUID leaf 0 reports the vendor and leaf 1 reports exactly the emulated fe
   const leaf1 = run([0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3]);
   // EDX = FPU|TSC|CMOV|MMX|FXSR|SSE|SSE2 = bits 0,4,15,23,24,25,26 = 0x07808011.
   assertState(leaf1, { register: { rax: 0x6a0n, rbx: 0n, rcx: 0n, rdx: 0x07808011n } });
+  const extended = run([0xb8, 0x00, 0x00, 0x00, 0x80, 0x0f, 0xa2, 0xc3]);
+  assertState(extended, { register: { rax: 0x80000000n, rbx: 0n, rcx: 0n, rdx: 0n } });
 });
 
 test("CMPXCHG stores the source when the accumulator matches and loads the destination when it does not", () => {

@@ -2736,6 +2736,8 @@ test("cpuid: leaf 0 vendor, leaf 1 features, other leaves zero — bit-exact wit
   cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3], "cpuid-leaf0"));
   // mov eax,1; cpuid; ret
   cover(assertEquivalent([0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3], "cpuid-leaf1"));
+  // mov eax,0x80000000; cpuid; ret — highest extended function is this leaf
+  cover(assertEquivalent([0xb8, 0x00, 0x00, 0x00, 0x80, 0x0f, 0xa2, 0xc3], "cpuid-leaf-ext-max"));
   // mov eax,99; cpuid; ret — undeclared leaf zeros eax/ebx/ecx/edx
   cover(assertEquivalent([0xb8, 0x63, 0x00, 0x00, 0x00, 0x0f, 0xa2, 0xc3], "cpuid-other"));
 });

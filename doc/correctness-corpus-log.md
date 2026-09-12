@@ -1169,6 +1169,34 @@ Not remesured: SuperTux on origin is at CPUID leaf `0x80000000` in OpenAL.
 The present path is served so the next remesure that reaches SwapBuffers
 can show pixels. `passing` stays 1 (BPTK-001 only).
 
+## Cycle 53 — CPUID leaf 0x80000000 (2026-09-12)
+
+The SuperTux stop after Cycle 51 was `unsupported_opcode CPUID leaf 0x80000000`
+from OpenAL's extended-leaf probe. Leaf `0x80000000` is now in the declared
+processor table: EAX reports that leaf as the highest extended function, EBX/ECX/EDX
+are zero, so a guest that probes for AMD extras or the brand string sees no
+further extended leaves. Undeclared leaves still stop. The 64-bit oracle and
+WASM tier answer the same leaf. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **hle_wait_deadlock `kernel32!SleepConditionVariableSRW`** after
+  **49691538** instruction, **8550** HLE. `CreateIconFromResource` `0x8208`;
+  `InitOnceBeginInitialize` 1; `SHGetKnownFolderPath` S_OK. OpenAL
+  `CreateThread` `0x10010` then `AcquireSRWLockExclusive`. Previous stop was
+  CPUID at **49675227** / **8464** HLE. `SetFilePointerEx` 1. console.err empty.
+  Last `CreateWindowExW` `0x10024`. Last `wglCreateContext` `0x5000c`.
+  `SwapBuffers` is never reached. A CPUID max-extended answer is not a presented
+  frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`kernel32!SleepConditionVariableSRW` (OpenAL worker wait; infinite timeout is a
+structured deadlock because the other thread does not run);
+`gdi32!SwapBuffers` is served but SuperTux never reaches it.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
