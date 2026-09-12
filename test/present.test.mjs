@@ -13,11 +13,13 @@ import { Buffer as BufferShim } from "../web/shim/buffer.mjs";
 import { createHash as shimCreateHash } from "../web/shim/crypto.mjs";
 import * as pathShim from "../web/shim/path.mjs";
 import * as fsShim from "../web/shim/fs.mjs";
-import { runImageBytes, defaultWindowSize } from "../lib/present.mjs";
+import { runImageBytes, defaultWindowSize, composeGuestSurface } from "../lib/present.mjs";
 import { mapPe64State } from "../lib/pe64.mjs";
 import { executeProbe64 } from "../lib/exec64.mjs";
 import { loadDialogTemplate } from "../lib/rsrc.mjs";
 import { dialogBaseUnit, dialogRectToPixel } from "../lib/user.mjs";
+import { createConformanceMachine } from "../lib/hle.mjs";
+import { glEnum } from "../lib/gl.mjs";
 
 const puttyPath = nodePath.join(resolveStageDir(), "corpus-001", "package", "putty.exe");
 // Corpus payload live outside git, so a corpus-gated test skip when it is absent
@@ -316,4 +318,31 @@ test("runImageBytes is deterministic across two calls", { skip: puttySkip }, () 
   assert.equal(first.stop_reason, second.stop_reason, "identical stop_reason");
   assert.equal(first.surface.rgba.length, second.surface.rgba.length, "identical surface length");
   assert.deepEqual(Array.from(first.surface.rgba), Array.from(second.surface.rgba), "identical surface bytes");
+});
+
+test("composeGuestSurface returns the SwapBuffers GL front buffer", () => {
+  const { guest } = createConformanceMachine();
+  const dc = guest.invokeExport(guest.lookupExport("user32.dll", "GetDC"), [0]);
+  const pfd = 0x00160000;
+  const block = Buffer.alloc(40);
+  block.writeUInt16LE(40, 0);
+  block.writeUInt16LE(1, 2);
+  guest.memory.writeBlock(pfd, block);
+  guest.invokeExport(guest.lookupExport("gdi32.dll", "ChoosePixelFormat"), [dc, pfd]);
+  guest.invokeExport(guest.lookupExport("gdi32.dll", "SetPixelFormat"), [dc, 1, 0]);
+  const context = guest.invokeExport(guest.lookupExport("opengl32.dll", "wglCreateContext"), [dc]);
+  guest.invokeExport(guest.lookupExport("opengl32.dll", "wglMakeCurrent"), [dc, context]);
+  const word = Buffer.alloc(4);
+  word.writeFloatLE(0, 0);
+  const zero = word.readUInt32LE(0);
+  word.writeFloatLE(1, 0);
+  const one = word.readUInt32LE(0);
+  guest.invokeExport(guest.lookupExport("opengl32.dll", "glClearColor"), [one, zero, zero, one]);
+  guest.invokeExport(guest.lookupExport("opengl32.dll", "glClear"), [glEnum.COLOR_BUFFER_BIT]);
+  guest.invokeExport(guest.lookupExport("gdi32.dll", "SwapBuffers"), [dc]);
+  const surface = composeGuestSurface(guest);
+  assert.ok(surface.rgba.length > 0);
+  assert.equal(surface.rgba[0], 255);
+  assert.equal(surface.rgba[1], 0);
+  assert.equal(surface.rgba[2], 0);
 });

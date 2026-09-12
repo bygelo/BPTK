@@ -1154,6 +1154,21 @@ Measured on the staged corpus (payloads still out of git):
 CPUID leaf `0x80000000` (OpenAL extended-leaf probe);
 `gdi32!SwapBuffers` is still unbound on sdl2.
 
+## Cycle 52 — SwapBuffers present (2026-09-12)
+
+Generic `gdi32!SwapBuffers` and `opengl32!wglSwapLayerBuffers`. A live DC
+that already holds the declared double-buffered OpenGL format (index 1)
+returns 1 and copies the GL color buffer to a presented front buffer.
+`composeGuestSurface` and the live session blit that snapshot (browser
+`putImageData`). A NULL DC refuses 6; a DC without a pixel format refuses
+2000. No title-specific branch. A recorded `glDrawArrays` is still not a
+rasterized frame; a `glClear` followed by SwapBuffers is a real presented
+frame.
+
+Not remesured: SuperTux on origin is at CPUID leaf `0x80000000` in OpenAL.
+The present path is served so the next remesure that reaches SwapBuffers
+can show pixels. `passing` stays 1 (BPTK-001 only).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
