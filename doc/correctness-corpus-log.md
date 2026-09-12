@@ -587,6 +587,29 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
 `SetThreadExecutionState`, not another cursor query.
 
+## Cycle 28 — SetThreadExecutionState (2026-09-12)
+
+The SuperTux stop after Cycle 27 was SDL2 inhibiting the display sleep
+through unbound `kernel32!SetThreadExecutionState`. The row is generic:
+CONTINUOUS is stored and returned as the previous state; a one-shot is
+accepted and forgotten; the host never sleeps. USER_PRESENT cannot
+combine with CONTINUOUS; AWAYMODE requires it. Zero or unknown bits
+refuse 87.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!GetKeyboardState`** after **31884911**
+  instruction, **6005** HLE. Previous EIP `sdl2` `0x2c0cdffa`.
+  `SetThreadExecutionState` returned `0x80000000`. `CreateDCW` `0x40000`,
+  `CreateDIBSection` `0x4000c`, `GetDC` `0x40008`. Not a frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`GetKeyboardState` (all keys up, matching `GetKeyState`), not another
+execution-state flag.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

@@ -110,10 +110,10 @@ archive to i386.
 | CORPUS-008 OpenTTD 1.10.3 win32 | game | i386 | loaded | import_present → BPTK-010 |
 | CORPUS-009 Plink 0.74 win32 | program | i386 | entry | process_exit 0 on --version (766759 instruction, `plink: Release 0.74`); no-arg is process_exit 1 with the real usage banner → BPTK-010 |
 | CORPUS-010 jq 1.7.1 win32 | program | i386 | entry | process_exit 0 on --version (4648 instruction, `jq-1.7.1`) and on `-n 1` (4361398 instruction, colored `1`) → BPTK-010 |
-| CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 8.8 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
+| CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateThread handle 65550, WaitOnAddress parks, then fetch_fault `0x105be0` from ucrt (31709266 instruction, 5597 HLE) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` SetThreadExecutionState returned ES_CONTINUOUS, then fetch_fault `user32!GetKeyboardState` (31884911 instruction, 6005 HLE) → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 1**. Playability is
@@ -130,27 +130,26 @@ argv (`GetCommandLineW` / `CommandLineToArgvW`). The `0x1397bc` fetch was
 SDL2 `call [IAT]` through unbound `SHGetFolderPathW` (hint RVA). That import
 now writes `C:\Users\Guest\AppData\Roaming`. physfs `OpenProcessToken` is
 served. A 50M remesure with `--datadir C:\game\data` and the real portable tree
-then catches the missing-`config` `0xe06d7363`, runs
-`InitSecurityInterfaceW` (empty SSPI table) and ordinal `WSAStartup`,
-and stops **fetch_fault `0x105be0`** at **31709266** instruction / **5597**
-HLE after `CreateThread` (handle 65550, start in SDL2) and a parked
-`WaitOnAddress`. The SuperTux fatal about creating a thread is gone.
-Previous EIP is `ucrtbase` `0x350808da`. That is not a frame. Ripgrep `--version` is `process_exit` 0
+(5134 host files) catches the missing-`config` `0xe06d7363`, runs the
+guest SDL thread, serves `CreateDCW` / `CreateDIBSection` / cursor
+handles / `SetThreadExecutionState` (`ES_CONTINUOUS` `0x80000000`),
+and stops **fetch_fault `user32!GetKeyboardState`** at **31884911**
+instruction / **6005** HLE. Previous EIP is `sdl2` `0x2c0cdffa`
+(`call [IAT]` hint RVA `0x138d22`). That is not a frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
 (1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
 4648 instruction); `jq -n 1` is `process_exit` 0 after 4361398 instruction
 with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
-`WM_INITDIALOG` (`CreateWindowExA` 34, `MapDialogRect` 35, `AppendMenuA` 36).
+`WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is the ucrt fetch at `0x105be0` after the first guest thread
-runs, not inventing a `config` file or returning a thread handle that
-never executes. The written `config` uses 64-bit x87 stores — some float
+SuperTux work is `GetKeyboardState` (256-byte key table, all up), not
+another display-sleep flag. The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
 CreateFile2, FileTimeToSystemTime, and GetFullPathName("") → cwd are
-served. SDL2 still has 154 unserved imports;
+served. SDL2 still has 133 unserved imports;
 unbound sidecar IAT slots still hold hint RVAs. OpenTTD 1.10.3 stays 161/302.
 
 ## Boundary statement

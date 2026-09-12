@@ -672,6 +672,22 @@ test("SetConsoleCtrlHandler records a handler and never fires it", () => {
   assert.deepEqual(guest.console_ctrl_handler, []);
 });
 
+test("SetThreadExecutionState records ES_CONTINUOUS and never sleeps the host", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadExecutionState", [0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadExecutionState", [0x80000003]), 0x80000000);
+  assert.equal(guest.execution_state, 0x80000003);
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadExecutionState", [0x00000002]), 0x80000003);
+  assert.equal(guest.execution_state, 0x80000003);
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadExecutionState", [0x80000000]), 0x80000003);
+  assert.equal(guest.execution_state, 0x80000000);
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadExecutionState", [0x80000004]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "SetThreadExecutionState", [0x00000040]), 0);
+  assert.equal(guest.getLastError(), 87);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;
