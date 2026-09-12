@@ -25,6 +25,8 @@ import {
   toUnicode,
   virtualKeyFromDomCode,
   pointerButtonFromDom,
+  virtualMonitorHandle,
+  monitorDefault,
 } from "../lib/user.mjs";
 import { createConformanceMachine } from "../lib/hle.mjs";
 
@@ -536,6 +538,29 @@ function applyUserOp(user, symbol, argument) {
         return 0;
       }
       return 1;
+    case "MonitorFromPoint":
+    case "MonitorFromRect":
+      if ((argument[0] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return virtualMonitorHandle;
+    case "MonitorFromWindow":
+      return user.monitorFromWindow(argument[0] >>> 0, argument[1] ?? monitorDefault.to_nearest);
+    case "InvalidateRect":
+      return user.invalidateRect(argument[0] >>> 0);
+    case "ValidateRect":
+      return user.validateRect(argument[0] >>> 0);
+    case "GetUpdateRect":
+      return user.updateRect(argument[0] >>> 0)?.is_empty === false ? 1 : 0;
+    case "SetFocus":
+      return user.setFocusWindow(argument[0] >>> 0);
+    case "FillRect":
+      if ((argument[1] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 1;
     case "EnumDisplaySettingsW":
     case "EnumDisplaySettingsA":
       if ((argument[2] >>> 0) === 0) {
@@ -884,6 +909,18 @@ function buildUserConformanceCase() {
   define("GetMonitorInfoW", { argument: [0x00020000, 0] }, { return_value: 0, last_error: 87 });
   define("GetMonitorInfoW", { argument: [0xdeadbeef, 1] }, { return_value: 0, last_error: 6 });
   define("GetMonitorInfoA", { argument: [0xdeadbeef, 1] }, { return_value: 0, last_error: 6 });
+  define("MonitorFromPoint", { argument: [0, 1] }, { return_value: 0, last_error: 87 });
+  define("MonitorFromPoint", { argument: [1, 1] }, { return_value: 0x00020000, last_error: 0 });
+  define("MonitorFromRect", { argument: [0, 1] }, { return_value: 0, last_error: 87 });
+  define("MonitorFromRect", { argument: [1, 1] }, { return_value: 0x00020000, last_error: 0 });
+  define("MonitorFromWindow", { argument: [0, 0] }, { return_value: 0, last_error: 0 });
+  define("MonitorFromWindow", { argument: [0, 2] }, { return_value: 0x00020000, last_error: 0 });
+  define("InvalidateRect", { argument: [0, 0, 1] }, { return_value: 1, last_error: 0 });
+  define("ValidateRect", { argument: [0, 0] }, { return_value: 1, last_error: 0 });
+  define("GetUpdateRect", { argument: [0, 0, 0] }, { return_value: 0, last_error: 0x578 });
+  define("SetFocus", { argument: [0] }, { return_value: 0, last_error: 0 });
+  define("FillRect", { argument: [0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("FillRect", { argument: [1, 1, 1] }, { return_value: 1, last_error: 0 });
   define("EnumDisplaySettingsW", { argument: [0, 0xffffffff, 0] }, { return_value: 0, last_error: 87 });
   define("EnumDisplaySettingsW", { argument: [0, 0xffffffff, 1] }, { return_value: 1, last_error: 0 });
   define("EnumDisplaySettingsA", { argument: [0, 1, 1] }, { return_value: 0, last_error: 0 });
@@ -1032,4 +1069,27 @@ test("conformance: every served USER32 export carries a case and matches the ora
   assert.equal(report.is_coverage_complete, true, `uncovered: ${report.uncovered_export.join(", ")}`);
   assert.equal(report.fail_count, 0, report.result.filter((entry) => !entry.pass).map((entry) => `${entry.case_id}: ${entry.mismatch.join("; ")}`).join("\n"));
   assert.equal(report.pass_count, caseTable.length);
+});
+
+
+test("MonitorFromWindow returns the one virtual display and InvalidateRect marks paint", () => {
+  const user = createUserSubsystem();
+  user.registerClass("AppClass", defaultProc);
+  const handle = user.createWindowEx({ class_name: "AppClass", x: 10, y: 20, width: 640, height: 480 });
+  assert.equal(user.monitorFromPoint(0, 0, monitorDefault.to_nearest), virtualMonitorHandle);
+  assert.equal(user.monitorFromPoint(-1, -1, monitorDefault.to_null), 0);
+  assert.equal(user.monitorFromPoint(-1, -1, monitorDefault.to_primary), virtualMonitorHandle);
+  assert.equal(user.monitorFromRect({ left: 100, top: 100, right: 200, bottom: 200 }, monitorDefault.to_nearest), virtualMonitorHandle);
+  assert.equal(user.monitorFromWindow(handle, monitorDefault.to_nearest), virtualMonitorHandle);
+  assert.equal(user.monitorFromWindow(0, monitorDefault.to_null), 0);
+  assert.equal(user.monitorFromWindow(0, monitorDefault.to_nearest), virtualMonitorHandle);
+  user.validateRect(handle);
+  assert.equal(user.needsPaint(handle), false);
+  assert.equal(user.invalidateRect(handle), 1);
+  assert.equal(user.needsPaint(handle), true);
+  const dirty = user.updateRect(handle);
+  assert.equal(dirty.is_empty, false);
+  assert.equal(dirty.right, 640);
+  assert.equal(user.validateRect(handle), 1);
+  assert.equal(user.updateRect(handle).is_empty, true);
 });

@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: WaitOnAddress returns; DPI/DisplayConfig/RtlVerifyVersionInfo/SetThreadDescription now bind; official remesure still **instruction_budget_exhausted** at zlib1!inflate+0x152a (zlib1+0x80ea; 200000000 instruction, 26928 HLE; last ReadFile; SwapBuffers 0) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: WaitOnAddress returns; DPI rows bind; `960cab8` remesure **instruction_budget_exhausted** at zlib1+0xa5c8 (200000000 / 26840 HLE; productive physfs ReadFile 8/8192/4; SwapBuffers 0). Sidecar sdl2 MonitorFrom*/InvalidateRect/user32 FillRect now bind → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is

@@ -657,6 +657,25 @@ test("EnumDisplaySettingsW writes the one 1920x1080 mode and stops after it", ()
   assert.equal(invoke(guest, "user32.dll", "EnumDisplaySettingsW", [0, 1, mode]), 0);
 });
 
+test("MonitorFromPoint and MonitorFromWindow return the one virtual display", () => {
+  const { guest, memory } = createConformanceMachine();
+  const point = guest.layout.arena_base + 0x150080;
+  memory.writeMemory(point, 4, 100);
+  memory.writeMemory(point + 4, 4, 100);
+  assert.equal(invoke(guest, "user32.dll", "MonitorFromPoint", [0, 1]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "MonitorFromPoint", [point, 1]), 0x00020000);
+  assert.equal(invoke(guest, "user32.dll", "MonitorFromWindow", [0, 0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "MonitorFromWindow", [0, 2]), 0x00020000);
+  assert.equal(invoke(guest, "user32.dll", "InvalidateRect", [0, 0, 1]), 1);
+  assert.equal(invoke(guest, "user32.dll", "ValidateRect", [0, 0]), 1);
+  assert.equal(invoke(guest, "user32.dll", "GetUpdateRect", [0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "user32.dll", "SetFocus", [0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "FillRect", [0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+});
+
 test("GetMonitorInfoW writes the one virtual desktop and EnumDisplayMonitors queues its callback", () => {
   const { guest, memory } = createConformanceMachine();
   const info = guest.layout.arena_base + 0x150040;
