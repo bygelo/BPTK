@@ -1197,6 +1197,20 @@ Measured on the staged corpus (payloads still out of git):
 structured deadlock because the other thread does not run);
 `gdi32!SwapBuffers` is served but SuperTux never reaches it.
 
+## Cycle 54 — live GL present (2026-09-12)
+
+The live session and `composeGuestSurface` now treat a current WGL context /
+`gdi32!SwapBuffers` front buffer as video. `hasVideo` and `presentCount` follow
+GL, not only an SDL software framebuffer. The browser host `putImageData` blit
+is that swapped color buffer. `SDL_GL_SwapBuffers` copies the same buffer. A
+recorded `glDrawArrays` is still not a rasterized frame. No title-specific
+branch.
+
+Not remesured: SuperTux on origin is at `hle_wait_deadlock
+kernel32!SleepConditionVariableSRW` in OpenAL. The present path is served so the
+next remesure that reaches SwapBuffers can show pixels. `passing` stays 1
+(BPTK-001 only).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

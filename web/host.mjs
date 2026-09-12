@@ -3,10 +3,12 @@
 
 // The browser host: runs a Windows PE LIVE in the browser through the resumable
 // session (lib/live.mjs) — stepping the guest in chunks, blitting its own RGBA
-// surface to the canvas each chunk, and forwarding real keyboard/mouse input
-// into the guest's SDL queue. No pixels are fabricated; the canvas is exactly
-// what the runtime paints. node: specifiers resolve through the index.html
-// import map; Buffer is installed as a global before this module loads.
+// surface (SDL software, GL front buffer after SwapBuffers, or GDI desktop) to
+// the canvas each chunk via putImageData, and forwarding real keyboard/mouse
+// input into the guest's SDL queue. No pixels are fabricated; the canvas is
+// exactly what the runtime paints. A recorded glDrawArrays is not a frame.
+// node: specifiers resolve through the index.html import map; Buffer is
+// installed as a global before this module loads.
 
 import { createLiveSession } from "../lib/live.mjs";
 import { sdlScancode, sdlKeycode } from "../lib/sdl.mjs";

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createConformanceMachine } from "../lib/hle.mjs";
 import { glEnum } from "../lib/gl.mjs";
-import { composeGuestSurface } from "../lib/present.mjs";
+import { composeGuestSurface, guestPresentState } from "../lib/present.mjs";
 
 function invoke(guest, symbol, argument) {
   return guest.invokeExport(guest.lookupExport("opengl32.dll", symbol), argument);
@@ -175,4 +175,68 @@ test("wglSwapLayerBuffers is the WGL twin of SwapBuffers", () => {
   assert.equal(frame.rgba[0], 255);
   assert.equal(frame.rgba[1], 0);
   assert.equal(frame.is_blank, false);
+});
+
+test("guestPresentState treats a current WGL context as video before SwapBuffers", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(guestPresentState(guest).has_video, false);
+  assert.equal(guestPresentState(guest).present_count, 0);
+  preparePresentDc(guest);
+  const before = guestPresentState(guest);
+  assert.equal(before.has_video, true, "MakeCurrent is video even with no SDL software surface");
+  assert.equal(before.present_count, 0, "no frame until SwapBuffers");
+  assert.equal(before.source, "none");
+  invoke(guest, "glClearColor", [floatBits(0), floatBits(1), floatBits(0), floatBits(1)]);
+  invoke(guest, "glClear", [glEnum.COLOR_BUFFER_BIT]);
+  assert.equal(guest.gl.presentFramebuffer(), null, "a recorded clear is not a frame");
+  guest.invokeExport(guest.lookupExport("gdi32.dll", "SwapBuffers"), [guest.gl.currentDc()]);
+  const after = guestPresentState(guest);
+  assert.equal(after.has_video, true);
+  assert.equal(after.present_count, 1);
+  assert.equal(after.source, "gl");
+});
+
+test("composeGuestSurface prefers the SwapBuffers front buffer over an SDL software surface", () => {
+  const { guest } = createConformanceMachine();
+  const dc = preparePresentDc(guest);
+  invoke(guest, "glViewport", [0, 0, 4, 4]);
+  invoke(guest, "glClearColor", [floatBits(0), floatBits(0), floatBits(1), floatBits(1)]);
+  invoke(guest, "glClear", [glEnum.COLOR_BUFFER_BIT]);
+  const sdlSurface = guest.invokeExport(guest.lookupExport("sdl.dll", "SDL_SetVideoMode"), [8, 4, 32, 0]);
+  assert.notEqual(sdlSurface, 0);
+  assert.equal(guest.sdl.has_video, true);
+  guest.invokeExport(guest.lookupExport("gdi32.dll", "SwapBuffers"), [dc]);
+  const surface = composeGuestSurface(guest);
+  assert.equal(guestPresentState(guest).source, "gl");
+  assert.equal(surface.rgba[0], 0);
+  assert.equal(surface.rgba[1], 0);
+  assert.equal(surface.rgba[2], 255);
+  assert.ok(surface.width >= 4 && surface.height >= 4);
+});
+
+test("SDL_GL_SwapBuffers copies the GL color buffer", () => {
+  const { guest } = createConformanceMachine();
+  preparePresentDc(guest);
+  invoke(guest, "glViewport", [0, 0, 4, 4]);
+  invoke(guest, "glClearColor", [floatBits(1), floatBits(1), floatBits(0), floatBits(1)]);
+  invoke(guest, "glClear", [glEnum.COLOR_BUFFER_BIT]);
+  assert.equal(guest.invokeExport(guest.lookupExport("sdl.dll", "SDL_GL_SwapBuffers"), []), 0);
+  const frame = guest.gl.presentFramebuffer();
+  assert.notEqual(frame, null);
+  assert.equal(frame.rgba[0], 255);
+  assert.equal(frame.rgba[1], 255);
+  assert.equal(frame.rgba[2], 0);
+  assert.equal(guestPresentState(guest).source, "gl");
+});
+
+test("glDrawArrays without SwapBuffers is not a presented frame", () => {
+  const { guest } = createConformanceMachine();
+  preparePresentDc(guest);
+  invoke(guest, "glBegin", [0]);
+  invoke(guest, "glVertex2f", [floatBits(0), floatBits(0)]);
+  invoke(guest, "glEnd", []);
+  assert.equal(guest.gl.describe().draw_count, 1);
+  assert.equal(guest.gl.presentFramebuffer(), null);
+  assert.equal(guestPresentState(guest).present_count, 0);
+  assert.notEqual(guestPresentState(guest).source, "gl");
 });
