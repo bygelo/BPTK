@@ -1052,6 +1052,29 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is i386
 `PAVGB` (`0F E0`) in libpng; `gdi32!SwapBuffers` is still unbound on sdl2.
 
+## Cycle 48 — PAVGB (2026-09-12)
+
+The SuperTux stop after Cycle 47 was `unsupported_opcode 0x0f e0` at
+`libpng16+0x2080b` (`66 0F E0 C8`, SSE2 PAVGB). PAVGB is packed unsigned-byte
+average: each lane is `(a + b + 1) >> 1`. The no-prefix form writes an mm lane
+and the `66` form writes an xmm lane. A scan of the same libpng filter found
+no further unserved packed op (PADDB / PSUBB / PUNPCKLBW / PMINSW already
+served). No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!CreateIconFromResource`** after
+  **49660809** instruction, **8371** HLE. Previous EIP `sdl2` `0x2c0d4f25`
+  (`call [0x2c0f82a8]`). `SetFilePointerEx` 1. console.err empty. Last
+  `CreateWindowExW` `0x10024`. Last `wglCreateContext` `0x5000c`.
+  `SwapBuffers` is never reached. A decoded icon PNG is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`user32!CreateIconFromResource`; `gdi32!SwapBuffers` is still unbound on sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

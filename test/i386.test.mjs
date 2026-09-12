@@ -737,6 +737,25 @@ test("microprogram: SSE2 PMINSW keeps the smaller signed word in each xmm lane",
   assertReferenceState(report, { xmm: { 0: "0x04000300000000000000000000000000" } });
 });
 
+test("microprogram: PAVGB is the rounded unsigned-byte average per lane", (context) => {
+  // mm0 bytes (0, 1, 254, 255); mm1 bytes (0, 0, 1, 255) → (0, 1, 128, 255).
+  // (0+0+1)>>1 = 0; (1+0+1)>>1 = 1; (254+1+1)>>1 = 128; (255+255+1)>>1 = 255.
+  const report = runMicro(context, [0xb8, 0x00, 0x01, 0xfe, 0xff, 0x0f, 0x6e, 0xc0, 0xb8, 0x00, 0x00, 0x01, 0xff, 0x0f, 0x6e, 0xc8, 0x0f, 0xe0, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x00000000ff800100n } });
+});
+
+test("microprogram: PAVGB rounds an odd sum up, not toward zero", (context) => {
+  // (0+1+1)>>1 = 1. Truncating average would keep 0.
+  const report = runMicro(context, [0xb8, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x6e, 0xc0, 0xb8, 0x01, 0x00, 0x00, 0x00, 0x0f, 0x6e, 0xc8, 0x0f, 0xe0, 0xc1, 0xc3]);
+  assertReferenceState(report, { mm: { 0: 0x0000000000000001n } });
+});
+
+test("microprogram: SSE2 PAVGB is the rounded unsigned-byte average per xmm lane", (context) => {
+  // xmm0 bytes (0, 1, 254, 255); xmm1 bytes (0, 0, 1, 255) → (0, 1, 128, 255).
+  const report = runMicro(context, [0xb8, 0x00, 0x01, 0xfe, 0xff, 0x66, 0x0f, 0x6e, 0xc0, 0xb8, 0x00, 0x00, 0x01, 0xff, 0x66, 0x0f, 0x6e, 0xc8, 0x66, 0x0f, 0xe0, 0xc1, 0xc3]);
+  assertReferenceState(report, { xmm: { 0: "0x000180ff000000000000000000000000" } });
+});
+
 test("microprogram: PSHUFW selects each result word by the immediate's 2-bit field", (context) => {
   // mm0 words (0x0021,0x0043,0,0); control 0x1b = 00|01|10|11 selects source
   // words 3,2,1,0 into result words 0,1,2,3, reversing the loaded pair up.
