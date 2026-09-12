@@ -403,6 +403,46 @@ test("microprogram: FXCH ST(1) swaps the top two x87 slots", (context) => {
   assertReferenceState(report, { register: { eax: 1 } });
 });
 
+test("microprogram: FLD ST(0) duplicates the x87 top", (context) => {
+  // fld1; fld st(0) (d9 c0); fistp dword — the copy is 1. SuperTux SDL2
+  // encodes this after ShowWindow.
+  const report = runMicro(context, [
+    0xd9, 0xe8,
+    0xd9, 0xc0,
+    0xdb, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 1 } });
+});
+
+test("microprogram: FLD ST(1) pushes a copy of ST(1)", (context) => {
+  // fld1; fldz; fld st(1) (d9 c1); fistp dword — ST(1) is 1.
+  const report = runMicro(context, [
+    0xd9, 0xe8,
+    0xd9, 0xee,
+    0xd9, 0xc1,
+    0xdb, 0x1d, 0x00, 0x18, 0x40, 0x00,
+    0xa1, 0x00, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 1 } });
+});
+
+test("microprogram: FSTP m80 then FLD m80 round-trips a double as 1", (context) => {
+  // fld1; fstp tbyte [0x401800] (db /7); fld tbyte [0x401800] (db /5);
+  // fistp dword [0x40180c]. SuperTux SDL2 encodes FSTP m80 after FLD ST(0).
+  const report = runMicro(context, [
+    0xd9, 0xe8,
+    0xdb, 0x3d, 0x00, 0x18, 0x40, 0x00,
+    0xdb, 0x2d, 0x00, 0x18, 0x40, 0x00,
+    0xdb, 0x1d, 0x0c, 0x18, 0x40, 0x00,
+    0xa1, 0x0c, 0x18, 0x40, 0x00,
+    0xc3,
+  ]);
+  assertReferenceState(report, { register: { eax: 1 } });
+});
+
 test("microprogram: FYL2X multiplies ST(1) by log2(ST(0)) and pops", (context) => {
   // fild 8; fld1; fld1; faddp; fyl2x (d9 f1); fistp — 8 * log2(2) is 8.
   const report = runMicro(context, [

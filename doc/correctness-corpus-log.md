@@ -800,6 +800,28 @@ x87 `FLD ST(i)` (`D9 C0+i`), not another shell32 drop API. Present path
 still unbound (`ChoosePixelFormat` / `SetPixelFormat` / `SwapBuffers` /
 `wglGetProcAddress`).
 
+## Cycle 38 — FLD ST(i) and FSTP m80 (2026-09-12)
+
+The SuperTux stop after Cycle 37 was SDL2 `FLD ST(0)` (`D9 C0`) then
+`FSTP m80` (`DB /7`). The slice is generic: `FLD ST(i)` pushes a copy of a
+live slot; `FSTP m80` / `FLD m80` convert the 64-bit stack value through the
+80-bit memory format (double identity, not 80-bit arithmetic).
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!GetClassInfoExW`** after **40003291**
+  instruction, **10088** HLE. Previous EIP `sdl2` `0x2c0c9455`.
+  `ShowWindow` returned 1 (was visible). Last `CreateWindowExW`
+  `0x1001c`. A shown HWND is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`GetClassInfoExW` (report a registered class), not another x87 row.
+Present path still unbound (`ChoosePixelFormat` / `SetPixelFormat` /
+`SwapBuffers` / `wglGetProcAddress`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
