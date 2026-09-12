@@ -927,6 +927,33 @@ GetProcAddress of unserved GL 1.1 (`glBegin` family) so the context is
 not deleted, not another PFD API. Present path still unbound
 (`SwapBuffers`).
 
+## Cycle 43 — GL 1.1 GetProcAddress (2026-09-12)
+
+The SuperTux stop after Cycle 42 was kernel32 / `wglGetProcAddress` of
+unserved GL 1.1 (`glBegin` / `glEnd` / `glVertex2f` / …) returning 0 /
+last_error 127, then `wglDeleteContext` / `ExitProcess(1)`. The slice is
+generic: those 1.1 names join the opengl32 export table with bounded
+immediate-mode and query state. `glBegin`/`glEnd`/`glRectf` record a
+draw (`draw_count`); they do not paint a playable frame. GL errors go to
+`glGetError`, not Win32 last_error. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **process_exit 1** after **41406979** instruction, **19588** HLE.
+  `ChoosePixelFormat` 1. `SetPixelFormat` 1. Four `wglCreateContext`
+  (`0x50000`…`0x5000c`). `wglMakeCurrent` 1. SDL `wglGetProcAddress` of
+  48 GL 1.1 names hits; `glGetString` / `glGetIntegerv` / `glColor4ub`
+  run. Dummy context deleted after `wglGetExtensionsStringARB` 0.
+  Last `CreateWindowExW` `0x10024`. `SwapBuffers` is never reached. A
+  recorded `glBegin` is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`wglGetExtensionsStringARB` (the only `wglGetProcAddress` miss), not
+another 1.1 name. Present path still unbound (`SwapBuffers`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

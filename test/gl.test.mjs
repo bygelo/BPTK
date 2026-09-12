@@ -44,6 +44,24 @@ test("glGetString names the bounded BPTK renderer and glGenTextures issues a rea
   assert.equal(guest.gl.describe().texture_count, 1);
 });
 
+test("GetProcAddress of glBegin is non-zero and glEnd records a draw", () => {
+  const { guest } = createConformanceMachine();
+  const name = 0x00150020;
+  const symbol = 0x00150080;
+  guest.writeWideString(name, "OPENGL32.DLL", 32);
+  const module = guest.invokeExport(guest.lookupExport("kernel32.dll", "LoadLibraryW"), [name]);
+  assert.equal(module, 0x0002000c);
+  guest.writeAnsiString(symbol, "glBegin", 16);
+  const thunk = guest.invokeExport(guest.lookupExport("kernel32.dll", "GetProcAddress"), [module, symbol]);
+  assert.notEqual(thunk, 0);
+  invoke(guest, "glBegin", [0]);
+  invoke(guest, "glVertex2f", [floatBits(0), floatBits(0)]);
+  invoke(guest, "glEnd", []);
+  assert.equal(guest.gl.describe().draw_count, 1);
+  assert.equal(guest.gl.describe().is_begin, false);
+  assert.equal(invoke(guest, "glGetError", []), 0);
+});
+
 test("wglCreateContext issues a handle GetProcAddress can resolve after LoadLibrary", () => {
   const { guest } = createConformanceMachine();
   const name = 0x00150020;
