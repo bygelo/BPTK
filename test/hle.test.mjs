@@ -438,6 +438,21 @@ test("api-set and ntdll names resolve to the same kernel32 or msvcrt row", () =>
   assert.ok(crt, "the CRT heap api-set must resolve");
   assert.equal(crt.symbol, "malloc");
   assert.equal(resolveHleExport("kernel32.dll", "NoSuchExport"), null);
+  assert.equal(resolveHleExport("ws2_32.dll", null, 115)?.symbol, "WSAStartup");
+  assert.equal(resolveHleExport("sspicli.dll", "InitSecurityInterfaceW")?.library, "secur32.dll");
+});
+
+test("ws2_32 ordinal imports bind to the same HLE thunk as the named export", () => {
+  const layout = createHleLayout({ load_base: 0x400000, image_size_byte: 0x10000, stack_base: 0x70000000, stack_end: 0x70100000 });
+  assert.ok(layout);
+  const service = computeImportService({
+    import: [
+      { library: "ws2_32.dll", symbol: "WSAStartup" },
+      { library: "ws2_32.dll", symbol: null, ordinal: 115 },
+    ],
+  }, layout);
+  assert.equal(service.unserved_count, 0);
+  assert.equal(service.import_catalog[0].address, service.import_catalog[1].address);
 });
 
 test("conformance: every Win32 core HLE export carries case and matches the oracle", () => {
@@ -1373,6 +1388,21 @@ test("RtlUnwind: TargetIp records a seh_transfer and returns the unwind value", 
   const value = invoke(guest, "kernel32.dll", "RtlUnwind", [0, 0x403000, 0, 7]);
   assert.equal(value, 7);
   assert.deepEqual(guest.seh_transfer, { eip: 0x403000, eax: 7 });
+});
+
+test("InitSecurityInterfaceW: the table is version 3 and AcquireCredentialsHandleW is a real thunk", () => {
+  const { guest, memory, layout } = createConformanceMachine();
+  const table = invoke(guest, "secur32.dll", "InitSecurityInterfaceW", []);
+  assert.equal(table, hleCrtDataLayout(layout).sspi_table);
+  assert.equal(memory.readMemory(table, 4), 3, "dwVersion is SECURITY_SUPPORT_PROVIDER_INTERFACE_VERSION_3");
+  const acquireThunk = layout.thunk_base + listWin32HleExport().findIndex((entry) => entry.library === "secur32.dll" && entry.symbol === "AcquireCredentialsHandleW") * 4;
+  assert.equal(memory.readMemory(table + 12, 4), acquireThunk);
+  assert.equal(invoke(guest, "secur32.dll", "AcquireCredentialsHandleW", [0, 0, 2, 0, 0, 0, 0, 0, 0]), 0x80090305);
+  const countPtr = table + 120;
+  const infoPtr = table + 124;
+  assert.equal(invoke(guest, "secur32.dll", "EnumerateSecurityPackagesW", [countPtr, infoPtr]), 0);
+  assert.equal(memory.readMemory(countPtr, 4), 0);
+  assert.equal(memory.readMemory(infoPtr, 4), 0);
 });
 
 test("RaiseException: a ContinueSearch-only chain is still an unhandled guest exception", (context) => {

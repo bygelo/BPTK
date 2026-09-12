@@ -444,6 +444,29 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is the
 libcurl SSPI import, not another C++ EH alias.
 
+## Cycle 23 — SSPI table and ws2_32 ordinal bind (2026-09-12)
+
+`InitSecurityInterfaceW` returns a real version-3 `SecurityFunctionTableW`
+on the CRT data page. Every slot is an HLE thunk. Acquire/query/encrypt
+return `SEC_E_SECPKG_NOT_FOUND`; enumerate reports zero packages. Same
+posture as ws2_32: the DLL exists, TLS does not.
+
+libcurl then `call [IAT]` of `ws2_32` **ordinal** 115 (`WSAStartup`).
+Sidecar bind only resolved named HLE exports, so the slot kept
+`0x80000073`. Served ws2_32 rows now carry their documented ordinal,
+and `resolveHleExport` / sidecar bind join on it.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **fetch_fault `0x8083e`**
+  after **31592894** instruction, **4946** HLE. `InitSecurityInterfaceW`
+  returned the table; `WSAStartup` ran. The fault is libcurl
+  `ws2_32.dll!WSACreateEvent` (hint RVA `0x8083e`, previous `0x2e0353f4`).
+  Not a frame. Do not stub a signaled network event.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is the
+WSA event family (`WSACreateEvent` / `WSAEventSelect`), not another
+SSPI alias.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
