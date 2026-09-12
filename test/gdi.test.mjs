@@ -27,6 +27,7 @@ import {
   stockObject,
   systemColor,
   compositorMetric,
+  declaredPixelFormat,
 } from "../lib/gdi.mjs";
 import { createUserSubsystem, dialogBaseUnit, dialogRectToPixel } from "../lib/user.mjs";
 
@@ -358,6 +359,14 @@ function applyGdiOp(gdi, symbol, argument) {
     }
     case "GetDIBits":
       return gdi.getDIBits(argument[0], argument[1], argument[2], argument[3], argument[4], argument[4] === 0 ? false : () => {});
+    case "ChoosePixelFormat":
+      return gdi.choosePixelFormat(argument[0]);
+    case "SetPixelFormat":
+      return gdi.setPixelFormat(argument[0], argument[1]);
+    case "GetPixelFormat":
+      return gdi.getPixelFormat(argument[0]);
+    case "DescribePixelFormat":
+      return gdi.describePixelFormat(argument[0], argument[1]);
     default:
       return null;
   }
@@ -437,9 +446,30 @@ function buildGdiConformanceCase() {
   define("GetCurrentObject", { scenario: [dcStep], argument: [FIRST_HANDLE, 7] }, { return_value: 0, last_error: 0 });
   define("GetObjectA", { scenario: [dcStep, ["CreateCompatibleBitmap", [FIRST_HANDLE, 2, 2]]], argument: [FIRST_HANDLE + 4] }, { return_value: 24, last_error: 0 });
   define("GetDIBits", { scenario: [dcStep, ["CreateCompatibleBitmap", [FIRST_HANDLE, 2, 2]]], argument: [FIRST_HANDLE, FIRST_HANDLE + 4, 0, 2, 0] }, { return_value: 2, last_error: 0 });
+  define("ChoosePixelFormat", { argument: [0] }, { return_value: 0, last_error: 6 });
+  define("ChoosePixelFormat", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: declaredPixelFormat.index, last_error: 0 });
+  define("SetPixelFormat", { argument: [0, 1] }, { return_value: 0, last_error: 6 });
+  define("SetPixelFormat", { scenario: [dcStep], argument: [FIRST_HANDLE, 99] }, { return_value: 0, last_error: 2000 });
+  define("SetPixelFormat", { scenario: [dcStep], argument: [FIRST_HANDLE, declaredPixelFormat.index] }, { return_value: 1, last_error: 0 });
+  define("GetPixelFormat", { argument: [0] }, { return_value: 0, last_error: 6 });
+  define("GetPixelFormat", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
+  define("GetPixelFormat", { scenario: [dcStep, ["SetPixelFormat", [FIRST_HANDLE, declaredPixelFormat.index]]], argument: [FIRST_HANDLE] }, { return_value: declaredPixelFormat.index, last_error: 0 });
+  define("DescribePixelFormat", { argument: [0, 1] }, { return_value: 0, last_error: 6 });
+  define("DescribePixelFormat", { scenario: [dcStep], argument: [FIRST_HANDLE, 0] }, { return_value: declaredPixelFormat.index, last_error: 0 });
+  define("DescribePixelFormat", { scenario: [dcStep], argument: [FIRST_HANDLE, declaredPixelFormat.index] }, { return_value: declaredPixelFormat.index, last_error: 0 });
 
   return caseList;
 }
+
+test("ChoosePixelFormat then SetPixelFormat records the declared OpenGL format", () => {
+  const gdi = createGdiSubsystem();
+  const hdc = gdi.createCompatibleDC(0);
+  assert.equal(gdi.choosePixelFormat(hdc), declaredPixelFormat.index);
+  assert.equal(gdi.setPixelFormat(hdc, declaredPixelFormat.index), 1);
+  assert.equal(gdi.getPixelFormat(hdc), declaredPixelFormat.index);
+  assert.equal(gdi.setPixelFormat(hdc, declaredPixelFormat.index), 0);
+  assert.equal(gdi.getLastError(), 2000);
+});
 
 test("conformance: every served GDI32 export carries a case and matches the oracle", () => {
   const caseTable = buildGdiConformanceCase();

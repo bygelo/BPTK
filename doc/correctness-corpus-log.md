@@ -900,6 +900,33 @@ Measured on the staged corpus (payloads still out of git):
 IAT), not another WGL row. Present path still unbound (`ChoosePixelFormat`
 / `SetPixelFormat` / `SwapBuffers`).
 
+## Cycle 42 — ChoosePixelFormat / SetPixelFormat (2026-09-12)
+
+The SuperTux stop after Cycle 41 was SDL2 `call [IAT]` of unbound
+`gdi32!ChoosePixelFormat`. The slice is generic: one declared OpenGL RGBA
+pixel format (index 1, 32-bit color, 24 depth, 8 stencil, double-buffer)
+on a live DC. `ChoosePixelFormat` returns 1; `SetPixelFormat` stores it
+once; `GetPixelFormat` / `DescribePixelFormat` report it. A NULL PFD
+refuses 87; an unknown index or a second SetPixelFormat refuses 2000.
+No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **process_exit 1** after **41716001** instruction, **19906** HLE.
+  `ChoosePixelFormat` returned 1. `SetPixelFormat` 1. `wglCreateContext`
+  `0x50010`. `wglMakeCurrent` 1. `DescribePixelFormat` 1. Then
+  `wglDeleteContext` 1 after GetProcAddress of unserved GL 1.1 (`glBegin`
+  / `glEnd` / `glVertex2f` / …) 127. `SwapBuffers` is never reached. Last
+  `CreateWindowExW` `0x10034`. A WGL context is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+GetProcAddress of unserved GL 1.1 (`glBegin` family) so the context is
+not deleted, not another PFD API. Present path still unbound
+(`SwapBuffers`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
