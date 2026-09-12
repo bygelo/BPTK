@@ -1129,6 +1129,31 @@ Measured on the staged corpus (payloads still out of git):
 `shell32!SHGetKnownFolderPath` (same slice `CoTaskMemFree`);
 `gdi32!SwapBuffers` is still unbound on sdl2.
 
+## Cycle 51 — SHGetKnownFolderPath (2026-09-12)
+
+The SuperTux stop after Cycle 50 was `fetch_fault shell32!SHGetKnownFolderPath`
+from OpenAL looking up a known folder. `SHGetKnownFolderPath` writes the same
+declared virtual profile `SHGetFolderPath` already serves, allocated with
+`CoTaskMemAlloc` so the caller `CoTaskMemFree`s the PWSTR. NULL GUID or dest
+refuse `E_INVALIDARG` 87; an unknown GUID is the same. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **unsupported_opcode CPUID leaf `0x80000000`** at `openal32+0xb1e79` after
+  **49675227** instruction, **8464** HLE. `SHGetKnownFolderPath` S_OK;
+  `CoTaskMemFree` ran; OpenAL `CreateFileW` of
+  `C:\Users\Guest\AppData\Roaming\alsoft.ini`. `CreateIconFromResource` `0x8208`;
+  `InitOnceBeginInitialize` 1. `SetFilePointerEx` 1. console.err empty. Last
+  `CreateWindowExW` `0x10024`. Last `wglCreateContext` `0x5000c`. `SwapBuffers`
+  is never reached. A known-folder path is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+CPUID leaf `0x80000000` (OpenAL extended-leaf probe);
+`gdi32!SwapBuffers` is still unbound on sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

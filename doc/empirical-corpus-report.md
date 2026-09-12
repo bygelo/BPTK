@@ -113,10 +113,10 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW last 0x10024, ChoosePixelFormat 1, SetPixelFormat 1, wglCreateContext 0x5000c, SetFilePointerEx 1, CreateIconFromResource 0x8208, InitOnceBeginInitialize 1, then fetch_fault shell32!SHGetKnownFolderPath (49667853 instruction, 8406 HLE) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW last 0x10024, ChoosePixelFormat 1, SetPixelFormat 1, wglCreateContext 0x5000c, SetFilePointerEx 1, CreateIconFromResource 0x8208, InitOnceBeginInitialize 1, SHGetKnownFolderPath S_OK, then unsupported_opcode CPUID leaf 0x80000000 (49675227 instruction, 8464 HLE) → BPTK-009 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
-Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 1**. Playability is
+Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
 not claimed. SuperTux's IAT is fully served (sidecar + OpenGL HLE + leftover
 kernel32/shell32/dbghelp). Sidecar DllMain and cdecl CRT ABI now run: the
 old NX-stack fetch at 1498 was `_initterm` RET after a stdcall-popped cdecl
@@ -141,14 +141,14 @@ handles / `SetThreadExecutionState` (`ES_CONTINUOUS` `0x80000000`) /
 `0x10024`) / `ChoosePixelFormat` 1 / `SetPixelFormat` 1 /
 `wglCreateContext` last `0x5000c` / `wglMakeCurrent` 1 / `DescribePixelFormat` 1 /
 `wglGetExtensionsStringARB` hits,
-and stops **fetch_fault `shell32!SHGetKnownFolderPath`**
-at **49667853** instruction / **8406** HLE (previous EIP `openal32+0xda5bb`,
-`jmp [0x280e63bc]`; IAT still held hint RVA `0x16174e`).
-`CreateIconFromResource` returned `0x8208`; `InitOnceBeginInitialize` 1
-(`InitOnceComplete` is served but not yet called).
+and stops **unsupported_opcode CPUID leaf `0x80000000`**
+at **49675227** instruction / **8464** HLE (`openal32+0xb1e79`).
+`CreateIconFromResource` returned `0x8208`; `InitOnceBeginInitialize` 1;
+`SHGetKnownFolderPath` S_OK; `CoTaskMemFree` ran; OpenAL then
+`CreateFileW` of `C:\Users\Guest\AppData\Roaming\alsoft.ini`.
 `glGetString` VERSION is `"2.1 BPTK"`; `SetFilePointerEx` returns 1;
 console.err is empty.
-`SwapBuffers` is never reached. OpenAL one-time init is not a presented frame. Ripgrep `--version` is `process_exit` 0
+`SwapBuffers` is never reached. A known-folder path is not a presented frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
 (1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
@@ -157,8 +157,8 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is `shell32!SHGetKnownFolderPath` (OpenAL known-folder path;
-same slice `CoTaskMemFree`), then a real present (`gdi32!SwapBuffers`
+SuperTux work is CPUID leaf `0x80000000` (OpenAL extended-leaf probe at
+`openal32+0xb1e79`), then a real present (`gdi32!SwapBuffers`
 still unbound on sdl2).
 The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
