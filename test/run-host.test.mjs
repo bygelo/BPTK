@@ -151,3 +151,35 @@ test("GetProcAddress of an unknown export is recorded as a procedure miss", () =
   assert.equal(guest.getLastError(), 127);
   assert.ok(guest.procedure_miss.some((row) => row.symbol === "NoSuchExportForMissList"));
 });
+
+test("FindFirstFileW on a host_dir lists immediate children and directory attributes", (context) => {
+  const root = mkdtempSync(join(tmpdir(), "bptk-host-"));
+  context.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "data", "fonts"), { recursive: true });
+  writeFileSync(join(root, "data", "credits.stxt"), "hello\n");
+  writeFileSync(join(root, "data", "fonts", "face.ttf"), Buffer.from([1, 2, 3, 4]));
+  const hostFile = mapHostDirectory(root, [{ guest: "C:\\game\\data", host: "data" }]);
+  const memory = createIsolatedWin32Memory();
+  const guest = createWin32Hle(memory, memory.layout, {
+    executable_name: "game.exe",
+    clock: createGuestClock(),
+    host_file: hostFile,
+  });
+  const patternPtr = guest.layout.arena_base + 0x80;
+  const findPtr = guest.layout.arena_base + 0x180;
+  guest.writeWideString(patternPtr, "C:\\game\\data\\*", 64);
+  const handle = invoke(guest, "kernel32.dll", "FindFirstFileW", [patternPtr, findPtr]);
+  assert.notEqual(handle, 0xffffffff);
+  const name = [];
+  const attr = [];
+  const readEntry = () => {
+    attr.push(memory.readMemory(findPtr, 4));
+    name.push(guest.readWideString(findPtr + 44));
+  };
+  readEntry();
+  while (invoke(guest, "kernel32.dll", "FindNextFileW", [handle, findPtr]) === 1) readEntry();
+  assert.deepEqual([...name].sort(), ["credits.stxt", "fonts"]);
+  assert.equal(name.includes("fonts\\face.ttf"), false);
+  assert.equal(attr[name.indexOf("fonts")], 0x10);
+  assert.equal(attr[name.indexOf("credits.stxt")], 0x20);
+});
