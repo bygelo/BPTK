@@ -748,6 +748,10 @@ test("MonitorFromPoint and MonitorFromWindow return the one virtual display", ()
   assert.equal(guest.getLastError(), 87);
   assert.equal(invoke(guest, "user32.dll", "CloseTouchInputHandle", [0]), 0);
   assert.equal(guest.getLastError(), 6);
+  assert.equal(invoke(guest, "kernel32.dll", "LockFileEx", [0, 0, 0, 0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 6);
+  assert.equal(invoke(guest, "kernel32.dll", "UnlockFileEx", [0, 0, 0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 6);
   assert.equal(invoke(guest, "ole32.dll", "PropVariantClear", [0]), 0x80070057);
   assert.equal(invoke(guest, "ole32.dll", "StringFromCLSID", [0, 0]), 0x80070057);
   assert.equal(invoke(guest, "oleaut32.dll", "#6", [0]), 0);
