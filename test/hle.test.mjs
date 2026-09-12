@@ -1285,9 +1285,14 @@ test("BPTK-146: the widened Plink surface serves the ANSI file and kernel object
   assert.equal(invoke(guest, "kernel32.dll", "VirtualProtect", [view, 64, 0x02, oldProtect]), 1, "VirtualProtect succeeds on a mapped view");
   assert.equal(invoke(guest, "kernel32.dll", "UnmapViewOfFile", [view]), 1);
 
-  // CreateThread and CreateProcessA are the confined probe's honest refusals.
-  assert.equal(invoke(guest, "kernel32.dll", "CreateThread", [0, 0, 0x401000, 0, 0, dest]), 0);
-  assert.equal(guest.getLastError(), 164);
+  // CreateThread returns a guest_thread handle. Isolated HLE has no probe
+  // loop, so the start address is not entered here; GetExitCodeThread stays
+  // STILL_ACTIVE. CreateProcessA remains the containment refusal.
+  const thread = invoke(guest, "kernel32.dll", "CreateThread", [0, 0, 0x401000, 0, 0, dest]);
+  assert.notEqual(thread, 0);
+  assert.equal(memory.readMemory(dest, 4), 2);
+  assert.equal(invoke(guest, "kernel32.dll", "GetExitCodeThread", [thread, dest + 4]), 1);
+  assert.equal(memory.readMemory(dest + 4, 4), 259);
   assert.equal(invoke(guest, "kernel32.dll", "CreateProcessA", [0, scratch, 0, 0, 0, 0, 0, 0, dest, dest + 16]), 0);
   assert.equal(guest.getLastError(), 5);
 });

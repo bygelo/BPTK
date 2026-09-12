@@ -177,15 +177,13 @@ Export coverage for the subsystem is complete: 23 thread/sync-related exports
 served, every one carrying a conformance case (the gate's
 `is_coverage_complete` holds). `npm run gate` exit 0.
 
-### The one honest remaining seam (not faked)
+### Cycle 25 — guest-visible CreateThread executes (2026-09-12)
 
-Guest-visible `CreateThread`/`ExitThread` are deliberately **not** added as HLE
-exports yet. The single-probe loop (`executeProbe`) runs only the initial
-thread; a `CreateThread` that returned a handle without executing the thread
-body would either be a false success or would deadlock on the first join — a
-regression over the current honest `import_present → BPTK-025` gap. Driving
-spawned-thread guest x86 requires making the shared `executeProbe` loop a
-scheduler over multiple guest thread contexts. That is a core change to the
-memory-model floor every other lane rebases onto, so it is left for a dedicated
-cycle rather than rushed here. The deterministic scheduler engine that change
-will drive is already built and proven above.
+`executeProbe` now holds up to eight additional i386 contexts. `CreateThread`
+builds a virtual-arena stack and TEB and enters the start address when the
+creator waits. `WaitOnAddress` / `WakeByAddress*` join the same park/handoff
+path as events. Isolated HLE still only allocates the handle. SuperTux's
+SDL_Init uses this: `CreateThread` returns handle 65550, then a later
+`ucrtbase` fetch at `0x105be0` is the new named hole. The JS generator
+scheduler above stays the deterministic lock/event model; it is not the
+x86 context switch.

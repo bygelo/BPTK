@@ -493,6 +493,29 @@ Measured on the staged corpus (payloads still out of git):
 guest thread scheduler so SDL_Init can create its thread, not another
 Winsock alias or a fake `config`.
 
+## Cycle 25 — guest thread context + WaitOnAddress (2026-09-12)
+
+`CreateThread` allocates a real second i386 context: a virtual-arena stack
+and TEB, the start address on that stack with a return sentinel, and a
+cooperative switch when the creator waits. `WaitForSingleObject` /
+`WaitForMultipleObjects` / `Sleep` / `WaitOnAddress` park the current
+context and run a ready worker. `SetEvent` / `ReleaseSemaphore` /
+`WakeByAddress*` wake waiters and hand off. `ExitThread` on a worker
+terminates that context only. Isolated HLE (no probe loop) still returns
+a handle; the start address is not entered there. TLS/FLS values are
+per-tid. Bound: 8 workers. A handle that never executes is still refused
+by the bound, not by returning success and stalling.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **fetch_fault `0x105be0`**
+  after **31709266** instruction, **5597** HLE. `CreateThread` returned
+  handle `65550` (start in SDL2). `WaitOnAddress` parked. The old
+  `console.err` fatal is gone. Previous EIP is `ucrtbase` `0x350808da`.
+  Not a frame. Do not invent a mapped page at `0x105be0`.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is that
+ucrt fetch, not another CreateThread refusal.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
