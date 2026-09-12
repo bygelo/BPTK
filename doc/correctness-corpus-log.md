@@ -1102,6 +1102,33 @@ Measured on the staged corpus (payloads still out of git):
 `kernel32!InitOnceBeginInitialize` (same slice `InitOnceComplete`);
 `gdi32!SwapBuffers` is still unbound on sdl2.
 
+## Cycle 50 — InitOnceBeginInitialize (2026-09-12)
+
+The SuperTux stop after Cycle 49 was `fetch_fault kernel32!InitOnceBeginInitialize`
+from OpenAL one-time init. `InitOnceBeginInitialize` and `InitOnceComplete`
+are generic: NULL once or pending dest refuse 87, unknown flags 87,
+CHECK_ONLY on an uninitialized cell returns 0, a first Begin sets pending
+and returns 1, Complete stores an aligned context with the complete bit,
+and a later Begin reports pending false. The single-thread world never
+waits. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `shell32!SHGetKnownFolderPath`** after
+  **49667853** instruction, **8406** HLE. `InitOnceBeginInitialize` 1;
+  `CreateIconFromResource` `0x8208`. Previous EIP `openal32+0xda5bb`
+  (`jmp [0x280e63bc]`; IAT still held hint RVA `0x16174e`). `SetFilePointerEx` 1.
+  console.err empty. Last `CreateWindowExW` `0x10024`. Last
+  `wglCreateContext` `0x5000c`. `SwapBuffers` is never reached. A pending
+  InitOnce is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`shell32!SHGetKnownFolderPath` (same slice `CoTaskMemFree`);
+`gdi32!SwapBuffers` is still unbound on sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
