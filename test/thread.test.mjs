@@ -628,3 +628,92 @@ test("WaitOnAddress parks until the other thread WakeByAddressSingle", (context)
   assert.equal(probe.stop_reason, "process_exit", JSON.stringify(probe.exception));
   assert.equal(probe.exception?.exit_code, 0);
 });
+
+test("SleepConditionVariableSRW parks until the other thread WakeAllConditionVariable", (context) => {
+  // Worker: WakeAllConditionVariable(cv); ret 4.
+  // Main: CreateThread; SleepConditionVariableSRW(cv, lock, INFINITE, 0); ExitProcess(eax==1?0:3).
+  const symbols = ["CreateThread", "SleepConditionVariableSRW", "WakeAllConditionVariable", "ExitProcess"];
+  const callIat = (slotVa) => [0xff, 0x15, slotVa & 0xff, (slotVa >>> 8) & 0xff, (slotVa >>> 16) & 0xff, (slotVa >>> 24) & 0xff];
+  const iatVa = 0x00401140 + (symbols.length + 1) * 4;
+  const slot = (index) => iatVa + index * 4;
+  const worker = 0x00401080;
+  const cv = 0x004010e0;
+  const lock = 0x004010e4;
+  const code = [
+    0xc7, 0x05, cv & 0xff, (cv >>> 8) & 0xff, (cv >>> 16) & 0xff, (cv >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0xc7, 0x05, lock & 0xff, (lock >>> 8) & 0xff, (lock >>> 16) & 0xff, (lock >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0x6a, 0x00, 0x6a, 0x00, 0x6a, 0x00,
+    0x68, worker & 0xff, (worker >>> 8) & 0xff, (worker >>> 16) & 0xff, (worker >>> 24) & 0xff,
+    0x6a, 0x00, 0x6a, 0x00,
+    ...callIat(slot(0)),
+    0x85, 0xc0, 0x74, 0x1c,
+    0x6a, 0x00,
+    0x6a, 0xff,
+    0x68, lock & 0xff, (lock >>> 8) & 0xff, (lock >>> 16) & 0xff, (lock >>> 24) & 0xff,
+    0x68, cv & 0xff, (cv >>> 8) & 0xff, (cv >>> 16) & 0xff, (cv >>> 24) & 0xff,
+    ...callIat(slot(1)),
+    0x83, 0xf8, 0x01, 0x74, 0x04, 0x6a, 0x03, 0xeb, 0x02, 0x6a, 0x00,
+    ...callIat(slot(3)),
+    0x6a, 0x02,
+    ...callIat(slot(3)),
+  ];
+  while (code.length < 0x80) code.push(0x90);
+  code.push(
+    0x68, cv & 0xff, (cv >>> 8) & 0xff, (cv >>> 16) & 0xff, (cv >>> 24) & 0xff,
+    ...callIat(slot(2)),
+    0xc2, 0x04, 0x00,
+  );
+  const { file } = createPe32WithImports(code, symbols);
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-wait-condition-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const exe = join(rootPath, "game.exe");
+  writeFileSync(exe, file);
+  const mapped = mapPe32ForRuntime(exe, null, null);
+  const stackSizeByte = normalizeStackSize(mapped.report.stack_reserve_byte);
+  const stackBase = chooseStackBase(mapped.report.load_base, mapped.report.load_base + mapped.report.image_size_byte, stackSizeByte);
+  const layout = createHleLayout({ ...mapped.report, stack_base: stackBase, stack_end: stackBase + stackSizeByte });
+  const service = computeImportService(mapped.report, layout);
+  assert.equal(service.unserved_count, 0, JSON.stringify(service.unserved));
+  const remapped = mapPe32ForRuntime(exe, null, service.import_catalog);
+  const probe = executeProbe(remapped, 100000, { hle_layout: layout, executable_name: "game.exe" });
+  assert.equal(probe.stop_reason, "process_exit", JSON.stringify(probe.exception));
+  assert.equal(probe.exception?.exit_code, 0);
+});
+
+test("WakeAllConditionVariable before SleepConditionVariableSRW is not a lost wakeup", (context) => {
+  // Main: WakeAllConditionVariable(cv); SleepConditionVariableSRW(cv, lock, INFINITE, 0); ExitProcess(eax==1?0:3).
+  const symbols = ["SleepConditionVariableSRW", "WakeAllConditionVariable", "ExitProcess"];
+  const callIat = (slotVa) => [0xff, 0x15, slotVa & 0xff, (slotVa >>> 8) & 0xff, (slotVa >>> 16) & 0xff, (slotVa >>> 24) & 0xff];
+  const iatVa = 0x00401140 + (symbols.length + 1) * 4;
+  const slot = (index) => iatVa + index * 4;
+  const cv = 0x00401080;
+  const lock = 0x00401084;
+  const code = [
+    0xc7, 0x05, cv & 0xff, (cv >>> 8) & 0xff, (cv >>> 16) & 0xff, (cv >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0xc7, 0x05, lock & 0xff, (lock >>> 8) & 0xff, (lock >>> 16) & 0xff, (lock >>> 24) & 0xff, 0x00, 0x00, 0x00, 0x00,
+    0x68, cv & 0xff, (cv >>> 8) & 0xff, (cv >>> 16) & 0xff, (cv >>> 24) & 0xff,
+    ...callIat(slot(1)),
+    0x6a, 0x00,
+    0x6a, 0xff,
+    0x68, lock & 0xff, (lock >>> 8) & 0xff, (lock >>> 16) & 0xff, (lock >>> 24) & 0xff,
+    0x68, cv & 0xff, (cv >>> 8) & 0xff, (cv >>> 16) & 0xff, (cv >>> 24) & 0xff,
+    ...callIat(slot(0)),
+    0x83, 0xf8, 0x01, 0x74, 0x04, 0x6a, 0x03, 0xeb, 0x02, 0x6a, 0x00,
+    ...callIat(slot(2)),
+  ];
+  const { file } = createPe32WithImports(code, symbols);
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-condition-credit-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const exe = join(rootPath, "game.exe");
+  writeFileSync(exe, file);
+  const mapped = mapPe32ForRuntime(exe, null, null);
+  const stackSizeByte = normalizeStackSize(mapped.report.stack_reserve_byte);
+  const stackBase = chooseStackBase(mapped.report.load_base, mapped.report.load_base + mapped.report.image_size_byte, stackSizeByte);
+  const layout = createHleLayout({ ...mapped.report, stack_base: stackBase, stack_end: stackBase + stackSizeByte });
+  const service = computeImportService(mapped.report, layout);
+  assert.equal(service.unserved_count, 0, JSON.stringify(service.unserved));
+  const remapped = mapPe32ForRuntime(exe, null, service.import_catalog);
+  const probe = executeProbe(remapped, 100000, { hle_layout: layout, executable_name: "game.exe" });
+  assert.equal(probe.stop_reason, "process_exit", JSON.stringify(probe.exception));
+  assert.equal(probe.exception?.exit_code, 0);
+});

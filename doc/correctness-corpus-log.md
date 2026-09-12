@@ -1211,6 +1211,34 @@ kernel32!SleepConditionVariableSRW` in OpenAL. The present path is served so the
 next remesure that reaches SwapBuffers can show pixels. `passing` stays 1
 (BPTK-001 only).
 
+## Cycle 55 — SleepConditionVariableSRW (2026-09-12)
+
+The SuperTux stop after Cycle 53 was `hle_wait_deadlock
+kernel32!SleepConditionVariableSRW` from OpenAL waiting on a worker it had
+already `CreateThread`'d. `SleepConditionVariableSRW` / `SleepConditionVariableCS`
+now park on the guest-thread scheduler the way `WaitOnAddress` already does:
+an infinite wait switches to the other ready context. `WakeConditionVariable`
+and `WakeAllConditionVariable` resume matching waiters; a wake with no waiter
+is credited so it is not lost. NULL condition or lock refuse 87. No
+title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **guest_exception `0x406d1388`** (MSVC `SetThreadName`) after
+  **49907791** instruction, **8894** HLE. OpenAL `CreateThread` last `0x10011`;
+  `InitOnceComplete` 1; SRW lock acquire/release after the wait. Previous stop
+  was SleepConditionVariableSRW at **49691538** / **8550** HLE.
+  `CreateIconFromResource` `0x8208`. `SetFilePointerEx` 1. console.err empty.
+  Last `CreateWindowExW` `0x10024`. Last `wglCreateContext` `0x5000c`.
+  `SwapBuffers` is never reached. A woken worker is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`RaiseException` `0x406d1388` (MSVC thread-name; continue if no debugger);
+`gdi32!SwapBuffers` is served but SuperTux never reaches it.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

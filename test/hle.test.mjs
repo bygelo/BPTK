@@ -2040,6 +2040,24 @@ test("BPTK-010 sync breadth: the address wait times out on an unchanged value an
   assert.equal(invoke(guest, "kernel32.dll", "WakeByAddressSingle", [target]), 1);
 });
 
+test("BPTK-010: SleepConditionVariableSRW times out, refuses NULL, and does not deadlock a zero wait", () => {
+  const { guest } = createConformanceMachine();
+  const condition = guest.layout.arena_base + 0x40;
+  const lock = guest.layout.arena_base + 0x80;
+  guest.memory.writeMemory(condition, 4, 0);
+  guest.memory.writeMemory(lock, 4, 0);
+  assert.equal(invoke(guest, "kernel32.dll", "SleepConditionVariableSRW", [0, lock, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "SleepConditionVariableSRW", [condition, 0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "SleepConditionVariableSRW", [condition, lock, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 258);
+  assert.equal(invoke(guest, "kernel32.dll", "SleepConditionVariableCS", [condition, lock, 50]), 0);
+  assert.equal(guest.getLastError(), 258);
+  assert.equal(invoke(guest, "kernel32.dll", "WakeConditionVariable", [condition]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "WakeAllConditionVariable", [condition]), 0);
+});
+
 test("BPTK-010: HeapAlloc returns an 8-byte-aligned block", () => {
   const { guest } = createConformanceMachine();
   const block = invoke(guest, "kernel32.dll", "HeapAlloc", [0, 0, 1]);
