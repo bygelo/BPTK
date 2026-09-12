@@ -158,6 +158,21 @@ that the USER/GDI surface is now honestly served and measured, not stubbed.
 
 Gate: `npm run gate` exits 0 (185 tests pass; 46-file package manifest).
 
+## Cycle 4 — live host keyboard/pointer → USER32
+
+A browser key or pointer is generic Win32 input, not an SDL-only side path.
+`injectKey` / `injectMouse` always update the 256-byte key table
+(`GetKeyboardState` / `GetKeyState` / `GetAsyncKeyState`), including with no
+window so a guest that polls during init sees the key. When a focus/active
+window exists, the same event posts `WM_KEYDOWN` / `WM_KEYUP` / the button
+pair / `WM_MOUSEMOVE`. `virtualKeyFromDomCode` maps `KeyboardEvent.code` (US
+101); `web/host.mjs` calls `session.guest.user.injectKey` and still forwards
+the SDL queue. Mouse cursor APIs stay unbound. No title branch.
+
+Acceptance: `test/user.test.mjs` (inject without a window, `GetMessage` of
+`WM_KEYDOWN`, HLE `GetKeyboardState` after inject, conformance `GetKeyState`
+0x8000). SuperTux is not remesured here (wait sibling).
+
 ## Next
 
 - On the threads-first rebase: key the message queue on the real thread

@@ -23,7 +23,10 @@ import {
   defaultDialogBaseUnit,
   mapVirtualKey,
   toUnicode,
+  virtualKeyFromDomCode,
+  pointerButtonFromDom,
 } from "../lib/user.mjs";
+import { createConformanceMachine } from "../lib/hle.mjs";
 
 const FIRST_ATOM = 0xc000;
 const FIRST_HANDLE = 0x00010010;
@@ -231,6 +234,68 @@ test("TranslateMessage posts WM_CHAR for a mapped key and nothing for an unmappe
   assert.equal(user.peekMessage(sink), 1);
   assert.equal(sink.message.message, windowMessage.WM_CHAR);
   assert.equal(sink.message.w_param, 0x61); // 'a'
+});
+
+test("virtualKeyFromDomCode maps a generic US 101 KeyboardEvent.code", () => {
+  assert.equal(virtualKeyFromDomCode("KeyA"), 0x41);
+  assert.equal(virtualKeyFromDomCode("Digit1"), 0x31);
+  assert.equal(virtualKeyFromDomCode("Escape"), 0x1b);
+  assert.equal(virtualKeyFromDomCode("ArrowLeft"), 0x25);
+  assert.equal(virtualKeyFromDomCode("ShiftLeft"), 0xa0);
+  assert.equal(virtualKeyFromDomCode("F1"), 0x70);
+  assert.equal(virtualKeyFromDomCode("Nope"), 0);
+  assert.equal(pointerButtonFromDom(0), "left");
+  assert.equal(pointerButtonFromDom(2), "right");
+  assert.equal(pointerButtonFromDom(9), null);
+});
+
+test("injectKey updates GetKeyState without a window and posts WM_KEYDOWN when one has focus", () => {
+  const user = createUserSubsystem();
+  assert.equal(user.getKeyState(0x41), 0);
+  assert.equal(user.injectKey(virtualKeyFromDomCode("KeyA"), true), 1);
+  assert.equal(user.getKeyState(0x41), 0x8000);
+  assert.equal(user.keyboardState()[0x41], 0x80);
+  assert.equal(user.getAsyncKeyState(0x41), 0x8001);
+  assert.equal(user.getAsyncKeyState(0x41), 0x8000);
+
+  user.registerClass("AppClass", defaultProc);
+  const handle = user.createWindowEx({ class_name: "AppClass" });
+  user.showWindow(handle, showCommand.SW_SHOWNORMAL);
+  user.injectKey(0x20, true);
+  const sink = {};
+  assert.equal(user.getMessage(sink), 1);
+  assert.equal(sink.message.message, windowMessage.WM_KEYDOWN);
+  assert.equal(sink.message.w_param, 0x20);
+  assert.equal(sink.message.handle, handle);
+  assert.equal(user.translateMessage(sink.message), 1);
+  user.dispatchMessage(sink.message);
+  assert.equal(user.peekMessage(sink), 1);
+  assert.equal(sink.message.message, windowMessage.WM_CHAR);
+  assert.equal(sink.message.w_param, 0x20);
+});
+
+test("injectMouse left button is visible to GetKeyState and posts WM_LBUTTONDOWN", () => {
+  const user = createUserSubsystem();
+  user.registerClass("AppClass", defaultProc);
+  const handle = user.createWindowEx({ class_name: "AppClass" });
+  user.showWindow(handle, showCommand.SW_SHOWNORMAL);
+  assert.equal(user.injectMouse({ x: 12, y: 34, button: pointerButtonFromDom(0), is_down: true }), 1);
+  assert.equal(user.getKeyState(0x01), 0x8000);
+  const sink = {};
+  assert.equal(user.peekMessage(sink), 1);
+  assert.equal(sink.message.message, windowMessage.WM_LBUTTONDOWN);
+  assert.equal(sink.message.handle, handle);
+  assert.equal(sink.message.l_param, (34 << 16 | 12) >>> 0);
+});
+
+test("a live injectKey is visible through user32!GetKeyboardState", () => {
+  const { guest, memory } = createConformanceMachine();
+  const dest = guest.layout.arena_base + 0x40;
+  guest.user.injectKey(0x41, true);
+  assert.equal(guest.invokeExport(guest.lookupExport("user32.dll", "GetKeyState"), [0x41]), 0x8000);
+  assert.equal(guest.invokeExport(guest.lookupExport("user32.dll", "GetKeyboardState"), [dest]), 1);
+  assert.equal(memory.readMemory(dest + 0x41, 1), 0x80);
+  assert.equal(memory.readMemory(dest + 0x20, 1), 0);
 });
 
 test("instantiateDialog creates the frame and every control, carrying the guest DlgProc", () => {
@@ -465,9 +530,13 @@ function applyUserOp(user, symbol, argument) {
     case "FindWindowA":
     case "GetCapture":
     case "GetClipboardOwner":
-    case "GetKeyState":
-    case "GetAsyncKeyState":
       return 0;
+    case "GetKeyState":
+      return user.getKeyState(argument[0]);
+    case "GetAsyncKeyState":
+      return user.getAsyncKeyState(argument[0]);
+    case "injectKey":
+      return user.injectKey(argument[0], argument[1] !== 0);
     case "GetKeyboardState":
       if ((argument[0] >>> 0) === 0) {
         user.setLastError(87);
@@ -759,6 +828,8 @@ function buildUserConformanceCase() {
   define("GetCapture", { argument: [] }, { return_value: 0, last_error: 0 });
   define("GetKeyState", { argument: [0x14] }, { return_value: 0, last_error: 0 });
   define("GetAsyncKeyState", { argument: [0x11] }, { return_value: 0, last_error: 0 });
+  define("GetKeyState", { scenario: [["injectKey", [0x41, 1]]], argument: [0x41] }, { return_value: 0x8000, last_error: 0 });
+  define("GetAsyncKeyState", { scenario: [["injectKey", [0x11, 1]]], argument: [0x11] }, { return_value: 0x8001, last_error: 0 });
   define("GetKeyboardState", { argument: [0] }, { return_value: 0, last_error: 87 });
   define("GetKeyboardState", { argument: [1] }, { return_value: 1, last_error: 0 });
   define("GetClipboardOwner", { argument: [] }, { return_value: 0, last_error: 0 });

@@ -5,13 +5,15 @@
 // session (lib/live.mjs) — stepping the guest in chunks, blitting its own RGBA
 // surface (SDL software, GL front buffer after SwapBuffers, or GDI desktop) to
 // the canvas each chunk via putImageData, and forwarding real keyboard/mouse
-// input into the guest's SDL queue. No pixels are fabricated; the canvas is
+// input into the guest Win32 key table / message queue (and the SDL queue a
+// software title still polls). No pixels are fabricated; the canvas is
 // exactly what the runtime paints. A recorded glDrawArrays is not a frame.
 // node: specifiers resolve through the index.html import map; Buffer is
 // installed as a global before this module loads.
 
 import { createLiveSession } from "../lib/live.mjs";
 import { sdlScancode, sdlKeycode } from "../lib/sdl.mjs";
+import { virtualKeyFromDomCode, pointerButtonFromDom } from "../lib/user.mjs";
 
 const canvas = document.getElementById("screen");
 const context2d = canvas.getContext("2d");
@@ -21,6 +23,7 @@ const budgetInput = document.getElementById("budget");
 let session = null;
 let running = false;
 let startedAt = 0;
+let last_win32_input = "";
 
 function report(text) { status.textContent = text; }
 
@@ -67,7 +70,8 @@ function loop() {
     `${session.instructionCount.toLocaleString()} instruction · ` +
     `${session.presentCount} frame · ${session.hasVideo ? "video" : "no video"} · ` +
     `${(ips / 1e6).toFixed(2)}M ips · stop ${session.stopReason ?? "-"}` +
-    (session.done ? " · DONE" : " · running… (click the canvas, then use the keyboard)"),
+    (session.done ? " · DONE" : " · running… (click the canvas, then use the keyboard)") +
+    last_win32_input,
   );
   if (session.done || (session.stopReason === "import_present" && !session.hasVideo)) {
     // A non-video program (e.g. PuTTY) stops at its first import wall — one
@@ -79,6 +83,7 @@ function loop() {
 
 function start(bytes, option, label) {
   running = false;
+  last_win32_input = "";
   report(`loading ${label}…`);
   // Defer so the "loading" text paints before the (blocking) context build.
   setTimeout(() => {
@@ -101,8 +106,11 @@ async function fetchBytes(url) {
   return response.arrayBuffer();
 }
 
-// --- input: browser KeyboardEvent.code / mouse -> SDL2 events ---------------
-// Map only the keys the sample programs use; an unmapped key is ignored.
+// --- input: browser KeyboardEvent / pointer → Win32 + SDL2 ------------------
+// Win32 is the generic path: every mapped key and pointer button updates the
+// guest USER32 key table and posts WM_* to the focused window. SDL stays for
+// titles that poll the SDL queue. An unmapped DOM code is ignored. No title
+// branch.
 const scanFor = (name) => (typeof sdlScancode === "object" ? sdlScancode[name] : undefined);
 const symFor = (name) => (typeof sdlKeycode === "object" ? sdlKeycode[name] : undefined);
 const keyByCode = {
@@ -113,6 +121,9 @@ const keyByCode = {
   KeyW: "W", KeyA: "A", KeyS: "S", KeyD: "D", KeyE: "E", KeyY: "Y", KeyN: "N",
   Digit1: "1", Digit2: "2", Digit3: "3", Digit4: "4", Digit5: "5", Digit6: "6", Digit7: "7",
 };
+function win32User() {
+  return session !== null && session.guest !== null && session.guest !== undefined ? session.guest.user : null;
+}
 function sdlKeyEvent(type, event) {
   const name = keyByCode[event.code];
   if (!name || session === null) return;
@@ -121,16 +132,65 @@ function sdlKeyEvent(type, event) {
   session.sendInput([{ type, scancode, sym: symFor(name) ?? 0, mod: 0 }]);
   event.preventDefault();
 }
+function win32KeyEvent(type, event) {
+  const user = win32User();
+  if (user === null) return;
+  const virtual_key = virtualKeyFromDomCode(event.code);
+  if (virtual_key === 0) return;
+  user.injectKey(virtual_key, type === "keydown");
+  last_win32_input = ` · win32 vk ${virtual_key} ${type === "keydown" ? "down" : "up"} GetKeyState ${user.getKeyState(virtual_key)}`;
+  const current = status.textContent ?? "";
+  report(`${current.replace(/ · win32 vk .*$/, "")}${last_win32_input}`);
+  event.preventDefault();
+}
 canvas.tabIndex = 0;
-canvas.addEventListener("keydown", (event) => sdlKeyEvent("keydown", event));
-canvas.addEventListener("keyup", (event) => sdlKeyEvent("keyup", event));
+canvas.addEventListener("keydown", (event) => {
+  win32KeyEvent("keydown", event);
+  sdlKeyEvent("keydown", event);
+});
+canvas.addEventListener("keyup", (event) => {
+  win32KeyEvent("keyup", event);
+  sdlKeyEvent("keyup", event);
+});
 function mouseXY(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: Math.round((event.clientX - rect.left) * canvas.width / rect.width), y: Math.round((event.clientY - rect.top) * canvas.height / rect.height) };
 }
-canvas.addEventListener("mousemove", (event) => { if (session) { const p = mouseXY(event); session.sendInput([{ type: "mousemove", x: p.x, y: p.y }]); } });
-canvas.addEventListener("mousedown", (event) => { if (session) { const p = mouseXY(event); session.sendInput([{ type: "mousedown", x: p.x, y: p.y, button: event.button + 1 }]); canvas.focus(); event.preventDefault(); } });
-canvas.addEventListener("mouseup", (event) => { if (session) { const p = mouseXY(event); session.sendInput([{ type: "mouseup", x: p.x, y: p.y, button: event.button + 1 }]); } });
+function win32PointerEvent(event, is_down, is_move) {
+  const user = win32User();
+  if (user === null) return;
+  const p = mouseXY(event);
+  if (is_move) {
+    user.injectMouse({ x: p.x, y: p.y });
+    return;
+  }
+  const button = pointerButtonFromDom(event.button);
+  if (button === null) return;
+  user.injectMouse({ x: p.x, y: p.y, button, is_down });
+}
+canvas.addEventListener("mousemove", (event) => {
+  if (session) {
+    const p = mouseXY(event);
+    session.sendInput([{ type: "mousemove", x: p.x, y: p.y }]);
+    win32PointerEvent(event, false, true);
+  }
+});
+canvas.addEventListener("mousedown", (event) => {
+  if (session) {
+    const p = mouseXY(event);
+    session.sendInput([{ type: "mousedown", x: p.x, y: p.y, button: event.button + 1 }]);
+    win32PointerEvent(event, true, false);
+    canvas.focus();
+    event.preventDefault();
+  }
+});
+canvas.addEventListener("mouseup", (event) => {
+  if (session) {
+    const p = mouseXY(event);
+    session.sendInput([{ type: "mouseup", x: p.x, y: p.y, button: event.button + 1 }]);
+    win32PointerEvent(event, false, false);
+  }
+});
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 
 // --- buttons ----------------------------------------------------------------
