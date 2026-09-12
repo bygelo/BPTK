@@ -1008,6 +1008,29 @@ Measured on the staged corpus (payloads still out of git):
 `BSWAP` (`0F C8`–`CF`) in zlib; `gdi32!SwapBuffers` is still unbound on
 sdl2.
 
+## Cycle 46 — BSWAP (2026-09-12)
+
+The SuperTux stop after Cycle 45 was `unsupported_opcode 0x0f 0xc8` at
+`zlib1+0x81c4`. BSWAP is `0F C8+rd` with no ModRM: the interpreter reverses
+the operand-size bytes and leaves flags; the decode sweep consumes exactly
+two bytes so a linear walk does not desync. The 16-bit form reverses AX
+and leaves the high word (architecturally undefined; matches the 64-bit
+oracle). No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **unsupported_opcode `0x0f 0xea` PMINSW** at `libpng16+0x20ad4` after
+  **42020032** instruction, **8320** HLE. `SetFilePointerEx` 1.
+  console.err empty. Last `CreateWindowExW` `0x10024`. Last
+  `wglCreateContext` `0x5000c`. `SwapBuffers` is never reached. Inflating a
+  PNG is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is i386
+`PMINSW` (`0F EA`) in libpng; `gdi32!SwapBuffers` is still unbound on sdl2.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

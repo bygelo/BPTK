@@ -19,7 +19,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { runPackage } from "../lib/run.mjs";
-import { i386Opcode0f, i386Opcode0fGroup, i386OpcodeGroup, i386OpcodeOneByte, i386Prefix, sweepI386Text } from "../lib/i386.mjs";
+import { decodeSweepInstruction, i386Opcode0f, i386Opcode0fGroup, i386OpcodeGroup, i386OpcodeOneByte, i386Prefix, sweepI386Text } from "../lib/i386.mjs";
 
 const stackBase = 0x70000000;
 const stackSizeByte = 0x10000;
@@ -544,6 +544,39 @@ test("microprogram: XADD exchanges then adds with the ADD flag", (context) => {
     register: { eax: 13, ebx: 3 },
     flag: { carry: false, parity: false, adjust: false, zero: false, sign: false, overflow: false },
   });
+});
+
+test("microprogram: BSWAP reverses the four bytes of a 32-bit register and leaves flags", (context) => {
+  // mov eax, 0x12345678; bswap eax; ret
+  const report = runMicro(context, [0xb8, 0x78, 0x56, 0x34, 0x12, 0x0f, 0xc8, 0xc3]);
+  assertReferenceState(report, { register: { eax: 0x78563412 }, eflags: 2 });
+});
+
+test("microprogram: BSWAP ECX is the same byte reversal on a different register", (context) => {
+  // mov ecx, 0x12345678; bswap ecx; ret
+  const report = runMicro(context, [0xb9, 0x78, 0x56, 0x34, 0x12, 0x0f, 0xc9, 0xc3]);
+  assertReferenceState(report, { register: { ecx: 0x78563412 }, eflags: 2 });
+});
+
+test("microprogram: 16-bit BSWAP reverses AX and leaves the high word", (context) => {
+  // mov eax, 0x12345678; bswap ax; ret — 16-bit form is undefined on hardware;
+  // the oracle matches the 64-bit interpreter (swap the two low bytes).
+  const report = runMicro(context, [0xb8, 0x78, 0x56, 0x34, 0x12, 0x66, 0x0f, 0xc8, 0xc3]);
+  assertReferenceState(report, { register: { eax: 0x12347856 }, eflags: 2 });
+});
+
+test("the decode sweep treats BSWAP as two-byte with no ModRM", () => {
+  const bswapEax = decodeSweepInstruction(Buffer.from([0x0f, 0xc8, 0x90]), 0);
+  assert.equal(bswapEax.length, 2);
+  assert.equal(bswapEax.opcode, 0x0fc8);
+  assert.equal(bswapEax.is_served, true);
+  const bswapEdi = decodeSweepInstruction(Buffer.from([0x0f, 0xcf, 0x90]), 0);
+  assert.equal(bswapEdi.length, 2);
+  assert.equal(bswapEdi.opcode, 0x0fcf);
+  assert.equal(bswapEdi.is_served, true);
+  const bswapAx = decodeSweepInstruction(Buffer.from([0x66, 0x0f, 0xc8, 0x90]), 0);
+  assert.equal(bswapAx.length, 3);
+  assert.equal(bswapAx.is_served, true);
 });
 
 test("microprogram: repe cmpsb compares [esi] with [edi] to exact exhaustion", (context) => {
