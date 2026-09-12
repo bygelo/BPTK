@@ -1168,6 +1168,38 @@ test("sse: xmm memory round-trip — movdqa store then reload (real WASM v128 me
   assert.equal(dv.getBigUint64(offset + 8, true), (PAT_A >> 64n) & MASK64_T, "stored high qword present in WASM memory");
 });
 
+test("sse: cvtsi2ss/cvtsi2sd convert a signed GPR and merge the scalar lane", () => {
+  // cvtsi2ss xmm0, eax (F3 0F 2A C0) — 42 → 0x42280000, upper 96 of xmm0 kept
+  const jitSs = assertSseEquivalent([0xf3, 0x0f, 0x2a, 0xc0, 0xc3], { register: { rax: 42n }, xmm: { 0: PAT_A } }, "cvtsi2ss-42");
+  assert.equal(jitSs.xmm[0], (PAT_A & ~0xffffffffn & MASK128_T) | 0x42280000n, "cvtsi2ss writes 42.0f and preserves the upper 96");
+  // cvtsi2sd xmm0, eax (F2 0F 2A C0) — 42 → 0x4045000000000000, upper 64 kept
+  const jitSd = assertSseEquivalent([0xf2, 0x0f, 0x2a, 0xc0, 0xc3], { register: { rax: 42n }, xmm: { 0: PAT_A } }, "cvtsi2sd-42");
+  assert.equal(jitSd.xmm[0], (PAT_A & ~MASK64_T & MASK128_T) | 0x4045000000000000n, "cvtsi2sd writes 42.0 and preserves the upper 64");
+  // Negative i32: cvtsi2ss of -1 is 0xbf800000
+  const jitNeg = assertSseEquivalent([0xf3, 0x0f, 0x2a, 0xc0, 0xc3], { register: { rax: 0xffffffffn }, xmm: { 0: 0n } }, "cvtsi2ss-neg");
+  assert.equal(jitNeg.xmm[0], 0xbf800000n, "cvtsi2ss of -1 is -1.0f");
+});
+
+test("sse: scalar and packed float add/mul/sub/div, bit-exact with the interpreter", () => {
+  // 1.0f / 2.0f / 3.0f / 4.0f packed as little-endian dwords
+  const ones = 0x40800000_40400000_40000000_3f800000n;
+  const twos = 0x40000000_40000000_40000000_40000000n;
+  // addss xmm0, xmm1 (F3 0F 58 C1) — 1+2=3 in the low dword, rest of xmm0 kept
+  const jitSs = assertSseEquivalent([0xf3, 0x0f, 0x58, 0xc1, 0xc3], { xmm: { 0: ones, 1: twos } }, "addss");
+  assert.equal(jitSs.xmm[0], (ones & ~0xffffffffn & MASK128_T) | 0x40400000n, "addss 1+2=3, upper 96 preserved");
+  // addsd xmm0, xmm1 (F2 0F 58 C1) — 1.0 + 2.0 = 3.0
+  const d1 = 0x3ff0000000000000n;
+  const d2 = 0x4000000000000000n;
+  const d3 = 0x4008000000000000n;
+  const jitSd = assertSseEquivalent([0xf2, 0x0f, 0x58, 0xc1, 0xc3], { xmm: { 0: (PAT_A & ~MASK64_T) | d1, 1: d2 } }, "addsd");
+  assert.equal(jitSd.xmm[0], (PAT_A & ~MASK64_T & MASK128_T) | d3, "addsd 1+2=3, upper 64 preserved");
+  assertSseEquivalent([0x0f, 0x58, 0xc1, 0xc3], { xmm: { 0: ones, 1: twos } }, "addps");
+  assertSseEquivalent([0x66, 0x0f, 0x58, 0xc1, 0xc3], { xmm: { 0: d1 | (d2 << 64n), 1: d2 | (d1 << 64n) } }, "addpd");
+  assertSseEquivalent([0xf3, 0x0f, 0x59, 0xc1, 0xc3], { xmm: { 0: ones, 1: twos } }, "mulss");
+  assertSseEquivalent([0xf2, 0x0f, 0x5c, 0xc1, 0xc3], { xmm: { 0: d3, 1: d1 } }, "subsd");
+  assertSseEquivalent([0xf3, 0x0f, 0x5e, 0xc1, 0xc3], { xmm: { 0: 0x40c00000n, 1: 0x40000000n } }, "divss"); // 6/2=3
+});
+
 test("sse: movss/movsd scalar merge and load semantics", () => {
   // movss xmm0, xmm1 (F3 0F 10) — merge low 32, preserve upper 96 of xmm0
   const jit = assertSseEquivalent([0xf3, 0x0f, 0x10, 0xc1, 0xc3], { xmm: { 0: PAT_A, 1: PAT_B } }, "movss-merge");
@@ -1193,7 +1225,7 @@ test("sse: coverage report — v128 op kinds emitted bit-exact vs honest fallbac
   process.stdout.write(`\n[wasm64] SSE ops emitted bit-exact as v128 (${emitted.length}): ${emitted.join(", ")}\n`);
   process.stdout.write("[wasm64] SSE ops kept as honest named fallbacks (float IEEE lane pairing): hadd, hsub, addsub\n");
   // The mission's required op families must all appear as real, bit-exact emissions.
-  for (const kind of ["movd_load", "movd_store", "bitwise", "padd", "psub", "pcmpeq", "pcmpgt", "pshufd", "psll", "psrl", "psra", "pslldq", "pmullw", "pmuludq", "punpckl", "punpckh", "packsswb", "movmskps", "pmovmskb", "pextrw", "movhlps", "movlhps", "movss", "movsd", "mov128"]) {
+  for (const kind of ["movd_load", "movd_store", "bitwise", "padd", "psub", "pcmpeq", "pcmpgt", "pshufd", "psll", "psrl", "psra", "pslldq", "pmullw", "pmuludq", "punpckl", "punpckh", "packsswb", "movmskps", "pmovmskb", "pextrw", "movhlps", "movlhps", "movss", "movsd", "mov128", "farith", "cvtsi2s"]) {
     assert.ok(sseCoverage.has(`sse:${kind}`), `expected SSE op ${kind} to be emitted bit-exact`);
   }
   assert.ok(emitted.length >= 20, `expected at least 20 distinct SSE op kinds emitted, got ${emitted.length}`);

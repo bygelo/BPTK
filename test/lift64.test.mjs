@@ -554,6 +554,20 @@ test("the lifter splits a straight-line run into a basic block terminated by its
   assert.equal(block.terminator, "jcc");
 });
 
+test("the lifter serves CVTSI2SS/ADDSD that used to be a named 0f2a/0f58 refusal", () => {
+  const cvt = decodeStructured(Buffer.from([0xf3, 0x0f, 0x2a, 0xc0, 0xc3]), 0);
+  assert.equal(cvt.served, true);
+  assert.equal(cvt.sseOp, "cvtsi2s");
+  assert.equal(cvt.mnemonic, "cvtsi2ss");
+  const add = decodeStructured(Buffer.from([0xf2, 0x0f, 0x58, 0xc1, 0xc3]), 0);
+  assert.equal(add.served, true);
+  assert.equal(add.sseOp, "farith");
+  assert.equal(add.mnemonic, "addsd");
+  // mov eax,42; cvtsi2ss xmm0,eax; movd ecx,xmm0; ret → ecx holds 42.0f bits
+  const report = run([0xb8, 0x2a, 0x00, 0x00, 0x00, 0xf3, 0x0f, 0x2a, 0xc0, 0x66, 0x0f, 0x7e, 0xc1, 0xc3]);
+  assertState(report, { register: { rax: 42n, rcx: 0x42280000n } });
+});
+
 test("the lifter refuses an unserved opcode as a structured node, never a wrong lift", () => {
   const node = decodeStructured(Buffer.from([0x0f, 0x0b, 0xc3]), 0); // ud2
   assert.equal(node.served, false);
