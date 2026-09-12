@@ -2024,6 +2024,17 @@ test("BPTK-010 sync breadth: the multi-object wait reports the signaled index an
   assert.equal(invoke(guest, "kernel32.dll", "WaitForMultipleObjects", [1, badHandles, 0, 0]), 0xffffffff, "a non-waitable handle is an invalid-handle error");
 });
 
+test("BPTK-010: CreateEventExW maps flags onto CreateEvent and refuses unknown bits", () => {
+  const { guest } = createConformanceMachine();
+  const auto = invoke(guest, "kernel32.dll", "CreateEventExW", [0, 0, 0, 0x1f0003]);
+  assert.ok(auto !== 0);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForSingleObject", [auto, 0]), 0x102);
+  const signaled = invoke(guest, "kernel32.dll", "CreateEventExW", [0, 0, 2, 0x1f0003]);
+  assert.equal(invoke(guest, "kernel32.dll", "WaitForSingleObject", [signaled, 0]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "CreateEventExW", [0, 0, 4, 0x1f0003]), 0);
+  assert.equal(guest.getLastError(), 87);
+});
+
 test("BPTK-010 sync breadth: the named-object open family finds its own creates and misses honestly", () => {
   const { guest } = createConformanceMachine();
   const nameA = guest.layout.arena_base + 0x40;

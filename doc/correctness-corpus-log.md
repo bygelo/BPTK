@@ -1267,6 +1267,31 @@ cap in `vcruntime140` after `WaitOnAddress` (higher-budget remesure to name
 the next IAT or fault); `gdi32!SwapBuffers` is served but SuperTux never
 reaches it.
 
+## Cycle 57 — WaitOnAddress store-wake + CreateEventExW (2026-09-12)
+
+`WaitOnAddress` already parked like `WaitOnAddress`/`SleepConditionVariableSRW`.
+A worker store at the wait cell now satisfies the waiter (not only
+`WakeByAddressSingle` / `WakeByAddressAll`). Preempt re-checks address waiters
+so a ready waiter is scheduled. `CreateEventExW` maps
+`CREATE_EVENT_MANUAL_RESET` / `CREATE_EVENT_INITIAL_SET` onto the existing event
+table; unknown flags refuse 87. No title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **instruction_budget_exhausted** after **50000000** instruction, **8967**
+  HLE (~68.9 s) at `vcruntime140+0xef28`. Main still parks `WaitOnAddress`
+  INFINITE; the worker `HeapAlloc`s and does not store that cell. Previous
+  stop was the same cap at **8955** HLE / `+0xef25`. Last `CreateWindowExW`
+  `0x10024`. Last `wglCreateContext` `0x5000c`. `SwapBuffers` 0 / presentCount 0.
+  A store-wake is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is the OpenAL
+worker still in `vcruntime140` `HeapAlloc` without storing the wait cell
+(50M cap); `gdi32!SwapBuffers` is served but SuperTux never reaches it.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
