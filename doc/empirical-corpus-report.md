@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: WaitOnAddress returns; **instruction_budget_exhausted** at zlib1+0x80ea (200000000 instruction, 26928 HLE, ~546 s; last ReadFile; SwapBuffers 0) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: WaitOnAddress returns; **instruction_budget_exhausted** at zlib1!inflate+0x152a (zlib1+0x80ea; 200000000 instruction, 26928 HLE, ~546 s; last ReadFile; SwapBuffers 0) → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
@@ -140,12 +140,20 @@ handles / `SetThreadExecutionState` (`ES_CONTINUOUS` `0x80000000`) /
 `DragAcceptFiles` 0 / `ShowWindow` 1 (was visible; last `CreateWindowExW`
 `0x10024`) / `ChoosePixelFormat` 1 / `SetPixelFormat` 1 /
 `wglCreateContext` last `0x5000c` / `wglMakeCurrent` 1 / `DescribePixelFormat` 1 /
-`wglGetExtensionsStringARB` hits,
-and stops **instruction_budget_exhausted** at `vcruntime140+0xef28`
-at **50000000** instruction / **8967** HLE after `RaiseException` of MSVC
-`SetThreadName` (`0x406d1388`) returns 0, OpenAL `CreateThread` last `0x10012`,
-`InitOnceComplete` 1, `SleepConditionVariableSRW` 1, `WaitOnAddress` INFINITE
-(store-wake served; worker has not stored yet), and `CreateEventExW` served.
+`wglGetExtensionsStringARB` hits, then
+`RaiseException` of MSVC `SetThreadName` (`0x406d1388`) returns 0, OpenAL
+`CreateThread` last `0x10012`, `InitOnceComplete` 1, `SleepConditionVariableSRW` 1,
+and `CreateEventExW` served. Previous 50M product remesure parked
+**instruction_budget_exhausted** at `vcruntime140+0xef20` (**50000000**
+instruction / **8968** HLE; last HLE `WaitOnAddress` then worker `HeapAlloc`).
+After `603602e`, `WaitOnAddress` returns. Last 50M product remesure
+(`bptk run`, 5134 host files, ~546 s) is **instruction_budget_exhausted**
+at sidecar `zlib1!inflate+0x152a` (`zlib1+0x80ea`; **200000000** instruction /
+4× continue ceiling, **26928** HLE). Last HLE is physfs `ReadFile` of 8 / 8192 /
+4-byte chunks. `WaitOnAddress` is no longer in the stored 256+32 trace window.
+No unbound IAT. `SwapBuffers` 0. Shipped `zlib1.dll` wins over any HLE inflate
+row; inflate throughput is a WASM-tier job, not a 50M cap bump. Not a frame.
+`passing` stays 1.
 Raised 80M: the worker finishes `HeapAlloc`, `WakeAllConditionVariable` runs,
 and main loads textures (`glTexImage2D` / `glTexSubImage2D` / `FindNextFileW`)
 then **instruction_budget_exhausted** at `zlib1+0x1303` (**80000000** /
@@ -168,11 +176,12 @@ the staged README is `process_exit` 0 with the real line-numbered hits
 with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
-That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is still guest PNG/texture load toward `SwapBuffers` (1B
-`isdigit`; 1.9B still `zlib1` inflate after raising the 1M HLE call cap;
-no new IAT or opcode; `SwapBuffers` 0). Present is served but SuperTux
-never calls it.
+That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the 50M product remesure is the sidecar
+`zlib1!inflate` inner loop at `inflate+0x152a` (`sub eax, 0x3f34` / `jmp`
+backward). Present is served but SuperTux never calls it (`SwapBuffers` 0).
+Do not raise the product cap to walk past inflate. Raised-budget 1B is
+`isdigit` at `ucrtbase`; 1.9B is still `zlib1` inflate after the 1M HLE
+call cap was raised (no new IAT or opcode; `SwapBuffers` 0).
 The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
