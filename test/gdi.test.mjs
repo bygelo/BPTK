@@ -369,6 +369,38 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.describePixelFormat(argument[0], argument[1]);
     case "SwapBuffers":
       return gdi.swapBuffers(argument[0]);
+    case "GdiFlush":
+      return 1;
+    case "SetMapMode":
+      return gdi.setMapMode(argument[0], argument[1]);
+    case "CreateRectRgnIndirect":
+      if ((argument[0] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      return gdi.createRegion({ left: 0, top: 0, right: 1, bottom: 1 });
+    case "CreateFontIndirectW":
+      if ((argument[0] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      return gdi.getStockObject(0x0d);
+    case "EnumFontFamiliesExW":
+      return gdi.enumFontFamily((argument[2] >>> 0) !== 0);
+    case "GetTextCharsetInfo":
+      return gdi.getTextCharsetInfo();
+    case "AddFontResourceExW":
+      return gdi.addFontResource((argument[0] >>> 0) !== 0);
+    case "GetFontData":
+      return gdi.getFontData();
+    case "GetOutlineTextMetricsW":
+      return gdi.getOutlineTextMetrics();
+    case "GetGlyphOutlineW":
+      return gdi.getGlyphOutline((argument[3] >>> 0) !== 0, argument[2]);
+    case "GetGlyphIndicesW":
+      return gdi.getGlyphIndices((argument[1] >>> 0) !== 0 && (argument[3] >>> 0) !== 0, argument[2] | 0);
+    case "SetDIBColorTable":
+      return gdi.setDibColorTable(argument[0], argument[1] >>> 0, argument[2] ? [{}] : []);
     default:
       return null;
   }
@@ -462,6 +494,25 @@ function buildGdiConformanceCase() {
   define("SwapBuffers", { argument: [0] }, { return_value: 0, last_error: 6 });
   define("SwapBuffers", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 2000 });
   define("SwapBuffers", { scenario: [dcStep, ["SetPixelFormat", [FIRST_HANDLE, declaredPixelFormat.index]]], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
+  define("GdiFlush", { argument: [] }, { return_value: 1, last_error: 0 });
+  define("SetMapMode", { scenario: [dcStep], argument: [FIRST_HANDLE, 2] }, { return_value: 1, last_error: 0 });
+  define("CreateRectRgnIndirect", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("CreateRectRgnIndirect", { argument: [1] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("CreateFontIndirectW", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("CreateFontIndirectW", { argument: [1] }, { return_value: 0x8000000d, last_error: 0 });
+  define("EnumFontFamiliesExW", { argument: [0, 0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("EnumFontFamiliesExW", { argument: [0, 0, 1, 0, 0] }, { return_value: 1, last_error: 0 });
+  define("GetTextCharsetInfo", { argument: [0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("AddFontResourceExW", { argument: [0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("AddFontResourceExW", { argument: [1, 0x10, 0] }, { return_value: 1, last_error: 0 });
+  define("GetFontData", { argument: [0, 0, 0, 0, 0] }, { return_value: 0xffffffff, last_error: 0 });
+  define("GetOutlineTextMetricsW", { argument: [0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("GetGlyphOutlineW", { argument: [0, 0x41, 0, 0, 0, 0, 0] }, { return_value: 0xffffffff, last_error: 87 });
+  define("GetGlyphOutlineW", { argument: [0, 0x41, 0, 1, 0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("GetGlyphIndicesW", { argument: [0, 0, 1, 0, 0] }, { return_value: 0xffffffff, last_error: 87 });
+  define("GetGlyphIndicesW", { argument: [0, 1, 1, 1, 0] }, { return_value: 1, last_error: 0 });
+  define("SetDIBColorTable", { argument: [0, 0, 1, 1] }, { return_value: 0, last_error: 6 });
+  define("SetDIBColorTable", { scenario: [dcStep], argument: [FIRST_HANDLE, 0, 1, 1] }, { return_value: 1, last_error: 0 });
 
   return caseList;
 }

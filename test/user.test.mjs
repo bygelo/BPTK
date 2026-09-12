@@ -530,7 +530,49 @@ function applyUserOp(user, symbol, argument) {
     case "FindWindowA":
     case "GetCapture":
     case "GetClipboardOwner":
+    case "IsClipboardFormatAvailable":
+    case "GetClipboardData":
+    case "MapWindowPoints":
+    case "ChangeDisplaySettingsW":
       return 0;
+    case "SetCapture":
+      return 0;
+    case "ReleaseCapture":
+    case "SetCursorPos":
+    case "InvalidateRect":
+    case "ValidateRect":
+    case "OpenClipboard":
+    case "CloseClipboard":
+    case "EndPaint":
+      return 1;
+    case "ShowCursor":
+      return (argument[0] | 0) === 0 ? 0xffffffff : 1;
+    case "GetWindowDC":
+    case "GetDCEx":
+    case "BeginPaint":
+      return 0x00040000;
+    case "GetUpdateRect":
+      return 1;
+    case "SetRect":
+    case "SetRectEmpty":
+    case "OffsetRect":
+      return argument[0] ? 1 : 0;
+    case "UnionRect":
+      return 1;
+    case "PtInRect":
+      return 1;
+    case "GetKeyboardLayout":
+      return 0x04090409;
+    case "WindowFromPoint":
+      return user.getDesktopWindow();
+    case "MessageBoxW":
+      return user.messageBox(argument[0] ?? "", argument[1] ?? "", argument[2] ?? 0);
+    case "DialogBoxParamW":
+      return 0;
+    case "SetDlgItemTextW":
+      return user.setWindowText(user.getDlgItem(argument[0], argument[1]), argument[2] ?? "");
+    case "SendDlgItemMessageW":
+      return user.sendDlgItemMessage(argument[0], argument[1], argument[2] ?? 0, argument[3] ?? 0, argument[4] ?? 0);
     case "GetKeyState":
       return user.getKeyState(argument[0]);
     case "GetAsyncKeyState":
@@ -925,6 +967,35 @@ function buildUserConformanceCase() {
   define("EndDialog", { argument: [0, 1] }, { return_value: 0, last_error: 0x578 });
   define("CreateDialogParamA", { argument: [0, 1, 0, 0, 0] }, { return_value: 0, last_error: 0 });
   define("DialogBoxParamA", { argument: [0, 1, 0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("DialogBoxParamW", { argument: [0, 1, 0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("SetRect", { argument: [1, 0, 0, 10, 10] }, { return_value: 1, last_error: 0 });
+  define("SetRectEmpty", { argument: [1] }, { return_value: 1, last_error: 0 });
+  define("OffsetRect", { argument: [1, 1, 1] }, { return_value: 1, last_error: 0 });
+  define("UnionRect", { argument: [1, 1, 1] }, { return_value: 1, last_error: 0 });
+  define("PtInRect", { argument: [1, 1, 1] }, { return_value: 1, last_error: 0 });
+  define("MapWindowPoints", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 0 });
+  define("SetCapture", { argument: [0] }, { return_value: 0, last_error: 0 });
+  define("ReleaseCapture", { argument: [] }, { return_value: 1, last_error: 0 });
+  define("ShowCursor", { argument: [1] }, { return_value: 1, last_error: 0 });
+  define("ShowCursor", { argument: [0] }, { return_value: 0xffffffff, last_error: 0 });
+  define("SetCursorPos", { argument: [10, 20] }, { return_value: 1, last_error: 0 });
+  define("GetWindowDC", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0x00040000, last_error: 0 });
+  define("GetDCEx", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0, 0] }, { return_value: 0x00040000, last_error: 0 });
+  define("InvalidateRect", { argument: [0, 0, 0] }, { return_value: 1, last_error: 0 });
+  define("ValidateRect", { argument: [0, 0] }, { return_value: 1, last_error: 0 });
+  define("GetUpdateRect", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0, 0] }, { return_value: 1, last_error: 0 });
+  define("BeginPaint", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0] }, { return_value: 0x00040000, last_error: 0 });
+  define("EndPaint", { argument: [0, 0] }, { return_value: 1, last_error: 0 });
+  define("OpenClipboard", { argument: [0] }, { return_value: 1, last_error: 0 });
+  define("CloseClipboard", { argument: [] }, { return_value: 1, last_error: 0 });
+  define("IsClipboardFormatAvailable", { argument: [1] }, { return_value: 0, last_error: 0 });
+  define("GetClipboardData", { argument: [1] }, { return_value: 0, last_error: 0 });
+  define("GetKeyboardLayout", { argument: [0] }, { return_value: 0x04090409, last_error: 0 });
+  define("WindowFromPoint", { argument: [0, 0] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("ChangeDisplaySettingsW", { argument: [0, 0] }, { return_value: 0, last_error: 0 });
+  define("MessageBoxW", { argument: ["ok", "", 0] }, { return_value: 1, last_error: 0 });
+  define("SetDlgItemTextW", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, ""] }, { return_value: 0, last_error: 0x578 });
+  define("SendDlgItemMessageW", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, 0, 0, 0] }, { return_value: 0, last_error: 0x578 });
 
   defineLib("comctl32.dll", "InitCommonControls", { argument: [] }, { return_value: 0, last_error: 0 });
   defineLib("comctl32.dll", "InitCommonControlsEx", { argument: [0] }, { return_value: 1, last_error: 0 });
