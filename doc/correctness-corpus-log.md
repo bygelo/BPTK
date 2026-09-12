@@ -777,6 +777,29 @@ Measured on the staged corpus (payloads still out of git):
 `DragAcceptFiles` (record whether a HWND accepts dropped files), not
 another caption API.
 
+## Cycle 37 — DragAcceptFiles (2026-09-12)
+
+The SuperTux stop after Cycle 36 was SDL2 enabling file drop through
+unbound `shell32!DragAcceptFiles`. The slice is generic: record
+`is_drop_accepted` on the HWND. An invalid HWND refuses. No host drop
+target exists, so `WM_DROPFILES` is never posted. `DragQueryFileW` /
+`DragFinish` stay unserved until a drop arrives.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **unsupported_opcode x87 `FLD ST(0)` (`0xd9 0xc0`)** after **39550744**
+  instruction, **8099** HLE. EIP `sdl2` `0x2c0f691a`. `DragAcceptFiles`
+  returned 0. `ShowWindow` returned 0 (was hidden). Last
+  `CreateWindowExW` `0x1001c`. A shown HWND is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+x87 `FLD ST(i)` (`D9 C0+i`), not another shell32 drop API. Present path
+still unbound (`ChoosePixelFormat` / `SetPixelFormat` / `SwapBuffers` /
+`wglGetProcAddress`).
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

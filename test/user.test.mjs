@@ -72,6 +72,19 @@ test("CreateWindowEx for an unregistered class fails with cannot-find-class", ()
   assert.equal(user.getLastError(), 0x57f);
 });
 
+test("acceptDropFiles records whether a live window accepts dropped files", () => {
+  const user = createUserSubsystem();
+  user.registerClass("AppClass", defaultProc);
+  const handle = user.createWindowEx({ class_name: "AppClass" });
+  assert.equal(user.isDropAccepted(handle), false);
+  assert.equal(user.acceptDropFiles(0, true), 0);
+  assert.equal(user.getLastError(), 0x578);
+  assert.equal(user.acceptDropFiles(handle, true), 0);
+  assert.equal(user.isDropAccepted(handle), true);
+  assert.equal(user.acceptDropFiles(handle, false), 0);
+  assert.equal(user.isDropAccepted(handle), false);
+});
+
 test("a WM_NCCREATE that returns FALSE aborts creation and yields NULL", () => {
   const user = createUserSubsystem();
   user.registerClass("Reject", (handle, message) => (message === windowMessage.WM_NCCREATE ? 0 : 1));

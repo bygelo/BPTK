@@ -806,6 +806,25 @@ test("SetWindowTextW stores a caption that GetWindowTextW and GetWindowTextLengt
   assert.equal(guest.readWideString(dest), "SuperTux");
 });
 
+test("DragAcceptFiles records drop acceptance on a live HWND and refuses HWND 0", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  memory.writeMemory(classStruct + 0, 4, 0);
+  memory.writeMemory(classStruct + 4, 4, 0);
+  memory.writeMemory(classStruct + 36, 4, classNamePtr);
+  invoke(guest, "user32.dll", "RegisterClassW", [classStruct]);
+  const window = invoke(guest, "user32.dll", "CreateWindowExW", [0, classNamePtr, 0, 0, 0, 0, 320, 240, 0, 0, 0, 0]);
+  assert.equal(invoke(guest, "shell32.dll", "DragAcceptFiles", [0, 1]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "shell32.dll", "DragAcceptFiles", [window, 1]), 0);
+  assert.equal(guest.user.isDropAccepted(window), true);
+  assert.equal(invoke(guest, "shell32.dll", "DragAcceptFiles", [window, 0]), 0);
+  assert.equal(guest.user.isDropAccepted(window), false);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;
