@@ -592,6 +592,63 @@ test("GetConsoleMode writes the mode dword and returns BOOL", () => {
   assert.equal(memory.readMemory(dest, 4), 3);
 });
 
+test("EnumDisplayDevicesW writes the one virtual adapter and stops after it", () => {
+  const { guest, memory } = createConformanceMachine();
+  const info = guest.layout.arena_base + 0x150040;
+  memory.writeMemory(info, 4, 840);
+  assert.equal(invoke(guest, "user32.dll", "EnumDisplayDevicesW", [0, 0, info, 0]), 1);
+  assert.equal(guest.readWideString(info + 4), "\\\\.\\DISPLAY1");
+  assert.equal(guest.readWideString(info + 4 + 64), "Virtual Display");
+  assert.equal(memory.readMemory(info + 4 + 64 + 256, 4), 5);
+  assert.equal(invoke(guest, "user32.dll", "EnumDisplayDevicesW", [0, 1, info, 0]), 0);
+});
+
+test("EnumDisplaySettingsW writes the one 1920x1080 mode and stops after it", () => {
+  const { guest, memory } = createConformanceMachine();
+  const mode = guest.layout.arena_base + 0x150040;
+  memory.writeMemory(mode + 68, 2, 220);
+  assert.equal(invoke(guest, "user32.dll", "EnumDisplaySettingsW", [0, 0xffffffff, mode]), 1);
+  assert.equal(memory.readMemory(mode + 172, 4), 1920);
+  assert.equal(memory.readMemory(mode + 176, 4), 1080);
+  assert.equal(memory.readMemory(mode + 168, 4), 32);
+  assert.equal(memory.readMemory(mode + 184, 4), 60);
+  assert.equal(invoke(guest, "user32.dll", "EnumDisplaySettingsW", [0, 1, mode]), 0);
+});
+
+test("GetMonitorInfoW writes the one virtual desktop and EnumDisplayMonitors queues its callback", () => {
+  const { guest, memory } = createConformanceMachine();
+  const info = guest.layout.arena_base + 0x150040;
+  memory.writeMemory(info, 4, 104);
+  assert.equal(invoke(guest, "user32.dll", "GetMonitorInfoW", [0x00020000, info]), 1);
+  assert.equal(memory.readMemory(info + 12, 4), 1920);
+  assert.equal(memory.readMemory(info + 16, 4), 1080);
+  assert.equal(memory.readMemory(info + 36, 4), 1);
+  assert.equal(guest.readWideString(info + 40), "\\\\.\\DISPLAY1");
+  assert.equal(invoke(guest, "user32.dll", "EnumDisplayMonitors", [0, 0, 0x401000, 7]), 1);
+  assert.equal(guest.pending_guest_call?.kind, "enum_callback");
+  assert.equal(guest.pending_guest_call?.argument[0], 0x00020000);
+  assert.equal(guest.pending_guest_call?.argument[3], 7);
+});
+
+test("EnumResourceNamesW refuses a null callback and a missing type without inventing names", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "EnumResourceNamesW", [0, 14, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "kernel32.dll", "EnumResourceNamesW", [0, 14, 0x401000, 0]), 0);
+  assert.equal(guest.getLastError(), 1813);
+  assert.equal(guest.pending_guest_call, null);
+});
+
+test("SetConsoleCtrlHandler records a handler and never fires it", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "SetConsoleCtrlHandler", [0, 1]), 1);
+  assert.equal(guest.console_ctrl_ignore, true);
+  assert.equal(invoke(guest, "kernel32.dll", "SetConsoleCtrlHandler", [0x401000, 1]), 1);
+  assert.deepEqual(guest.console_ctrl_handler, [0x401000]);
+  assert.equal(invoke(guest, "kernel32.dll", "SetConsoleCtrlHandler", [0x401000, 0]), 1);
+  assert.deepEqual(guest.console_ctrl_handler, []);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;

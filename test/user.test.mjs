@@ -21,6 +21,7 @@ import {
   dialogBaseUnit,
   dialogRectToPixel,
   defaultDialogBaseUnit,
+  mapVirtualKey,
 } from "../lib/user.mjs";
 
 const FIRST_ATOM = 0xc000;
@@ -31,6 +32,13 @@ const FIRST_HANDLE = 0x00010010;
 function defaultProc(handle, message, wParam, lParam, defWindowProc) {
   return defWindowProc(handle, message, wParam, lParam);
 }
+
+test("mapVirtualKey translates US set-1 scan codes and refuses an unknown code", () => {
+  assert.equal(mapVirtualKey(0x1e, 1), 0x41);
+  assert.equal(mapVirtualKey(0x41, 0), 0x1e);
+  assert.equal(mapVirtualKey(0x41, 2), 0x41);
+  assert.equal(mapVirtualKey(0xff, 1), 0);
+});
 
 test("RegisterClass then CreateWindowEx delivers the exact WM_NCCREATE, WM_CREATE creation pair", () => {
   const user = createUserSubsystem();
@@ -347,9 +355,45 @@ function applyUserOp(user, symbol, argument) {
       return 1;
     case "GetSystemMetrics":
       return systemMetric[argument[0]] ?? 0;
+    case "GetDoubleClickTime":
+      return 500;
+    case "MapVirtualKeyW":
+    case "MapVirtualKeyA":
+      return mapVirtualKey(argument[0], argument[1]);
+    case "EnumDisplayMonitors":
+      if ((argument[2] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      return 1;
+    case "GetMonitorInfoW":
+    case "GetMonitorInfoA":
+      if ((argument[0] >>> 0) !== 0x00020000 || (argument[1] >>> 0) === 0) {
+        user.setLastError((argument[1] >>> 0) === 0 ? 87 : 6);
+        return 0;
+      }
+      return 1;
+    case "EnumDisplaySettingsW":
+    case "EnumDisplaySettingsA":
+      if ((argument[2] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      if ((argument[1] >>> 0) !== 0 && (argument[1] >>> 0) !== 0xffffffff && (argument[1] >>> 0) !== 0xfffffffe) return 0;
+      return 1;
+    case "EnumDisplayDevicesW":
+    case "EnumDisplayDevicesA":
+      if ((argument[2] >>> 0) === 0) {
+        user.setLastError(87);
+        return 0;
+      }
+      if ((argument[1] >>> 0) !== 0) return 0;
+      return 1;
     case "FindWindowA":
     case "GetCapture":
     case "GetClipboardOwner":
+    case "GetKeyState":
+    case "GetAsyncKeyState":
       return 0;
     case "GetForegroundWindow":
       return user.getActiveWindow();
@@ -421,8 +465,10 @@ function applyUserOp(user, symbol, argument) {
     case "ReleaseDC":
       return 1;
     case "LoadCursorA":
+    case "LoadCursorW":
       return (0x00008000 | (argument[1] & 0xffff)) >>> 0;
     case "LoadIconA":
+    case "LoadIconW":
       return (0x00008100 | (argument[1] & 0xffff)) >>> 0;
     case "CreateMenu":
       return user.createMenu();
@@ -524,12 +570,29 @@ function buildUserConformanceCase() {
   define("GetSystemMetrics", { argument: [0] }, { return_value: 1920, last_error: 0 });
   define("GetSystemMetrics", { argument: [1] }, { return_value: 1080, last_error: 0 });
   define("GetSystemMetrics", { argument: [99] }, { return_value: 0, last_error: 0 });
+  define("GetDoubleClickTime", { argument: [] }, { return_value: 500, last_error: 0 });
+  define("MapVirtualKeyW", { argument: [0x1e, 1] }, { return_value: 0x41, last_error: 0 });
+  define("MapVirtualKeyW", { argument: [0x41, 2] }, { return_value: 0x41, last_error: 0 });
+  define("MapVirtualKeyA", { argument: [0xff, 1] }, { return_value: 0, last_error: 0 });
+  define("EnumDisplayMonitors", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("EnumDisplayMonitors", { argument: [0, 0, 0x00401000, 0] }, { return_value: 1, last_error: 0 });
+  define("GetMonitorInfoW", { argument: [0x00020000, 0] }, { return_value: 0, last_error: 87 });
+  define("GetMonitorInfoW", { argument: [0xdeadbeef, 1] }, { return_value: 0, last_error: 6 });
+  define("GetMonitorInfoA", { argument: [0xdeadbeef, 1] }, { return_value: 0, last_error: 6 });
+  define("EnumDisplaySettingsW", { argument: [0, 0xffffffff, 0] }, { return_value: 0, last_error: 87 });
+  define("EnumDisplaySettingsW", { argument: [0, 0xffffffff, 1] }, { return_value: 1, last_error: 0 });
+  define("EnumDisplaySettingsA", { argument: [0, 1, 1] }, { return_value: 0, last_error: 0 });
+  define("EnumDisplayDevicesW", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("EnumDisplayDevicesW", { argument: [0, 0, 1, 0] }, { return_value: 1, last_error: 0 });
+  define("EnumDisplayDevicesA", { argument: [0, 1, 1, 0] }, { return_value: 0, last_error: 0 });
 
   // Plink import-surface widening (BPTK-146): the window, input, and message
   // queries the startup path probes. With no window and no host input device
   // the answer is the honest empty result.
   define("FindWindowA", { argument: [0, 0] }, { return_value: 0, last_error: 0 });
   define("GetCapture", { argument: [] }, { return_value: 0, last_error: 0 });
+  define("GetKeyState", { argument: [0x14] }, { return_value: 0, last_error: 0 });
+  define("GetAsyncKeyState", { argument: [0x11] }, { return_value: 0, last_error: 0 });
   define("GetClipboardOwner", { argument: [] }, { return_value: 0, last_error: 0 });
   define("GetForegroundWindow", { argument: [] }, { return_value: 0, last_error: 0 });
   define("GetQueueStatus", { argument: [0x1ff] }, { return_value: 0, last_error: 0 });
@@ -565,7 +628,9 @@ function buildUserConformanceCase() {
   define("GetDC", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0x00040000, last_error: 0 });
   define("ReleaseDC", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0x00040000] }, { return_value: 1, last_error: 0 });
   define("LoadCursorA", { argument: [0, 32512] }, { return_value: 0x00008000 | 32512, last_error: 0 });
+  define("LoadCursorW", { argument: [0, 32512] }, { return_value: 0x00008000 | 32512, last_error: 0 });
   define("LoadIconA", { argument: [0, 32512] }, { return_value: 0x00008100 | 32512, last_error: 0 });
+  define("LoadIconW", { argument: [0, 32512] }, { return_value: 0x00008100 | 32512, last_error: 0 });
   define("CreateMenu", { argument: [] }, { return_value: 0x00030000, last_error: 0 });
   define("AppendMenuA", { scenario: [["CreateMenu", []]], argument: [0x00030000, 0, 1, ""] }, { return_value: 1, last_error: 0 });
   define("SetMenu", { scenario: [registerAnsiStep, createAnsiStep, ["CreateMenu", []]], argument: [FIRST_HANDLE, 0x00030000] }, { return_value: 1, last_error: 0 });

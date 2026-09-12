@@ -165,6 +165,14 @@ test("TextOut renders a stock glyph in the text color over the background", () =
   assert.equal(gdi.getPixel(dc, 0, 0), rgb(0, 0, 0)); // corner is background in OPAQUE mode
 });
 
+test("CreateDCW opens the virtual display at HORZRES x VERTRES and refuses a printer driver", () => {
+  const gdi = createGdiSubsystem();
+  const dc = gdi.createDisplayDC();
+  assert.deepEqual(gdi.surfaceInfo(dc), { width: 1920, height: 1080 });
+  assert.equal(gdi.getDeviceCaps(dc, 8), 1920);
+  assert.equal(gdi.deleteDC(dc), 1);
+});
+
 test("PatBlt fills the region with the selected brush and GetDeviceCaps reports the declared display", () => {
   const gdi = createGdiSubsystem();
   const dc = gdi.createDC(4, 4);
@@ -240,6 +248,18 @@ function applyGdiOp(gdi, symbol, argument) {
   switch (symbol) {
     case "CreateCompatibleDC":
       return gdi.createCompatibleDC(argument[0]);
+    case "CreateDCW":
+    case "CreateDCA": {
+      const isDisplay = (value) => {
+        const name = String(value ?? "").toLowerCase();
+        return name === "" || name === "display" || name === "\\\\.\\display1";
+      };
+      if (!isDisplay(argument[0]) || !isDisplay(argument[1])) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      return gdi.createDisplayDC();
+    }
     case "DeleteDC":
       return gdi.deleteDC(argument[0]);
     case "GetStockObject":
@@ -334,6 +354,10 @@ function buildGdiConformanceCase() {
   const secondHandle = FIRST_HANDLE + 4;
 
   define("CreateCompatibleDC", { argument: [0] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("CreateDCW", { argument: ["DISPLAY", ""] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("CreateDCW", { argument: ["\\\\.\\DISPLAY1", ""] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("CreateDCW", { argument: ["PRINTER", ""] }, { return_value: 0, last_error: 87 });
+  define("CreateDCA", { argument: ["DISPLAY", "\\\\.\\DISPLAY1"] }, { return_value: FIRST_HANDLE, last_error: 0 });
   define("DeleteDC", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
   define("GetStockObject", { argument: [0] }, { return_value: stockObject.WHITE_BRUSH, last_error: 0 });
   define("CreateSolidBrush", { argument: [rgb(1, 2, 3)] }, { return_value: FIRST_HANDLE, last_error: 0 });

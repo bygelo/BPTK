@@ -11,7 +11,7 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { parseDialogTemplate, findDialogResource, loadDialogTemplate, controlClassAtom } from "../lib/rsrc.mjs";
+import { parseDialogTemplate, findDialogResource, listResourceNames, loadDialogTemplate, controlClassAtom } from "../lib/rsrc.mjs";
 
 function u16(value) {
   return [value & 0xff, (value >> 8) & 0xff];
@@ -161,6 +161,12 @@ test("findDialogResource walks the type->name->language tree to the RT_DIALOG le
   assert.notEqual(located, null);
   assert.equal(located.rva, resourceBase + 0x60);
   assert.equal(findDialogResource(image, resourceBase, 999), null, "a dialog id with no resource returns null");
+});
+
+test("listResourceNames returns the name ids under a type and nothing for a missing type", () => {
+  const image = buildResourceImage(classicTemplate(), 200);
+  assert.deepEqual(listResourceNames(image, resourceBase, { kind: "id", value: 5 }), [{ kind: "id", value: 200 }]);
+  assert.deepEqual(listResourceNames(image, resourceBase, { kind: "id", value: 14 }), []);
 });
 
 test("loadDialogTemplate locates and parses one dialog by id", () => {

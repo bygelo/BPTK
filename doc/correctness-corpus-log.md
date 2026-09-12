@@ -516,6 +516,39 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is that
 ucrt fetch, not another CreateThread refusal.
 
+## Cycle 26 — console ctrl, resources, virtual display, keyboard (2026-09-12)
+
+The SuperTux stop after the guest thread scheduler was a cascade of
+unbound SDL2 IAT hint RVAs, not a new CPU gap. Each named hole is a
+generic Win32 row with a conformance case (user32/gdi32 on both local
+tables and `buildConformanceCaseTable`).
+
+- `kernel32!SetConsoleCtrlHandler` records a handler (bound 16) or the
+  NULL ignore-ctrl flag. It never delivers `CTRL_C_EVENT`.
+- `user32!GetDoubleClickTime` is the documented 500 ms default.
+- `kernel32!EnumResourceNamesW` lists names under a type via
+  `listResourceNames`. Missing type → 1813, no invented name. A live
+  name re-enters `ENUMRESNAMEPROC` through `pending_guest_call`.
+- One virtual desktop: `EnumDisplayMonitors` (one `HMONITOR`),
+  `GetMonitorInfoW`/`A`, `EnumDisplaySettingsW`/`A` (one 1920×1080×32@60
+  mode), `EnumDisplayDevicesW`/`A` (`\\.\DISPLAY1`, flags 5),
+  `gdi32!CreateDCW`/`A` (`DISPLAY` or `\\.\DISPLAY1` in either slot;
+  printer refused).
+- `MapVirtualKeyW`/`A` is a US 101 set-1 table. `GetKeyState` /
+  `GetAsyncKeyState` are 0 (no host keyboard). `LoadCursorW` /
+  `LoadIconW` are the existing A twins.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir`: **fetch_fault
+  `gdi32!CreateDIBSection`** after **31870988** instruction, **5963**
+  HLE. Previous EIP `sdl2` `0x2c0d0c5c`. `CreateDCW` `0x40000`,
+  `GetDeviceCaps` 1920/1080, `GetDIBits` ran, `GetDC` `0x40008`.
+  Not a frame. Do not invent DIB bits in host-only GDI memory.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`CreateDIBSection` (guest-visible bits pointer), not another display
+query.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording
