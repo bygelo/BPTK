@@ -674,6 +674,26 @@ test("MonitorFromPoint and MonitorFromWindow return the one virtual display", ()
   assert.equal(invoke(guest, "user32.dll", "SetFocus", [0]), 0);
   assert.equal(invoke(guest, "user32.dll", "FillRect", [0, 0, 0]), 0);
   assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "IntersectRect", [0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  const dest = guest.layout.arena_base + 0x1500c0;
+  memory.writeMemory(point, 4, 0);
+  memory.writeMemory(point + 4, 4, 0);
+  memory.writeMemory(point + 8, 4, 2);
+  memory.writeMemory(point + 12, 4, 2);
+  assert.equal(invoke(guest, "user32.dll", "IntersectRect", [dest, point, point]), 1);
+  assert.equal(memory.readMemory(dest + 8, 4), 2);
+  assert.equal(invoke(guest, "user32.dll", "PtInRect", [0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  assert.equal(invoke(guest, "user32.dll", "PtInRect", [point, 0, 0]), 1);
+  assert.equal(invoke(guest, "user32.dll", "PtInRect", [point, 2, 0]), 0);
+  assert.equal(invoke(guest, "user32.dll", "GetParent", [0]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "user32.dll", "IsIconic", [0]), 0);
+  assert.equal(guest.getLastError(), 0x578);
+  assert.equal(invoke(guest, "user32.dll", "SetCursor", [0x8001]), 0);
+  assert.equal(invoke(guest, "user32.dll", "SetCursor", [0]), 0x8001);
+  assert.equal(invoke(guest, "user32.dll", "GetKeyboardLayout", [0]), 0x04090409);
 });
 
 test("GetMonitorInfoW writes the one virtual desktop and EnumDisplayMonitors queues its callback", () => {
