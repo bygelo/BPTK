@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW 0x10014, SetPropW 1, ClientToScreen 1, then fetch_fault `gdi32!GetICMProfileW` (39451090 instruction, 7840 HLE) → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 10M still OpenAL table init; 50M + `--datadir` CreateWindowExW 0x10014, SetPropW 1, ClientToScreen 1, GetICMProfileW 1, then fetch_fault `user32!SetWindowTextW` (39455072 instruction, 7851 HLE) → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 9**, **BPTK-009 × 1**. Playability is
@@ -136,10 +136,10 @@ handles / `SetThreadExecutionState` (`ES_CONTINUOUS` `0x80000000`) /
 `GetKeyboardState` (256 zeros, return 1) / `ToUnicode` (US layout, return 1) /
 `AdjustWindowRectEx` (identity) / `CreateWindowExW` `0x10014` /
 `GetWindowLongW` `GWL_HINSTANCE` `0x400000` / `SetPropW` 1 /
-`ClientToScreen` 1,
-and stops **fetch_fault `gdi32!GetICMProfileW`** at **39451090**
-instruction / **7840** HLE. Previous EIP is `sdl2` `0x2c0d3de8`
-(`call [IAT]` of `GetICMProfileW`, hint RVA `0x1392b6`). A HWND is not a presented frame. Ripgrep `--version` is `process_exit` 0
+`ClientToScreen` 1 / `GetICMProfileW` 1,
+and stops **fetch_fault `user32!SetWindowTextW`** at **39455072**
+instruction / **7851** HLE. Previous EIP is `sdl2` `0x2c0d5222`
+(`call [IAT]` of `SetWindowTextW`, hint RVA `0x138fea`). A HWND is not a presented frame. Ripgrep `--version` is `process_exit` 0
 after printing `ripgrep 14.1.1` (181697 instruction); a `PCRE2` search of
 the staged README is `process_exit` 0 with the real line-numbered hits
 (1701493 instruction). jq `--version` is `process_exit` 0 (`jq-1.7.1`,
@@ -148,8 +148,9 @@ with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
 That is not a shown window and not `hle_dialog_modal_idle`. The next generic
-SuperTux work is `GetICMProfileW` / `GetICMProfileA` (a declared ICC path
-for the virtual display DC), not another geometry row. The written `config` uses 64-bit x87 stores — some float
+SuperTux work is `SetWindowTextW` (the `GetWindowTextA` twin, with
+`GetWindowTextW` / `GetWindowTextLengthW` if they are the same slice), not
+another GDI color-management row. The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
 CreateFile2, FileTimeToSystemTime, and GetFullPathName("") → cwd are

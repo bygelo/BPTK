@@ -735,6 +735,28 @@ Measured on the staged corpus (payloads still out of git):
 `GetICMProfileW` (with `GetICMProfileA`; a declared ICC path on the
 virtual display DC), not another USER32 geometry API.
 
+## Cycle 35 — GetICMProfileW (2026-09-12)
+
+The SuperTux stop after Cycle 34 was SDL2 reading the display ICC profile
+through unbound `gdi32!GetICMProfileW`. The slice is generic: one declared
+sRGB path for every virtual-display DC. A NULL size pointer refuses 87;
+a short or NULL dest writes the required TCHAR count and refuses 122.
+`GetICMProfileA` is the ANSI twin.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!SetWindowTextW`** after **39455072**
+  instruction, **7851** HLE. Previous EIP `sdl2` `0x2c0d5222`.
+  `GetICMProfileW` returned 1. `SetWindowPos` returned 1. `DeleteDC`
+  returned 1. A HWND is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`SetWindowTextW` (with `GetWindowTextW` / `GetWindowTextLengthW`;
+`GetWindowTextA` is already served), not another GDI ICM row.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

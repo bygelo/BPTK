@@ -15,6 +15,7 @@ import { test } from "node:test";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
+import { icmProfilePath } from "../lib/gdi.mjs";
 import { buildConformanceCaseTable, computeImportService, createConformanceImplementation, createHleLayout, hleCrtDataLayout, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory } from "../lib/hle.mjs";
 
 // A bounded machine with a read-only host-file store and an initial
@@ -613,6 +614,21 @@ test("CreateDIBSection writes a guest-visible bits pointer that GetPixel can rea
   const dc = invoke(guest, "gdi32.dll", "CreateCompatibleDC", [0]);
   invoke(guest, "gdi32.dll", "SelectObject", [dc, bitmap]);
   assert.equal(invoke(guest, "gdi32.dll", "GetPixel", [dc, 0, 0]), 0x00090807);
+});
+
+test("GetICMProfileW writes the declared sRGB path and refuses a NULL size pointer", () => {
+  const { guest, memory } = createConformanceMachine();
+  const size = guest.layout.arena_base + 0x40;
+  const dest = guest.layout.arena_base + 0x80;
+  assert.equal(invoke(guest, "gdi32.dll", "GetICMProfileW", [0, 0, 0]), 0);
+  assert.equal(guest.getLastError(), 87);
+  memory.writeMemory(size, 4, 0);
+  assert.equal(invoke(guest, "gdi32.dll", "GetICMProfileW", [0, size, 0]), 0);
+  assert.equal(guest.getLastError(), 122);
+  assert.equal(memory.readMemory(size, 4), icmProfilePath.length + 1);
+  memory.writeMemory(size, 4, 260);
+  assert.equal(invoke(guest, "gdi32.dll", "GetICMProfileW", [0, size, dest]), 1);
+  assert.equal(guest.readWideString(dest), icmProfilePath);
 });
 
 test("EnumDisplayDevicesW writes the one virtual adapter and stops after it", () => {

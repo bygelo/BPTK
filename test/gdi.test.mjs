@@ -318,6 +318,21 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.patBlt(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5]);
     case "GetDeviceCaps":
       return gdi.getDeviceCaps(argument[0], argument[1]);
+    case "GetICMProfileW":
+    case "GetICMProfileA":
+      if ((argument[1] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      if (!gdi.isDc(argument[0])) {
+        gdi.setLastError(6);
+        return 0;
+      }
+      if ((argument[2] >>> 0) === 0) {
+        gdi.setLastError(122);
+        return 0;
+      }
+      return 1;
     case "SetROP2":
       return gdi.setRop2(argument[0], argument[1]);
     case "GetROP2":
@@ -408,6 +423,11 @@ function buildGdiConformanceCase() {
   define("GetDeviceCaps", { argument: [0, 8] }, { return_value: 1920, last_error: 0 });
   define("GetDeviceCaps", { argument: [0, 12] }, { return_value: 32, last_error: 0 });
   define("GetDeviceCaps", { argument: [0, 999] }, { return_value: 0, last_error: 0 });
+  define("GetICMProfileW", { argument: [0, 0, 0] }, { return_value: 0, last_error: 87 });
+  define("GetICMProfileW", { argument: [0xdeadbeef, 1, 1] }, { return_value: 0, last_error: 6 });
+  define("GetICMProfileW", { argument: [0, 1, 0] }, { return_value: 0, last_error: 122 });
+  define("GetICMProfileW", { argument: [0, 1, 1] }, { return_value: 1, last_error: 0 });
+  define("GetICMProfileA", { argument: [0, 1, 1] }, { return_value: 1, last_error: 0 });
   define("SetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE, rasterOp2.R2_WHITE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
   define("GetROP2", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: rasterOp2.R2_COPYPEN, last_error: 0 });
   define("CreateCompatibleBitmap", { scenario: [dcStep], argument: [FIRST_HANDLE, 2, 2] }, { return_value: FIRST_HANDLE + 4, last_error: 0 });
