@@ -1239,6 +1239,34 @@ Measured on the staged corpus (payloads still out of git):
 `RaiseException` `0x406d1388` (MSVC thread-name; continue if no debugger);
 `gdi32!SwapBuffers` is served but SuperTux never reaches it.
 
+## Cycle 56 — MSVC SetThreadName continues (2026-09-12)
+
+The SuperTux stop after Cycle 55 was `guest_exception 0x406d1388` from the
+OpenAL worker's MSVC `SetThreadName`. `RaiseException` of that code now
+continues when no debugger is attached (an empty FS:[0] chain is not a
+stop). Dispatch also walks the current guest thread's TEB, not only the
+main TEB, so a worker's `__try` frames are the ones that run. No
+title-specific branch.
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **instruction_budget_exhausted** after **50000000** instruction, **8955**
+  HLE (~61.7 s) at `vcruntime140+0xef25`. `RaiseException` 0;
+  `SleepConditionVariableSRW` 1; `InitOnceComplete` 1; OpenAL `CreateThread`
+  last `0x10012`; last `WaitOnAddress` 0 then `HeapAlloc`. Previous stop was
+  `0x406d1388` at **49907791** / **8894** HLE. `CreateIconFromResource`
+  `0x8208`. Last `CreateWindowExW` `0x10024`. Last `wglCreateContext`
+  `0x5000c`. `SwapBuffers` is never reached. A continued thread name is not a
+  presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is the 50M
+cap in `vcruntime140` after `WaitOnAddress` (higher-budget remesure to name
+the next IAT or fault); `gdi32!SwapBuffers` is served but SuperTux never
+reaches it.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

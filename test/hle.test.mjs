@@ -1732,6 +1732,28 @@ test("RaiseException: a ContinueSearch-only chain is still an unhandled guest ex
   assert.equal(report.exception.exception_code, 0xe000beef);
 });
 
+test("RaiseException: MSVC SetThreadName continues and the caller resumes", (context) => {
+  const plan = planImports([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ]);
+  const o = createEmitter();
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x6a, 0x00);
+  o.emit(0x68); o.emitDword(0x406d1388);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "RaiseException"));
+  o.emit(0x6a, 0x2a);
+  o.emit(0xff, 0x15); o.emitDword(plan.addressOf("kernel32.dll", "ExitProcess"));
+  const packagePath = createHlePackage(context, "setthreadname.exe", createImportPe32([
+    { library: "kernel32.dll", symbol: "RaiseException" },
+    { library: "kernel32.dll", symbol: "ExitProcess" },
+  ], o.resolve(), { import_layout: plan }));
+  const report = readRun(packagePath);
+  assert.equal(report.stop_reason, "process_exit");
+  assert.equal(report.exit_code, 42);
+});
+
 // --- msvcrt.dll C runtime (BPTK-010 i386 CLI corpus) ------------------------
 // The conformance oracle pins the return value; these prove the real memory
 // side effect the oracle does not inspect, so a served CRT function is a real
@@ -2056,6 +2078,11 @@ test("BPTK-010: SleepConditionVariableSRW times out, refuses NULL, and does not 
   assert.equal(guest.getLastError(), 258);
   assert.equal(invoke(guest, "kernel32.dll", "WakeConditionVariable", [condition]), 0);
   assert.equal(invoke(guest, "kernel32.dll", "WakeAllConditionVariable", [condition]), 0);
+});
+
+test("BPTK-053: RaiseException of MSVC SetThreadName continues without a debugger", () => {
+  const { guest } = createConformanceMachine();
+  assert.equal(invoke(guest, "kernel32.dll", "RaiseException", [0x406d1388, 0, 0, 0]), 0);
 });
 
 test("BPTK-010: HeapAlloc returns an 8-byte-aligned block", () => {
