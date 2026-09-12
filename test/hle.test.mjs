@@ -732,6 +732,22 @@ test("AdjustWindowRectEx leaves the rect unchanged when there is no nonclient fr
   assert.equal(memory.readMemory(rect + 12, 4), 800);
 });
 
+test("GetWindowLongW returns GWL_HINSTANCE stored at CreateWindowEx", () => {
+  const { guest, memory } = createConformanceMachine();
+  const base = guest.layout.arena_base;
+  const classStruct = base + 0x40;
+  const classNamePtr = base + 0x100;
+  guest.writeWideString(classNamePtr, "AppClass", 32);
+  memory.writeMemory(classStruct + 0, 4, 0);
+  memory.writeMemory(classStruct + 4, 4, 0);
+  memory.writeMemory(classStruct + 36, 4, classNamePtr);
+  invoke(guest, "user32.dll", "RegisterClassW", [classStruct]);
+  const window = invoke(guest, "user32.dll", "CreateWindowExW", [0, classNamePtr, 0, 0, 0, 0, 320, 240, 0, 0, 0x00400000, 0]);
+  assert.notEqual(window, 0);
+  assert.equal(invoke(guest, "user32.dll", "GetWindowLongW", [window, -6]), 0x00400000);
+  assert.equal(invoke(guest, "user32.dll", "GetWindowLongW", [0, -6]), 0);
+});
+
 test("GetModuleFileNameW(NULL) writes the current executable path", () => {
   const { guest } = createConformanceMachine();
   const dest = guest.layout.arena_base + 0x40;

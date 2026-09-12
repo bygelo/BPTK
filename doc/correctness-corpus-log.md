@@ -672,6 +672,27 @@ Measured on the staged corpus (payloads still out of git):
 `passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
 `GetWindowLongW` (A-twin plus `GWL_HINSTANCE`), not another rect helper.
 
+## Cycle 32 — GetWindowLongW (2026-09-12)
+
+The SuperTux stop after Cycle 31 was SDL2 reading `GWL_HINSTANCE` through
+unbound `user32!GetWindowLongW`. The W rows are the existing A twins;
+`CreateWindowEx` now stores `hInstance` / `ex_style` / parent / title
+so `-6` is the instance the guest passed (`0x400000` for SuperTux).
+
+Measured on the staged corpus (payloads still out of git):
+- CORPUS-014 SuperTux 50M + data + `--datadir` (5134 host files):
+  **fetch_fault `user32!SetPropW`** after **39450640**
+  instruction, **7834** HLE. Previous EIP `sdl2` `0x2c0d3c21`.
+  `GetWindowLongW` returned `0x400000`. `CreateWindowExW` `0x10014`.
+  A HWND is not a presented frame.
+- CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
+  inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
+  **7.4 s**, IAT 174/174). Not a shown window.
+
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is
+`SetPropW` (per-window property table, with `GetPropW` / `RemovePropW`),
+not another GWL index.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

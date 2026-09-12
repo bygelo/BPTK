@@ -482,8 +482,10 @@ function applyUserOp(user, symbol, argument) {
     case "EnableWindow":
       return user.enableWindow(argument[0], argument[1]);
     case "GetWindowLongA":
+    case "GetWindowLongW":
       return user.getWindowLong(argument[0], argument[1]);
     case "SetWindowLongA":
+    case "SetWindowLongW":
       return user.setWindowLong(argument[0], argument[1], argument[2]);
     case "SetWindowPos":
       return user.setWindowPos(argument[0], argument[1], argument[2], argument[3], argument[4], argument[5], argument[6]);
@@ -703,7 +705,10 @@ function buildUserConformanceCase() {
   define("CheckRadioButton", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 1, 2, 1] }, { return_value: 1, last_error: 0 });
   define("EnableWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0] }, { return_value: 1, last_error: 0 });
   define("GetWindowLongA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, -16] }, { return_value: 0, last_error: 0 });
+  define("GetWindowLongW", { argument: [0, -6] }, { return_value: 0, last_error: 0x578 });
+  define("GetWindowLongW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, -6] }, { return_value: 0, last_error: 0 });
   define("SetWindowLongA", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, -21, 9] }, { return_value: 0, last_error: 0 });
+  define("SetWindowLongW", { scenario: [registerStep, createStep], argument: [FIRST_HANDLE, -21, 9] }, { return_value: 0, last_error: 0 });
   define("SetWindowPos", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE, 0, 1, 2, 10, 20, 0] }, { return_value: 1, last_error: 0 });
   define("SetActiveWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 0 });
   define("SetForegroundWindow", { scenario: [registerAnsiStep, createAnsiStep], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
