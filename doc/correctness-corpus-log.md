@@ -1283,14 +1283,17 @@ Measured on the staged corpus (payloads still out of git):
   INFINITE; the worker `HeapAlloc`s and does not store that cell. Previous
   stop was the same cap at **8955** HLE / `+0xef25`. Last `CreateWindowExW`
   `0x10024`. Last `wglCreateContext` `0x5000c`. `SwapBuffers` 0 / presentCount 0.
+  Raised 80M: **80000000** / **20442** HLE at `zlib1+0x1303` after
+  `WakeAllConditionVariable` / `glTexImage2D` / `FindNextFileW`. 150M:
+  **150000000** / **25459** HLE (~410 s) at `zlib1+0x1350` (same inflate).
   A store-wake is not a presented frame.
 - CORPUS-011 PuTTYgen 10M: unchanged **instruction_budget_exhausted**
   inside guest `WM_INITDIALOG` (**10000000** instruction, **1233** HLE,
   **7.4 s**, IAT 174/174). Not a shown window.
 
-`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is the OpenAL
-worker still in `vcruntime140` `HeapAlloc` without storing the wait cell
-(50M cap); `gdi32!SwapBuffers` is served but SuperTux never reaches it.
+`passing` stays 1 (BPTK-001 only). The next named SuperTux gap is zlib
+inflate of PNG assets (`zlib1+0x1350` at 150M; no new IAT); `gdi32!SwapBuffers`
+is served but SuperTux never reaches it.
 
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
