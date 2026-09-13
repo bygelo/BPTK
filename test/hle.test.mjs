@@ -1816,6 +1816,18 @@ test("RtlUnwind: TargetIp records a seh_transfer and returns the unwind value", 
   assert.deepEqual(guest.seh_transfer, { eip: 0x403000, eax: 7 });
 });
 
+test("vcruntime FrameInfo: CreateFrameInfo writes object/next and IsExceptionObject is 1 with no PTD", () => {
+  const { guest, memory } = createConformanceMachine();
+  const frame = 0x00150000;
+  const created = invoke(guest, "vcruntime140.dll", "__CreateFrameInfo", [frame, 0x1234]);
+  assert.equal(created, frame);
+  assert.equal(memory.readMemory(frame, 4), 0x1234);
+  assert.equal(memory.readMemory(frame + 4, 4), 0);
+  assert.equal(invoke(guest, "vcruntime140.dll", "_IsExceptionObjectToBeDestroyed", [0x1234]), 1);
+  assert.equal(invoke(guest, "vcruntime140.dll", "__FindAndUnlinkFrame", [frame]), 0);
+  assert.equal(invoke(guest, "kernel32.dll", "RtlUnwind", [0, 0x403000, 0, 1]), 1);
+});
+
 test("InitSecurityInterfaceW: the table is version 3 and AcquireCredentialsHandleW is a real thunk", () => {
   const { guest, memory, layout } = createConformanceMachine();
   const table = invoke(guest, "secur32.dll", "InitSecurityInterfaceW", []);
