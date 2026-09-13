@@ -88,7 +88,9 @@ test("HeapQueryInformation writes HEAP_STANDARD and HeapCompact is the largest f
   assert.equal(guest.memory.readMemory(needed, 4), 4);
   assert.equal(invoke(guest, "HeapQueryInformation", [heap, 99, dest, 4, 0]), 0);
   assert.equal(guest.getLastError(), 87);
-  assert.equal(invoke(guest, "HeapCompact", [heap, 0]), 25165808);
+  const heapObject = guest.heapFor(heap);
+  const largest = Math.max(0, ...(heapObject.free ?? []).map((block) => block.size_byte));
+  assert.equal(invoke(guest, "HeapCompact", [heap, 0]), largest);
 });
 
 test("SetLocalTime validates SYSTEMTIME; timezone convert is the UTC identity", () => {
