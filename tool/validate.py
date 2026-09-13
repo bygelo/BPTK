@@ -293,3 +293,91 @@ ALLOWED_MJS_PATH = {
 LICENSE_SHA256 = "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
 PACKAGE_NAME = "@bygelo/bptk"
 PACKAGE_VERSION = "0.1.0-alpha.0"
+
+
+def load_json(path: Path, error: list[str]) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exception:
+        error.append(f"{path.relative_to(ROOT)} is not strict JSON: {exception}")
+        return {}
+    if not isinstance(value, dict):
+        error.append(f"{path.relative_to(ROOT)} must contain a JSON object")
+        return {}
+    return value
+
+
+def walk_key(value: Any, location: str, error: list[str]) -> None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in BANNED_KEY:
+                error.append(f"plural JSON key {key!r} at {location}")
+            walk_key(child, f"{location}.{key}", error)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            walk_key(child, f"{location}[{index}]", error)
+
+
+def validate_path(error: list[str]) -> None:
+    for path in REQUIRED_PATH:
+        if not path.is_file():
+            error.append(f"required file missing: {path.relative_to(ROOT)}")
+
+    for path in ROOT.rglob("*"):
+        relative = path.relative_to(ROOT)
+        if ".git" in relative.parts or "node_modules" in relative.parts or ".opencode" in relative.parts or ".claude" in relative.parts:
+            continue
+        if len(relative.parts) > 1 and relative.parts[0] == "web" and relative.parts[1] == "payload":
+            continue
+        if path.is_dir() and path.name in BANNED_DIRECTORY:
+            error.append(f"plural directory name is disallowed: {relative}")
+        if not path.is_file():
+            continue
+        if path.suffix.lower() in BINARY_SUFFIX:
+            error.append(f"game or executable binary is disallowed in planning scope: {relative}")
+        is_web_source = len(relative.parts) > 0 and relative.parts[0] == "web" and path.suffix.lower() in WEB_SUFFIX
+        if not is_web_source and relative not in ALLOWED_SPECIAL_PATH and path.name not in ALLOWED_NAME and path.suffix.lower() not in ALLOWED_SUFFIX:
+            error.append(f"product or unrecognized file is disallowed in planning scope: {relative}")
+        if path.suffix == ".mjs" and relative not in ALLOWED_MJS_PATH:
+            error.append(f"JavaScript file is outside the approved npm tooling surface: {relative}")
+        if path.suffix == ".py" and path.resolve() != Path(__file__).resolve():
+            error.append(f"only the planning validator may be Python in this pass: {relative}")
+
+
+def validate_link(error: list[str]) -> None:
+    pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+    for path in ROOT.rglob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        for target in pattern.findall(text):
+            clean_target = target.strip().strip("<>")
+            if clean_target.startswith(("http://", "https://", "mailto:", "#")):
+                continue
+            file_target = clean_target.split("#", 1)[0]
+            if not file_target:
+                continue
+            resolved = (path.parent / file_target).resolve()
+            try:
+                resolved.relative_to(ROOT)
+            except ValueError:
+                error.append(f"local link escapes repository in {path.relative_to(ROOT)}: {target}")
+                continue
+            if not resolved.exists():
+                error.append(f"broken local link in {path.relative_to(ROOT)}: {target}")
+
+
+def validate_claim(error: list[str]) -> None:
+    pattern = [
+        r"\bruns? every Windows game\b",
+        r"\bworks? with anything\b",
+        r"\ball games work\b",
+        r"\bfully tested\b",
+        r"\blegally cleared\b",
+    ]
+    for file_name in ("README.md", "ROADMAP.md"):
+        path = ROOT / file_name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for claim in pattern:
+            if re.search(claim, text, flags=re.IGNORECASE):
+                error.append(f"unsupported completion or compatibility implication in {file_name}: {claim}")
