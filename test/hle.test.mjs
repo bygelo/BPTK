@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
 import { icmProfilePath } from "../lib/gdi.mjs";
 import { buildConformanceCaseTable, computeImportService, createConformanceImplementation, createHleLayout, hleCrtDataLayout, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory, hleBound } from "../lib/hle.mjs";
+import { buildMsvcpConformanceCaseTable } from "../lib/msvcp.mjs";
 
 // A bounded machine with a read-only host-file store and an initial
 // environment, for the file-read + WAD-search path (the corpus-007 lane). The
@@ -480,7 +481,7 @@ test("ws2_32 ordinal imports bind to the same HLE thunk as the named export", ()
 });
 
 test("conformance: every Win32 core HLE export carries case and matches the oracle", () => {
-  const caseTable = buildConformanceCaseTable();
+  const caseTable = [...buildConformanceCaseTable(), ...buildMsvcpConformanceCaseTable()];
   const report = runConformanceSuite(caseTable, createConformanceImplementation(), {
     served_export: listWin32HleExport().map((entry) => `${entry.library}!${entry.symbol}`),
   });
@@ -1412,20 +1413,20 @@ test("FIX-003: repeated exerciser run keeps the call trace, output, and memory h
 });
 
 test("unserved import: the refusal names the exact unserved surface instead of executing", (context) => {
-  // CreateThreadpoolWork is a kernel32 export outside the served HLE surface.
-  const imports = [{ library: "kernel32.dll", symbol: "CreateThreadpoolWork" }];
+  // CreateFiber stays outside the served HLE surface (threadpool is now leftover C++ HLE).
+  const imports = [{ library: "kernel32.dll", symbol: "CreateFiber" }];
   const packagePath = createHlePackage(context, "unserved.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
   assert.equal(report.is_executed, false);
   assert.equal(report.stop_reason, "import_present");
   assert.equal(report.hle ?? null, null);
-  assert.match(report.exception.message, /CreateThreadpoolWork|kernel32\.dll/);
+  assert.match(report.exception.message, /CreateFiber|kernel32\.dll/);
 });
 
 test("unserved import: a partially served surface reports the served fraction", (context) => {
   const imports = [
     { library: "kernel32.dll", symbol: "GetLastError" },
-    { library: "kernel32.dll", symbol: "CreateThreadpoolWork" },
+    { library: "kernel32.dll", symbol: "CreateFiber" },
   ];
   const packagePath = createHlePackage(context, "partial.exe", createImportPe32(imports, [0xc3], { import_layout: planImports(imports) }));
   const report = readRun(packagePath);
