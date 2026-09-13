@@ -229,6 +229,30 @@ test("SDL_GL_SwapBuffers copies the GL color buffer", () => {
   assert.equal(guestPresentState(guest).source, "gl");
 });
 
+test("glTexImage2D with a NULL pointer allocates a store glTexSubImage2D can fill", () => {
+  const { guest } = createConformanceMachine();
+  const out = 0x00150040;
+  const pixels = 0x00150200;
+  invoke(guest, "glGenTextures", [1, out]);
+  const id = guest.memory.readMemory(out, 4);
+  invoke(guest, "glBindTexture", [glEnum.TEXTURE_2D, id]);
+  invoke(guest, "glTexImage2D", [glEnum.TEXTURE_2D, 0, glEnum.RGBA, 2, 2, 0, glEnum.RGBA, glEnum.UNSIGNED_BYTE, 0]);
+  assert.equal(invoke(guest, "glGetError", []), 0);
+  guest.memory.writeBlock(pixels, Buffer.from([
+    255, 0, 0, 255,
+    0, 255, 0, 255,
+    0, 0, 255, 255,
+    255, 255, 0, 255,
+  ]));
+  invoke(guest, "glTexSubImage2D", [glEnum.TEXTURE_2D, 0, 0, 0, 2, 2, glEnum.RGBA, glEnum.UNSIGNED_BYTE, pixels]);
+  assert.equal(invoke(guest, "glGetError", []), 0);
+  const glSource = readFileSync(new URL("../lib/gl.mjs", import.meta.url), "utf8");
+  const start = glSource.indexOf("texImage2D(_target");
+  const body = glSource.slice(start, glSource.indexOf("copyTexSubImage2D", start));
+  assert.doesNotMatch(body, /title|executable_name|supertux|SuperTux/i);
+  assert.match(body, /Buffer\.alloc\(byteCount\)/);
+});
+
 test("glDrawArrays without SwapBuffers is not a presented frame", () => {
   const { guest } = createConformanceMachine();
   preparePresentDc(guest);
