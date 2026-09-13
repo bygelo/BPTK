@@ -197,12 +197,19 @@ test("regression risk: deterministic infinite branch consumes the exact budget",
   assert.equal(report.is_executed, true);
 });
 
-test("probe continue admits a 32x ceiling while last HLE is a productive ReadFile", () => {
+test("probe continue keeps a productive ReadFile latch without a hard instruction multiple", () => {
   const source = readFileSync(new URL("../lib/runtime.mjs", import.meta.url), "utf8");
-  const start = source.indexOf("const budgetReadContinueLimit");
-  const line = source.slice(start, start + 80);
-  assert.match(line, /instructionBudgetCount \* 32/);
-  assert.doesNotMatch(line, /title|executable_name|supertux|SuperTux/i);
+  const start = source.indexOf("function probeContinueRunnable(");
+  const body = source.slice(start, source.indexOf("function withinBudget(", start));
+  assert.match(body, /productiveReadContinue\(\)/);
+  assert.doesNotMatch(body, /instructionCount < budgetReadContinueLimit/);
+  assert.doesNotMatch(source, /budgetReadContinueLimit/);
+  assert.doesNotMatch(body, /title|executable_name|supertux|SuperTux/i);
+  const snap = source.slice(source.indexOf("function snapContinueRow("), source.indexOf("function productiveReadContinue("));
+  assert.match(snap, /path/);
+  assert.match(snap, /size/);
+  assert.match(snap, /handle/);
+  assert.match(snap, /position/);
 });
 
 test("probe continue treats a short same-snap streak as a probe, not a spin", () => {
