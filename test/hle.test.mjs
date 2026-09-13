@@ -16,6 +16,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { runConformanceSuite } from "../lib/conformance.mjs";
 import { icmProfilePath } from "../lib/gdi.mjs";
+import { buildCrtConformanceCaseTable } from "../lib/crt.mjs";
 import { buildConformanceCaseTable, computeImportService, createConformanceImplementation, createHleLayout, hleCrtDataLayout, listWin32HleExport, resolveHleExport, hleProfile, createConformanceMachine, createWin32Hle, createIsolatedWin32Memory, hleBound } from "../lib/hle.mjs";
 
 // A bounded machine with a read-only host-file store and an initial
@@ -480,7 +481,7 @@ test("ws2_32 ordinal imports bind to the same HLE thunk as the named export", ()
 });
 
 test("conformance: every Win32 core HLE export carries case and matches the oracle", () => {
-  const caseTable = buildConformanceCaseTable();
+  const caseTable = [...buildConformanceCaseTable(), ...buildCrtConformanceCaseTable()];
   const report = runConformanceSuite(caseTable, createConformanceImplementation(), {
     served_export: listWin32HleExport().map((entry) => `${entry.library}!${entry.symbol}`),
   });
