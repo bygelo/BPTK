@@ -197,11 +197,11 @@ test("regression risk: deterministic infinite branch consumes the exact budget",
   assert.equal(report.is_executed, true);
 });
 
-test("probe continue admits a 16x ceiling while last HLE is a productive ReadFile", () => {
+test("probe continue admits a 32x ceiling while last HLE is a productive ReadFile", () => {
   const source = readFileSync(new URL("../lib/runtime.mjs", import.meta.url), "utf8");
   const start = source.indexOf("const budgetReadContinueLimit");
   const line = source.slice(start, start + 80);
-  assert.match(line, /instructionBudgetCount \* 16/);
+  assert.match(line, /instructionBudgetCount \* 32/);
   assert.doesNotMatch(line, /title|executable_name|supertux|SuperTux/i);
 });
 
