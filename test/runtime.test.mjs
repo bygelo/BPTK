@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -195,6 +195,17 @@ test("regression risk: deterministic infinite branch consumes the exact budget",
   assert.equal(report.stop_reason, "instruction_budget_exhausted");
   assert.equal(report.instruction_count, 7);
   assert.equal(report.is_executed, true);
+});
+
+test("probe continue keeps a live ReadFile/GL continue across a heap/CS interstitial", () => {
+  const source = readFileSync(new URL("../lib/runtime.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("function productiveReadContinue(");
+  const body = source.slice(start, source.indexOf("function probeContinueRunnable(", start));
+  assert.match(body, /return readIsProductive;/);
+  assert.doesNotMatch(body, /title|executable_name|supertux|SuperTux/i);
+  const nullRow = body.slice(body.indexOf("if (row === null)"), body.indexOf("if (row === lastSeenReadRow)"));
+  assert.match(nullRow, /return readIsProductive;/);
+  assert.doesNotMatch(nullRow, /readIsProductive = false/);
 });
 
 test("probe continue: a lone spin without an INFINITE waiter still stops at the product budget", (context) => {
