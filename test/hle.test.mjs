@@ -1828,6 +1828,15 @@ test("vcruntime FrameInfo: CreateFrameInfo writes object/next and IsExceptionObj
   assert.equal(invoke(guest, "kernel32.dll", "RtlUnwind", [0, 0x403000, 0, 1]), 1);
 });
 
+test("vcruntime FrameInfo: unmapped pNext is not walked", () => {
+  const { guest, memory } = createConformanceMachine();
+  const frame = 0x00150000;
+  memory.writeMemory(frame, 4, 0x1234);
+  memory.writeMemory(frame + 4, 4, 0x39383937);
+  assert.equal(invoke(guest, "vcruntime140.dll", "_IsExceptionObjectToBeDestroyed", [0x9999]), 1);
+  assert.equal(invoke(guest, "vcruntime140.dll", "__FindAndUnlinkFrame", [frame]), 0);
+});
+
 test("InitSecurityInterfaceW: the table is version 3 and AcquireCredentialsHandleW is a real thunk", () => {
   const { guest, memory, layout } = createConformanceMachine();
   const table = invoke(guest, "secur32.dll", "InitSecurityInterfaceW", []);

@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { createHleLayout, hleCallingConvention } from "../lib/hle.mjs";
+import { createHleLayout, hleCallingConvention, listWin32HleExport } from "../lib/hle.mjs";
 import { mapPe32 } from "../lib/pe.mjs";
 import { runPackage } from "../lib/run.mjs";
 import { bindSidecarModules, isSystemLibrary, resolveSidecarPath } from "../lib/sidecar.mjs";
@@ -225,6 +225,113 @@ test("a cdecl CRT call leaves its argument on the stack for the caller to pop", 
   assert.equal(report.state, "probe_executed", `state ${report.state}: ${JSON.stringify(report.exception)}`);
   assert.equal(report.stop_reason, "entry_return");
   assert.equal(report.register.edx, 0x11223344, "the marker below the cdecl argument must survive the thunk");
+});
+
+function createVcrtDll() {
+  const code = Array(48).fill(0xcc);
+  code[32] = 0x31;
+  code[33] = 0xc0;
+  code[34] = 0x40;
+  code[35] = 0xc3;
+  const file = writePe32({
+    imageBase: 0x28000000,
+    code,
+  });
+  file.writeUInt32LE(0x1020, 0xa8);
+  file.writeUInt16LE(0x2102, 0x96);
+  file.writeUInt32LE(0x1200, 0xf8);
+  file.writeUInt32LE(0x80, 0xfc);
+  const dirRva = 0x1200;
+  file.writeUInt32LE(0x1260, fileOffset(dirRva + 12));
+  file.writeUInt32LE(1, fileOffset(dirRva + 16));
+  file.writeUInt32LE(1, fileOffset(dirRva + 20));
+  file.writeUInt32LE(1, fileOffset(dirRva + 24));
+  file.writeUInt32LE(0x1230, fileOffset(dirRva + 28));
+  file.writeUInt32LE(0x1234, fileOffset(dirRva + 32));
+  file.writeUInt32LE(0x1238, fileOffset(dirRva + 36));
+  file.writeUInt32LE(0x1000, fileOffset(0x1230));
+  file.writeUInt32LE(0x1280, fileOffset(0x1234));
+  file.writeUInt16LE(0, fileOffset(0x1238));
+  file.write("vcruntime140.dll\0", fileOffset(0x1260));
+  file.write("_IsExceptionObjectToBeDestroyed\0", fileOffset(0x1280));
+  return file;
+}
+
+function createVcrtCallerExe() {
+  const file = writePe32({
+    imageBase: 0x400000,
+    code: [
+      0x68, 0x34, 0x12, 0x00, 0x00,
+      0xff, 0x15, 0x80, 0x11, 0x40, 0x00,
+      0x59,
+      0xc3,
+    ],
+  });
+  const libraryRva = 0x11e0;
+  file.writeUInt32LE(0x1140, 0xf8 + 8);
+  file.writeUInt32LE(40, 0xf8 + 12);
+  file.writeUInt32LE(0x1170, fileOffset(0x1140));
+  file.writeUInt32LE(0, fileOffset(0x1144));
+  file.writeUInt32LE(0, fileOffset(0x1148));
+  file.writeUInt32LE(libraryRva, fileOffset(0x114c));
+  file.writeUInt32LE(0x1180, fileOffset(0x1150));
+  file.writeUInt32LE(0x11a0, fileOffset(0x1170));
+  file.writeUInt32LE(0, fileOffset(0x1174));
+  file.writeUInt32LE(0x11a0, fileOffset(0x1180));
+  file.writeUInt32LE(0, fileOffset(0x1184));
+  file.writeUInt16LE(0, fileOffset(0x11a0));
+  file.write("_IsExceptionObjectToBeDestroyed\0", fileOffset(0x11a2));
+  file.write("vcruntime140.dll\0", fileOffset(libraryRva));
+  return file;
+}
+
+test("sidecar vcruntime FrameInfo export bodies jmp to the HLE thunk", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-vcrt-body-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const packagePath = join(rootPath, "package");
+  mkdirSync(packagePath);
+  const executablePath = join(packagePath, "game.exe");
+  writeFileSync(executablePath, createVcrtCallerExe());
+  writeFileSync(join(packagePath, "vcruntime140.dll"), createVcrtDll());
+  const mapped = mapPe32(executablePath);
+  const layout = createHleLayout({
+    ...mapped,
+    stack_base: 0x70000000,
+    stack_end: 0x70010000,
+  });
+  const service = bindSidecarModules({
+    executablePath,
+    import: mapped.import,
+    layout,
+  });
+  const vcrt = service.sidecar.find((module) => module.name === "vcruntime140.dll");
+  assert.ok(vcrt, "vcruntime140.dll should map");
+  const row = (vcrt.export ?? []).find((entry) => entry.symbol === "_IsExceptionObjectToBeDestroyed");
+  assert.ok(row, "FrameInfo export should be present");
+  const rva = row.rva >>> 0;
+  assert.equal(vcrt.image[rva], 0xff);
+  assert.equal(vcrt.image[rva + 1], 0x25);
+  const thunk = layout.thunk_base + listWin32HleExport().findIndex((entry) => entry.library === "vcruntime140.dll" && entry.symbol === "_IsExceptionObjectToBeDestroyed") * 4;
+  assert.equal(vcrt.image.readUInt32LE(rva + 6), thunk >>> 0);
+  assert.equal(vcrt.image.readUInt32LE(rva + 2), (vcrt.load_base + rva + 6) >>> 0);
+});
+
+test("runPackage FrameInfo sidecar body hits HLE and does not read-fault", (context) => {
+  const rootPath = mkdtempSync(join(tmpdir(), "bptk-vcrt-run-"));
+  context.after(() => rmSync(rootPath, { recursive: true, force: true }));
+  const packagePath = join(rootPath, "package");
+  mkdirSync(packagePath);
+  writeFileSync(join(packagePath, "game.exe"), createVcrtCallerExe());
+  writeFileSync(join(packagePath, "vcruntime140.dll"), createVcrtDll());
+  writeFileSync(join(packagePath, "bptk.json"), JSON.stringify({
+    schema_version: 1,
+    executable: "game.exe",
+    execution: { profile: "i386_probe_v1", instruction_budget_count: 64 },
+  }));
+  const report = runPackage(packagePath);
+  assert.equal(report.state, "probe_executed", `state ${report.state}: ${JSON.stringify(report.exception)}`);
+  assert.equal(report.stop_reason, "entry_return");
+  assert.equal(report.register.eax, 1);
 });
 
 test("runPackage executes a call through a sidecar export", (context) => {
