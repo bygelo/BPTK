@@ -369,6 +369,44 @@ function applyGdiOp(gdi, symbol, argument) {
       return gdi.describePixelFormat(argument[0], argument[1]);
     case "SwapBuffers":
       return gdi.swapBuffers(argument[0]);
+    case "GetDeviceGammaRamp":
+    case "SetDeviceGammaRamp":
+      if ((argument[1] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      gdi.setLastError(0);
+      return 1;
+    case "CreateFontIndirectW":
+      if ((argument[0] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      return gdi.createFontIndirect({});
+    case "GetTextMetricsW":
+      if (gdi.lookupDC(argument[0]) === undefined) {
+        gdi.setLastError(6);
+        return 0;
+      }
+      if ((argument[1] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      return 1;
+    case "GetTextExtentPoint32A":
+      if (gdi.lookupDC(argument[0]) === undefined) {
+        gdi.setLastError(6);
+        return 0;
+      }
+      if ((argument[1] >>> 0) === 0 || (argument[3] >>> 0) === 0) {
+        gdi.setLastError(87);
+        return 0;
+      }
+      return 1;
+    case "CreateRectRgn":
+      return gdi.createRectRgn(argument[0], argument[1], argument[2], argument[3]);
+    case "CombineRgn":
+      return gdi.combineRgn(argument[0], argument[1], argument[2], argument[3]);
     default:
       return null;
   }
@@ -462,6 +500,13 @@ function buildGdiConformanceCase() {
   define("SwapBuffers", { argument: [0] }, { return_value: 0, last_error: 6 });
   define("SwapBuffers", { scenario: [dcStep], argument: [FIRST_HANDLE] }, { return_value: 0, last_error: 2000 });
   define("SwapBuffers", { scenario: [dcStep, ["SetPixelFormat", [FIRST_HANDLE, declaredPixelFormat.index]]], argument: [FIRST_HANDLE] }, { return_value: 1, last_error: 0 });
+  define("GetDeviceGammaRamp", { argument: [0, 0] }, { return_value: 0, last_error: 87 });
+  define("SetDeviceGammaRamp", { argument: [0, 0] }, { return_value: 0, last_error: 87 });
+  define("CreateFontIndirectW", { argument: [0] }, { return_value: 0, last_error: 87 });
+  define("GetTextMetricsW", { argument: [0, 0] }, { return_value: 0, last_error: 6 });
+  define("GetTextExtentPoint32A", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 6 });
+  define("CreateRectRgn", { argument: [0, 0, 1, 1] }, { return_value: FIRST_HANDLE, last_error: 0 });
+  define("CombineRgn", { argument: [0, 0, 0, 0] }, { return_value: 0, last_error: 87 });
 
   return caseList;
 }
