@@ -248,6 +248,14 @@ test("NULL glTexImage2D specifies storage so glTexSubImage2D can write", () => {
   assert.match(body, /Buffer\.alloc\(byteCount\)/);
 });
 
+test("HLE block read bound admits a 640x700 RGBA atlas", () => {
+  const runtimeSource = readFileSync(new URL("../lib/runtime.mjs", import.meta.url), "utf8");
+  const readStart = runtimeSource.indexOf("function readBlock(");
+  const readBody = runtimeSource.slice(readStart, runtimeSource.indexOf("function writeBlock(", readStart));
+  assert.match(readBody, /64 \* 1024 \* 1024/);
+  assert.doesNotMatch(readBody, /title|executable_name|supertux|SuperTux/i);
+});
+
 test("a specified 640 by 700 RGBA texture fits the store bound", () => {
   const { guest } = createConformanceMachine();
   const out = 0x00150040;
