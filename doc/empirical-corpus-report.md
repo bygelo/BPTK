@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: official remesure of `8b93bb0` **instruction_budget_exhausted** at `zlib1+0x1326` (1600000000 instruction / 1032018 HLE, ~4049 s). Last HLE: `ReadFile` of `c:\\game\\data\\images\\tiles\\castle\\deprecated\\foreground.png`. `SwapBuffers` 0. IAT 722/722 → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: official remesure of `73b8084` **read_fault** at `vcruntime140+0x2cd2` (2022831743 instruction / 1273641 HLE, ~6197 s) reading `0x39383937`. `SwapBuffers` 0. IAT 722/722 → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
@@ -181,9 +181,8 @@ the staged README is `process_exit` 0 with the real line-numbered hits
 with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
-That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after `8b93bb0` is a productive
-`ReadFile` of `foreground.png` still advancing at the 32× / 1.6B continue ceiling,
-not an IAT miss. Present is served but SuperTux never
+That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after `73b8084` is a `read_fault` at
+`vcruntime140+0x2cd2` reading `0x39383937`, not an IAT miss. Present is served but SuperTux never
 calls it (`SwapBuffers` 0). Do not raise the product cap. Do not stub zlib.
 Do not title-skip `zh/white.png`. Raised-budget 1B is `isdigit` at
 `ucrtbase`; 1.9B is still `zlib1` inflate after the 1M HLE call cap was
