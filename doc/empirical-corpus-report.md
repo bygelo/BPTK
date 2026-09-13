@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: remesure-after GL specify **hle_block_bound** at sdl2+0x47865 (223700774 / 26921 HLE, 298 s). Block read 1792000 B (640×700×4) > 1 MiB `readBlock`. SwapBuffers 0 → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: official remesure of `b0d1421` **instruction_budget_exhausted** at `physfs+0x842f` (309431246 instruction / 27961 HLE, ~640 s). Last HLE: `CreateFile2` + two 4-byte `ReadFile` of `c:\\game\\data\\fonts\\supertux-medium.ttf`. `SwapBuffers` 0. IAT 722/722 → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
@@ -181,9 +181,9 @@ the staged README is `process_exit` 0 with the real line-numbered hits
 with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
-That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after is the generic 1 MiB HLE
-`readBlock` cap (`hle_block_bound` 1792000 byte / 640×700×4), not sidecar
-inflate and not the NULL specify. Present is served but SuperTux never
+That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after `b0d1421` is two same-snap
+4-byte PhysFS `ReadFile`s of `supertux-medium.ttf` (magic re-probe after seek-0),
+not an IAT miss. Present is served but SuperTux never
 calls it (`SwapBuffers` 0). Do not raise the product cap. Do not stub zlib.
 Do not title-skip `zh/white.png`. Raised-budget 1B is `isdigit` at
 `ucrtbase`; 1.9B is still `zlib1` inflate after the 1M HLE call cap was
