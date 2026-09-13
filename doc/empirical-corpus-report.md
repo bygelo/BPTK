@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: `b05c2c5` remesure **instruction_budget_exhausted** at sdl2+0x44e35 (223700541 / 26916 HLE, 309 s). Past zlib. Last HLE `glTexImage2D` 640×700 NULL (`zh/white.png`). SwapBuffers 0 → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: remesure-after GL specify **hle_block_bound** at sdl2+0x47865 (223700774 / 26921 HLE, 298 s). Block read 1792000 B (640×700×4) > 1 MiB `readBlock`. SwapBuffers 0 → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
@@ -149,13 +149,15 @@ instruction / **8968** HLE; last HLE `WaitOnAddress` then worker `HeapAlloc`).
 After `603602e`, `WaitOnAddress` returns. Official 50M product remesure of
 `b05c2c5` (`bptk run`, 5134 host files, 309 s) is **instruction_budget_exhausted**
 at `sdl2+0x44e35` (**223700541** instruction / **26916** HLE). Past sidecar
-zlib. Last ReadFile is `c:\game\data\fonts\sourcecodepro-medium.ttf`. Last HLE
-is `glTexImage2D` 640×700 `GL_RGBA8` NULL pixels — the decoded
-`images/engine/fonts/zh/white.png` atlas specify. No unbound IAT.
-`procedure_miss` is `wine_get_version` only. `SwapBuffers` 0. Previous
-`9ef395b` remesure was 200M at `zlib1+0xa5c8` / 26840 HLE. NULL
-`glTexImage2D` now specifies storage; the texture store is 64 MiB; the 8×
-continue latch also follows changing `glTexImage2D` / `glTexSubImage2D`.
+zlib. Last HLE is `glTexImage2D` 640×700 `GL_RGBA8` NULL pixels — the decoded
+`images/engine/fonts/zh/white.png` atlas specify. Remesure-after of the
+generic GL specify landing (298 s) is **hle_block_bound** at `sdl2+0x47865`
+(**223700774** instruction / **26921** HLE): block read of **1792000** byte
+(640×700×4 RGBA) exceeds the 1 MiB HLE `readBlock` cap. No unbound IAT.
+`procedure_miss` is `wine_get_version` only. `SwapBuffers` 0 in the stored
+window. Previous `9ef395b` remesure was 200M at `zlib1+0xa5c8` / 26840 HLE.
+NULL `glTexImage2D` now specifies storage; the texture store is 64 MiB; the
+8× continue latch also follows changing `glTexImage2D` / `glTexSubImage2D`.
 Not a frame. `passing` stays 1.
 Raised 80M: the worker finishes `HeapAlloc`, `WakeAllConditionVariable` runs,
 and main loads textures (`glTexImage2D` / `glTexSubImage2D` / `FindNextFileW`)
@@ -179,13 +181,13 @@ the staged README is `process_exit` 0 with the real line-numbered hits
 with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
-That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the 50M product remesure of `b05c2c5` is the
-SDL2 GL texture specify after font decode (`glTexImage2D` 640×700 NULL),
-not sidecar inflate. Present is served but SuperTux never calls it
-(`SwapBuffers` 0). Do not raise the product cap. Do not stub zlib. Do not
-title-skip `zh/white.png`. Raised-budget 1B is `isdigit` at `ucrtbase`;
-1.9B is still `zlib1` inflate after the 1M HLE call cap was raised
-(no new IAT or opcode; `SwapBuffers` 0).
+That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after is the generic 1 MiB HLE
+`readBlock` cap (`hle_block_bound` 1792000 byte / 640×700×4), not sidecar
+inflate and not the NULL specify. Present is served but SuperTux never
+calls it (`SwapBuffers` 0). Do not raise the product cap. Do not stub zlib.
+Do not title-skip `zh/white.png`. Raised-budget 1B is `isdigit` at
+`ucrtbase`; 1.9B is still `zlib1` inflate after the 1M HLE call cap was
+raised (no new IAT or opcode; `SwapBuffers` 0).
 The written `config` uses 64-bit x87 stores — some float
 literals are not 80-bit exact.
 Relative CreateFile, directory BACKUP_SEMANTICS, counted MB2WC,
