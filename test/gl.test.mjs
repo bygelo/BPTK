@@ -229,28 +229,33 @@ test("SDL_GL_SwapBuffers copies the GL color buffer", () => {
   assert.equal(guestPresentState(guest).source, "gl");
 });
 
-test("glTexImage2D with a NULL pointer allocates a store glTexSubImage2D can fill", () => {
+test("NULL glTexImage2D specifies storage so glTexSubImage2D can write", () => {
   const { guest } = createConformanceMachine();
   const out = 0x00150040;
-  const pixels = 0x00150200;
+  const pixels = 0x00151000;
   invoke(guest, "glGenTextures", [1, out]);
   const id = guest.memory.readMemory(out, 4);
   invoke(guest, "glBindTexture", [glEnum.TEXTURE_2D, id]);
   invoke(guest, "glTexImage2D", [glEnum.TEXTURE_2D, 0, glEnum.RGBA, 2, 2, 0, glEnum.RGBA, glEnum.UNSIGNED_BYTE, 0]);
   assert.equal(invoke(guest, "glGetError", []), 0);
-  guest.memory.writeBlock(pixels, Buffer.from([
-    255, 0, 0, 255,
-    0, 255, 0, 255,
-    0, 0, 255, 255,
-    255, 255, 0, 255,
-  ]));
+  guest.memory.writeBlock(pixels, Buffer.from([9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 11, 10, 13, 12, 15, 14]));
   invoke(guest, "glTexSubImage2D", [glEnum.TEXTURE_2D, 0, 0, 0, 2, 2, glEnum.RGBA, glEnum.UNSIGNED_BYTE, pixels]);
   assert.equal(invoke(guest, "glGetError", []), 0);
-  const glSource = readFileSync(new URL("../lib/gl.mjs", import.meta.url), "utf8");
-  const start = glSource.indexOf("texImage2D(_target");
-  const body = glSource.slice(start, glSource.indexOf("copyTexSubImage2D", start));
+  const source = readFileSync(new URL("../lib/gl.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("texImage2D(");
+  const body = source.slice(start, source.indexOf("copyTexSubImage2D", start));
   assert.doesNotMatch(body, /title|executable_name|supertux|SuperTux/i);
   assert.match(body, /Buffer\.alloc\(byteCount\)/);
+});
+
+test("a specified 640 by 700 RGBA texture fits the store bound", () => {
+  const { guest } = createConformanceMachine();
+  const out = 0x00150040;
+  invoke(guest, "glGenTextures", [1, out]);
+  invoke(guest, "glBindTexture", [glEnum.TEXTURE_2D, guest.memory.readMemory(out, 4)]);
+  invoke(guest, "glTexImage2D", [glEnum.TEXTURE_2D, 0, 0x8058, 640, 700, 0, glEnum.RGBA, 0x8365, 0]);
+  assert.equal(invoke(guest, "glGetError", []), 0);
+  assert.equal(guest.gl.describe().texture_count, 1);
 });
 
 test("glDrawArrays without SwapBuffers is not a presented frame", () => {
