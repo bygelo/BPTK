@@ -128,8 +128,8 @@ table init at **9.46 s / 1.06M insn/s**. A 50M remesure leaves OpenAL at
 30017849 instruction, serves `ucrtbase` PINSRW (`0x0F C4`), reaches CRT
 argv (`GetCommandLineW` / `CommandLineToArgvW`). The `0x1397bc` fetch was
 SDL2 `call [IAT]` through unbound `SHGetFolderPathW` (hint RVA). That import
-now writes `C:\\Users\\Guest\\AppData\\Roaming`. physfs `OpenProcessToken` is
-served. A 50M remesure with `--datadir C:\\game\\data` and the real portable tree
+now writes `C:\Users\Guest\AppData\Roaming`. physfs `OpenProcessToken` is
+served. A 50M remesure with `--datadir C:\game\data` and the real portable tree
 (5134 host files) catches the missing-`config` `0xe06d7363`, runs the
 guest SDL thread, serves `CreateDCW` / `CreateDIBSection` / cursor
 handles / `SetThreadExecutionState` (`ES_CONTINUOUS` `0x80000000`) /
@@ -149,7 +149,7 @@ instruction / **8968** HLE; last HLE `WaitOnAddress` then worker `HeapAlloc`).
 After `603602e`, `WaitOnAddress` returns. Official 50M product remesure of
 `b05c2c5` (`bptk run`, 5134 host files, 309 s) is **instruction_budget_exhausted**
 at `sdl2+0x44e35` (**223700541** instruction / **26916** HLE). Past sidecar
-zlib. Last ReadFile is `c:\\game\\data\\fonts\\sourcecodepro-medium.ttf`. Last HLE
+zlib. Last ReadFile is `c:\game\data\fonts\sourcecodepro-medium.ttf`. Last HLE
 is `glTexImage2D` 640×700 `GL_RGBA8` NULL pixels — the decoded
 `images/engine/fonts/zh/white.png` atlas specify. No unbound IAT.
 `procedure_miss` is `wine_get_version` only. `SwapBuffers` 0. Previous
