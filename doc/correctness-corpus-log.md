@@ -1310,8 +1310,9 @@ and `WinHttpSendRequest` refuse without consent; SHA/MD5 and `BCryptGenRandom`
 are real; cert chains / PFX / key import stay not-found. zlib1 stays a
 sidecar PE.
 
-Measured (payloads still out of git): sidecar catalog for `libcurl.dll`
-unserved 44 → 0. No 50M remesure (cap unchanged). Not a frame.
+Measured on geldan at `38b3877` (payloads still out of git):
+`libcurl.dll` IAT 177 / unserved **0**. Package-local `zlib1.dll` stays a
+sidecar PE (38 / 0). No 50M remesure (cap unchanged). Not a frame.
 
 `passing` stays 1 (BPTK-001 only). Do not mark the interactive-freeware
 goal complete.

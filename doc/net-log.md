@@ -175,4 +175,5 @@ Bound the leftover `ws2_32` rows a packaged libcurl imports (`listen` /
 `WSAIoctl` / `WSASetLastError` / `getservbyport`) onto the existing
 deny-by-default Winsock. `lib/http.mjs` adds the WinHTTP session table and
 the CAPI/CNG/crypt32/iphlpapi leftovers. No title branch. No host socket.
-zlib not stubbed. 50M cap unchanged.
+zlib not stubbed. 50M cap unchanged. geldan remesure of SuperTux
+`libcurl.dll` at `38b3877`: IAT 177 / unserved 0.
