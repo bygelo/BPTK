@@ -70,7 +70,7 @@ test("InitOnceExecuteOnce completes a cell and CreateSemaphoreExW is the Ex twin
 
 test("leftover CRT string and locale rows are real", () => {
   const { guest, memory } = createConformanceMachine();
-  memory.writeBlock(0x00150080, Buffer.from("hello\0reject\0", "latin1"));
+  memory.writeBlock(0x00150080, Buffer.from("hello\0lx\0", "latin1"));
   assert.equal(invoke(guest, "msvcrt.dll", "strcspn", [0x00150080, 0x00150086]), 2);
   assert.equal(invoke(guest, "msvcrt.dll", "iswdigit", [0x35]), 1);
   assert.equal(invoke(guest, "msvcrt.dll", "iswspace", [0x41]), 0);

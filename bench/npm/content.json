@@ -41,6 +41,7 @@
     "lib/legal.mjs",
     "lib/lift64.mjs",
     "lib/live.mjs",
+    "lib/msvcp.mjs",
     "lib/net.mjs",
     "lib/package.mjs",
     "lib/performance.mjs",
