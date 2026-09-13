@@ -281,6 +281,25 @@ test("the byte-order and address helpers are pure and reach no host", () => {
   assert.equal(inetAddr("not-an-address"), 0xffffffff);
 });
 
+test("listen records a bound socket and accept stays would-block offline", () => {
+  const policy = createTransportPolicy({ allowlist: ["relay:a"], is_consented: true });
+  const relay = createMediatedRelay(policy);
+  const winsock = createWinsock(relay, { endpoint: "relay:a" });
+  winsock.WSAStartup();
+  const handle = winsock.socket(winsockConstant.AF_INET, winsockConstant.SOCK_STREAM, winsockConstant.IPPROTO_TCP);
+  assert.equal(winsock.listen(handle, 1), winsockConstant.SOCKET_ERROR);
+  assert.equal(winsock.WSAGetLastError(), wsaError.WSAEINVAL);
+  assert.equal(winsock.bind(handle, "relay:a"), wsaError.WSA_OK);
+  assert.equal(winsock.listen(handle, 1), wsaError.WSA_OK);
+  assert.equal(winsock.accept(handle), winsockConstant.SOCKET_ERROR);
+  assert.equal(winsock.WSAGetLastError(), wsaError.WSAEWOULDBLOCK);
+  assert.equal(winsock.getsockname(handle).is_named, true);
+  assert.equal(winsock.getpeername(handle).is_named, false);
+  assert.equal(winsock.select(), 0);
+  assert.equal(winsock.getservbyport(0x5000, "tcp").name, "http");
+  assert.equal(winsock.getservbyport(0x0100, "tcp"), null);
+});
+
 test("socket option honors a declared name, refuses an unknown one, and toggles FIONBIO", () => {
   const policy = createTransportPolicy({ allowlist: ["relay:a"], is_consented: true });
   const relay = createMediatedRelay(policy);

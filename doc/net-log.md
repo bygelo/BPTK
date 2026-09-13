@@ -167,3 +167,12 @@ guest ws2_32 import binding exist yet, and the BPTK-026 prerequisite (BPTK-004
 approval, BPTK-021, BPTK-024) remain red. The manifest promotion is not flipped
 this cycle; the surface is self-contained and the corpus ledger does not yet
 recognize it until the hle export registration lands.
+
+## 2026-09-13 — leftover libcurl sidecar IAT (WinHTTP-style)
+
+Bound the leftover `ws2_32` rows a packaged libcurl imports (`listen` /
+`accept` / name helpers / `select` / `getaddrinfo` / `GetAddrInfoW` /
+`WSAIoctl` / `WSASetLastError` / `getservbyport`) onto the existing
+deny-by-default Winsock. `lib/http.mjs` adds the WinHTTP session table and
+the CAPI/CNG/crypt32/iphlpapi leftovers. No title branch. No host socket.
+zlib not stubbed. 50M cap unchanged.

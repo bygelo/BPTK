@@ -1300,6 +1300,22 @@ Measured on the staged corpus (payloads still out of git):
 PNG/texture load (`zlib1` at 1.9B); `gdi32!SwapBuffers` is served but SuperTux
 never reaches it.
 
+## Cycle 58 — leftover libcurl sidecar IAT as WinHTTP-style HLE (2026-09-13)
+
+A packaged `libcurl.dll` still had 44 unbound system imports after sidecar
+bind (ws2_32 leftovers, bcrypt/CAPI, crypt32, iphlpapi). Those rows are now
+generic Win32 / WinHTTP-style HLE in `lib/http.mjs` plus leftover `ws2_32`
+bind. No `if (title === SuperTux)`. Session handles exist; name resolution
+and `WinHttpSendRequest` refuse without consent; SHA/MD5 and `BCryptGenRandom`
+are real; cert chains / PFX / key import stay not-found. zlib1 stays a
+sidecar PE.
+
+Measured (payloads still out of git): sidecar catalog for `libcurl.dll`
+unserved 44 → 0. No 50M remesure (cap unchanged). Not a frame.
+
+`passing` stays 1 (BPTK-001 only). Do not mark the interactive-freeware
+goal complete.
+
 ## Known x86 fidelity gap: DIV/IDIV quotient overflow
 
 Found while compiling `div`/`idiv` into the WASM tier, and worth recording

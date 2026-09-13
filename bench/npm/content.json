@@ -31,6 +31,7 @@
     "lib/gl.mjs",
     "lib/graphics.mjs",
     "lib/hle.mjs",
+    "lib/http.mjs",
     "lib/input.mjs",
     "lib/import.mjs",
     "lib/i386-compile.mjs",

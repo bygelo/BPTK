@@ -166,6 +166,12 @@ known vars, keep unknown literal) over the one environment map. Served kernel32
 137→141; total 229→233. Conformance cases + a behavior test added; no promotion
 (item already implemented). Gate: exit 0.
 
+## Cycle 12 — leftover libcurl sidecar IAT (WinHTTP-style, generic)
+Added `lib/http.mjs` and bound leftover `ws2_32` / bcrypt / CAPI / crypt32 /
+iphlpapi / winhttp rows in `lib/hle.mjs`. Session handles exist; dials refuse;
+hashes and PRNG are real; TLS keys and cert chains stay not-found. No title
+branch. zlib not stubbed. 50M cap unchanged. Not a frame.
+
 ## Progress — ALL owned P5 planned items implemented
 Implemented 43→53 (+10): BPTK-101, 098, 011, 012, 099, 096, 104, 102, 097, 100.
 Served HLE export surface 156→229 (kernel32 107→137, advapi32 6→16, user32 14→23,
