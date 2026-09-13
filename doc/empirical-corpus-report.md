@@ -113,7 +113,7 @@ archive to i386.
 | CORPUS-011 PuTTYgen 0.81 win32 | program | i386 | entry | instruction_budget_exhausted after DialogBoxParamA RT_DIALOG 201 (10000000 instruction, 1233 HLE, 7.4 s) still inside guest WM_INITDIALOG; IAT 174/174 → BPTK-010 |
 | CORPUS-012 curl 8.22.0 win64 | program | x86-64 | entry | machine_x86_64 → BPTK-031 |
 | CORPUS-013 ripgrep 14.1.1 win32 | program | i386 | entry | process_exit 0 on --version (181697 instruction) and on PCRE2 search of the staged README (1701493 instruction, real hits) → BPTK-009 |
-| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: official remesure of `e2d95d8` **read_fault** at `vcruntime140+0x2cd2` (2022831743 instruction / 1273641 HLE, ~4779 s) reading `0x39383937` (identical to `73b8084`; RtlUnwind clear did not run). `SwapBuffers` 0. IAT 722/722 → BPTK-010 |
+| CORPUS-014 SuperTux 0.7.0 win32 | game | i386 | entry | 50M product + datadir: official remesure of `13f3f20` **process_exit** 1 at sidecar `ucrtbase+_wassert` (`ucrtbase+0xb14fc`, 2042082563 instruction / 1448939 HLE, ~4589 s). FrameInfo `read_fault` is gone. `SwapBuffers` 0. IAT 722/722 → BPTK-010 |
 
 Reached: staged 0, classified 0, packaged 0, loaded 1, **entry 13**, interactive 0.
 Gap tally: **BPTK-031 × 3**, **BPTK-010 × 8**, **BPTK-009 × 2**. Playability is
@@ -181,8 +181,7 @@ the staged README is `process_exit` 0 with the real line-numbered hits
 with the colored `1`. PuTTYgen 0.81 is fully IAT-bound (174/174) and reaches
 `DialogBoxParamA` (template 201); the 10M cap lands inside the guest
 `WM_INITDIALOG` (`CreateWindowExA` / `MapDialogRect` still running; 1233 HLE, 7.4 s).
-That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after `e2d95d8` is the same `read_fault` at
-`vcruntime140+0x2cd2` reading `0x39383937` (intra-module sidecar FrameInfo walk; RtlUnwind HLE never ran), not an IAT miss. Present is served but SuperTux never
+That is not a shown window and not `hle_dialog_modal_idle`. The next named SuperTux hole on the remesure-after `13f3f20` is sidecar `ucrtbase!_wassert` then `TerminateProcess(1)`, not FLS/PTD and not an IAT miss. Present is served but SuperTux never
 calls it (`SwapBuffers` 0). Do not raise the product cap. Do not stub zlib.
 Do not title-skip `zh/white.png`. Raised-budget 1B is `isdigit` at
 `ucrtbase`; 1.9B is still `zlib1` inflate after the 1M HLE call cap was

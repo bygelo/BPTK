@@ -1837,6 +1837,16 @@ test("vcruntime FrameInfo: unmapped pNext is not walked", () => {
   assert.equal(invoke(guest, "vcruntime140.dll", "__FindAndUnlinkFrame", [frame]), 0);
 });
 
+test("msvcrt _wassert names expr/file/line then exits 1", () => {
+  const { guest } = createConformanceMachine();
+  const exprAt = guest.layout.arena_base + 0x80;
+  const fileAt = guest.layout.arena_base + 0x100;
+  guest.writeWideString(exprAt, "x != 0", 16);
+  guest.writeWideString(fileAt, "video.cpp", 16);
+  assert.throws(() => invoke(guest, "msvcrt.dll", "_wassert", [exprAt, fileAt, 42]), /ended its own process/);
+  assert.deepEqual(guest.last_wassert, { expr: "x != 0", file: "video.cpp", line: 42 });
+});
+
 test("InitSecurityInterfaceW: the table is version 3 and AcquireCredentialsHandleW is a real thunk", () => {
   const { guest, memory, layout } = createConformanceMachine();
   const table = invoke(guest, "secur32.dll", "InitSecurityInterfaceW", []);
