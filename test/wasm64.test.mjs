@@ -943,7 +943,9 @@ class MachineShim {
     this.loadBase = loadBase;
     this.reg = new Array(16).fill(0n);
     this.xmm = new Array(16).fill(0n);
+    this.flagSource = null;
   }
+  flags() { return materializeFlag(this.flagSource); }
   translate(address, sizeByte) {
     const offset = address - this.loadBase;
     if (offset < 0n || offset + BigInt(sizeByte) > BigInt(this.mem.length)) throw new Error(`guest address 0x${address.toString(16)} outside memory`);
@@ -1011,7 +1013,7 @@ function runSseOracle(image, { register = {}, xmm = {} }) {
     const nextRip = loadBase + BigInt(node.address) + BigInt(node.length);
     executeSse(machine, node, nextRip);
   }
-  return { xmm: machine.xmm.map((v) => v & MASK128_T), register: machine.reg.map((v) => v & MASK64_T), memory: mem };
+  return { xmm: machine.xmm.map((v) => v & MASK128_T), register: machine.reg.map((v) => v & MASK64_T), memory: mem, flag: machine.flags() };
 }
 
 const sseCoverage = new Set();
@@ -1198,6 +1200,44 @@ test("sse: scalar and packed float add/mul/sub/div, bit-exact with the interpret
   assertSseEquivalent([0xf3, 0x0f, 0x59, 0xc1, 0xc3], { xmm: { 0: ones, 1: twos } }, "mulss");
   assertSseEquivalent([0xf2, 0x0f, 0x5c, 0xc1, 0xc3], { xmm: { 0: d3, 1: d1 } }, "subsd");
   assertSseEquivalent([0xf3, 0x0f, 0x5e, 0xc1, 0xc3], { xmm: { 0: 0x40c00000n, 1: 0x40000000n } }, "divss"); // 6/2=3
+});
+
+function assertSseFlagEquivalent(code, seed, label) {
+  const image = Buffer.from(code);
+  const oracle = runSseOracle(image, seed);
+  const block = liftBlock(image, 0);
+  const compiled = compileBlock(block, { loadBase, guestLen: image.length + 0x10000 });
+  assertRealModule(compiled.bytes);
+  const jit = runBlock(block, { image, loadBase, register: seed.register ?? {}, xmm: seed.xmm ?? {} });
+  assert.ok(jit.complete, `${label}: codegen incomplete — ${JSON.stringify(jit.coverage.unsupported)}`);
+  for (const name of FLAG) {
+    assert.equal(jit.flag[name], oracle.flag[name], `${label}: flag ${name} WASM ${jit.flag[name]} != oracle ${oracle.flag[name]}`);
+  }
+  for (const kind of jit.coverage.emitted) if (kind.startsWith("sse:")) sseCoverage.add(kind);
+  return { jit, oracle };
+}
+
+test("sse: comiss/ucomiss write ZF/PF/CF and cvtt*2si truncates to a GPR", () => {
+  const f1 = 0x3f800000n; // 1.0f
+  const f2 = 0x40000000n; // 2.0f
+  const qnan = 0x7fc00000n;
+  const d1 = 0x3ff0000000000000n;
+  const d2 = 0x4000000000000000n;
+  // comiss xmm0, xmm1 (0F 2F C1)
+  assertSseFlagEquivalent([0x0f, 0x2f, 0xc1, 0xc3], { xmm: { 0: f1, 1: f2 } }, "comiss-less");
+  assertSseFlagEquivalent([0x0f, 0x2f, 0xc1, 0xc3], { xmm: { 0: f2, 1: f1 } }, "comiss-greater");
+  assertSseFlagEquivalent([0x0f, 0x2f, 0xc1, 0xc3], { xmm: { 0: f1, 1: f1 } }, "comiss-equal");
+  assertSseFlagEquivalent([0x0f, 0x2f, 0xc1, 0xc3], { xmm: { 0: qnan, 1: f1 } }, "comiss-unordered");
+  assertSseFlagEquivalent([0x0f, 0x2e, 0xc1, 0xc3], { xmm: { 0: f1, 1: f2 } }, "ucomiss-less");
+  assertSseFlagEquivalent([0x66, 0x0f, 0x2f, 0xc1, 0xc3], { xmm: { 0: d1, 1: d2 } }, "comisd-less");
+  // cvttss2si eax, xmm0 (F3 0F 2C C0) — 2.9f → 2; NaN / overflow → indefinite
+  const twoPointNine = 0x4039999an; // 2.9f
+  const jitTrunc = assertSseEquivalent([0xf3, 0x0f, 0x2c, 0xc0, 0xc3], { xmm: { 0: twoPointNine } }, "cvttss2si-2.9");
+  assert.equal(jitTrunc.register.rax, 2n, "cvttss2si 2.9f is 2");
+  const jitNan = assertSseEquivalent([0xf3, 0x0f, 0x2c, 0xc0, 0xc3], { xmm: { 0: qnan }, register: { rax: 0x111n } }, "cvttss2si-nan");
+  assert.equal(jitNan.register.rax, 0x80000000n, "cvttss2si NaN is the 32-bit indefinite");
+  const jitSd = assertSseEquivalent([0xf2, 0x0f, 0x2c, 0xc0, 0xc3], { xmm: { 0: 0x4023cccccccccccdn } }, "cvttsd2si-9.9"); // 9.9
+  assert.equal(jitSd.register.rax, 9n, "cvttsd2si 9.9 is 9");
 });
 
 test("sse: movss/movsd scalar merge and load semantics", () => {
