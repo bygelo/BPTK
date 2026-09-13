@@ -33,6 +33,7 @@
     "lib/hle.mjs",
     "lib/input.mjs",
     "lib/import.mjs",
+    "lib/i386-compile.mjs",
     "lib/i386.mjs",
     "lib/ingest.mjs",
     "lib/index.mjs",
