@@ -197,6 +197,14 @@ test("regression risk: deterministic infinite branch consumes the exact budget",
   assert.equal(report.is_executed, true);
 });
 
+test("probe continue treats a short same-snap streak as a probe, not a spin", () => {
+  const source = readFileSync(new URL("../lib/runtime.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("function productiveReadContinue(");
+  const body = source.slice(start, source.indexOf("function probeContinueRunnable(", start));
+  assert.match(body, /sameSnapStreak < 4/);
+  assert.doesNotMatch(body, /title|executable_name|supertux|SuperTux/i);
+});
+
 test("probe continue keeps a live ReadFile/GL continue across a heap/CS interstitial", () => {
   const source = readFileSync(new URL("../lib/runtime.mjs", import.meta.url), "utf8");
   const start = source.indexOf("function productiveReadContinue(");
